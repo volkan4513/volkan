@@ -131,26 +131,6 @@
         document.getElementById('popup-close').addEventListener('click', closePopup);
         popupOverlay.addEventListener('click', e => { if (e.target === popupOverlay) closePopup(); });
 
-        // --- image layer helpers ---
-        async function listImages(dir) {
-            const res  = await fetch(dir);
-            const html = await res.text();
-            const doc  = new DOMParser().parseFromString(html, 'text/html');
-            return [...doc.querySelectorAll('a[href]')]
-                .map(a => a.getAttribute('href'))
-                .filter(href => /\.png$/i.test(href))
-                .sort((a, b) => {
-                    const rank = n => {
-                        const l = n.toLowerCase();
-                        if (l.startsWith('base'))  return 0;
-                        if (l.includes('front'))   return 2;
-                        return 1;
-                    };
-                    const diff = rank(a) - rank(b);
-                    return diff !== 0 ? diff : a.localeCompare(b);
-                });
-        }
-
         function paintContained(ctx, img) {
             const scale = Math.min(W / img.naturalWidth, H / img.naturalHeight);
             const w = img.naturalWidth  * scale;
@@ -169,10 +149,8 @@
         }
 
         async function init() {
-            const [filenames, config] = await Promise.all([
-                listImages('images_to_use/'),
-                fetch('functions_to_work.json').then(r => r.json()),
-            ]);
+            const config    = await fetch('functions_to_work.json').then(r => r.json());
+            const filenames = [...(config[0]?.image_filenames ?? [])].reverse();
 
             const namesToLink     = config[0]?.names_to_link     ?? {};
             const openRandomPopup = config[0]?.open_random_popup ?? {};
@@ -186,7 +164,7 @@
                 wrapper.appendChild(img);
             });
 
-            const noHighlight = name => name.startsWith('base') || name.includes('text');
+            const noHighlight = name => name.startsWith('base') || name.includes('text') || name.includes('noselect');
 
             const hitLayers = [...wrapper.querySelectorAll('.layer')]
                 .filter(el => !noHighlight(imgName(el).toLowerCase()))

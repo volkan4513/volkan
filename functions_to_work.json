@@ -1,5 +1,43 @@
 [
   {
+    "image_filenames": [
+      "A.png",
+      "K.png",
+      "L.png",
+      "Layer 19.png",
+      "N.png",
+      "O.png",
+      "V.png",
+      "s.png",
+      "thumb.png",
+      "ycat_on_computer_front.png",
+      
+      "cat01_front.png",
+      "cow_front.png",
+      "just_cat_front.png",
+      
+      "lets_go.png",
+
+      "portfolio_image.png",
+      "just_jump_name_image.png",
+      "reto_image_effects_studio_image.png",
+      "retro_image_image_noselect.png",
+      "retro_image_text.png",
+      "bmw_config_image_noselect.png",
+      "bmw_name_image.png",
+      "unity_text.png",
+      "unity_game_image_noselect.png",
+
+      "cutout_noselect.png",
+      "cutout_front_text.png",
+      "base_blue.png",
+      "base_grey.png",
+      "base_red.png",
+      "base_yellow.png",
+      "base.png",
+      "base_base.png",
+      "base_background_backup.png"
+    ],
     "names_to_link": {
       "bmw_name_image": "/projects/01",
       "just_jump_name_image": "/projects/02",
