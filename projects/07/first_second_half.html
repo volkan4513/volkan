@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Responsive Grid</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      min-height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1e1e2f;
+      color: #fff;
+    }
+
+    .container {
+      display: grid;
+      width: 100vw;
+      min-height: 100vh;
+      padding: 10px;
+      gap: 10px;
+    }
+
+    .section {
+      background: #2c2c3f;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hover-button {
+      width: 100%;
+      height: 100%;
+      background: url('https://via.placeholder.com/400x300') center/cover;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.3s;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .hover-button:hover {
+      transform: scale(1.05);
+    }
+
+    .hover-title {
+      position: absolute;
+      bottom: -100%;
+      left: 0;
+      width: 100%;
+      padding: 20px;
+      background: rgba(0,0,0,0.7);
+      font-size: 1.2rem;
+      text-align: center;
+      opacity: 0;
+      transition: bottom 0.5s, opacity 0.5s;
+    }
+
+    .hover-button:hover .hover-title {
+      bottom: 0;
+      opacity: 1;
+    }
+
+    .hover-button::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.2);
+      transition: background 0.3s;
+    }
+
+    .hover-button:hover::after {
+      background: rgba(0,0,0,0.4);
+    }
+
+    /* Responsive Grid Layouts */
+    @media (orientation: landscape) and (min-aspect-ratio: 4/3) {
+      .container {
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: auto;
+      }
+    }
+
+    @media (orientation: portrait) and (max-aspect-ratio: 3/4) {
+      .container {
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(4, auto);
+      }
+    }
+
+    @media (min-aspect-ratio: 3/4) and (max-aspect-ratio: 4/3) {
+      .container {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(2, auto);
+      }
+    }
+
+.btn1 { background-image: url('page_images/page1_thumb.webp'); }
+.btn2 { background-image: url('page_images/page2_thumb.webp'); }
+.btn3 { background-image: url('page_images/page3_thumb.jpg'); }
+.btn4 { background-image: url('page_images/page4_thumb.jpg'); }
+
+  </style>
+</head>
+<body>
+
+  <div class="container">
+  <div class="section">
+    <a class="hover-button btn1" href="GPT3dfile2.html" target="_blank">
+      <div class="hover-title">THREE.JS PROJECT</div>
+    </a>
+  </div>
+  <div class="section">
+    <a class="hover-button btn2" href="./test_html_build_1/index.html" target="_blank">
+      <div class="hover-title">UNITY 3D PROJECT</div>
+    </a>
+  </div>
+  <div class="section">
+    <a class="hover-button btn3" href="./webexport_bmw_m3_gtr/index.html" target="_blank">
+      <div class="hover-title">GODOT PROJECT</div>
+    </a>
+  </div>
+  <div class="section">
+    <a class="hover-button btn4" href="page4.html" target="_blank">
+      <div class="hover-title">WIP</div>
+    </a>
+  </div>
+</div>
+
+
+</body>
+</html>

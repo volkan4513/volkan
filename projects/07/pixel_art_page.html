@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Responsive Image Effects Grid</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #252525;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    .container {
+      display: grid;
+      width: 100%;
+      height: calc(100% - 60px);
+      gap: 10px;
+      padding: 10px;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      margin-top: 60px;
+    }
+
+    .section {
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background-size: cover;
+      background-position: center;
+      width: 100%;
+      height: 100%;
+    }
+
+    .header {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 0 0 6px #000;
+      z-index: 2;
+    }
+
+    .download-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0);
+      color: #fff;
+      border: 1px solid #ffffff00;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      z-index: 3;
+    }
+    .download-btn:hover {
+      background: #3b63ae;
+    }
+
+    .slider-container {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      z-index: 2;
+    }
+
+    /* Common blocky slider style */
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 20px;
+      margin-top: 6px;
+      cursor: pointer;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border: 2px solid #000;
+      box-shadow: 2px 2px 0 #000;
+      cursor: pointer;
+    }
+    input[type=range]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border: 2px solid #000;
+      box-shadow: 2px 2px 0 #000;
+      cursor: pointer;
+    }
+
+    /* Scanline theme slider */
+    #scanlineSlider {
+      background: repeating-linear-gradient(
+        0deg,
+        #222,
+        #222 2px,
+        #555 2px,
+        #555 4px
+      );
+      border: 2px solid #fff;
+    }
+
+    /* ASCII black & white slider */
+    #asciiSlider {
+      background: #000;
+      border: 2px solid #fff;
+    }
+    #asciiSlider::-webkit-slider-thumb {
+      background: #fff;
+      border: 2px solid #fff;
+    }
+    #asciiSlider::-moz-range-thumb {
+      background: #000;
+      border: 2px solid #fff;
+    }
+
+    /* Pixel-art chunky colorful sliders */
+    #pixelSlider, #colorSlider {
+      background: repeating-linear-gradient(
+        0deg,
+        #222,
+        #222 2px,
+        #555 2px,
+        #555 4px
+      );
+      border: 2px solid #222;
+      image-rendering: pixelated;
+      box-shadow: inset 0 0 4px #000, 2px 2px 0 #000;
+    }
+    #pixelSlider::-webkit-slider-thumb,
+    #colorSlider::-webkit-slider-thumb {
+      background: #222;
+      border: 2px solid #fff;
+      width: 24px;
+      height: 24px;
+      image-rendering: pixelated;
+    }
+    #pixelSlider::-moz-range-thumb,
+    #colorSlider::-moz-range-thumb {
+      background: #222;
+      border: 2px solid #fff;
+      width: 24px;
+      height: 24px;
+      image-rendering: pixelated;
+    }
+
+    /* Blocky retro label text */
+    .slider-container label {
+      font-family: monospace;
+      display: block;
+      font-size: 0.9rem;
+      margin-bottom: 2px;
+    }
+
+    input[type=file] { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Section 1: Original -->
+  <div class="section" id="uploadSection">
+    <div class="header">Original</div>
+    <input type="file" id="fileInput" accept="image/*">
+    <label for="fileInput" style="cursor:pointer; color:#0af; position:absolute; bottom:40px;">Click to select</label>
+    <p style="font-size:0.8rem; color:#aaa; position:absolute; bottom:20px;">or drag image here</p>
+  </div>
+
+  <!-- Section 2: Scanline -->
+  <div class="section" id="scanlineSection">
+    <div class="header">Scanline</div>
+    <button class="download-btn" id="downloadScanline">Download</button>
+    <div class="slider-container">
+      <label>Scanline Density:
+        <input type="range" id="scanlineSlider" min="1" max="10" value="2">
+      </label>
+    </div>
+  </div>
+
+  <!-- Section 3: ASCII -->
+  <div class="section" id="asciiSection">
+    <div class="header">ASCII</div>
+    <button class="download-btn" id="downloadASCII">Download</button>
+    <div class="slider-container">
+      <label>ASCII Scale:
+        <input type="range" id="asciiSlider" min="20" max="200" value="100">
+      </label>
+    </div>
+  </div>
+
+  <!-- Section 4: Pixel Art -->
+  <div class="section" id="pixelSection">
+    <div class="header">Pixel Art</div>
+    <button class="download-btn" id="downloadPixel">Download</button>
+    <div class="slider-container">
+      <label>Pixel Block Size:
+        <input type="range" id="pixelSlider" min="1" max="20" value="3">
+      </label>
+      <label>Colors:
+        <input type="range" id="colorSlider" min="4" max="40" value="20">
+      </label>
+    </div>
+  </div>
+</div>
+
+<script>
+const fileInput = document.getElementById('fileInput');
+const uploadSection = document.getElementById('uploadSection');
+const scanlineSection = document.getElementById('scanlineSection');
+const asciiSection = document.getElementById('asciiSection');
+const pixelSection = document.getElementById('pixelSection');
+
+const colorSlider = document.getElementById('colorSlider');
+const pixelSlider = document.getElementById('pixelSlider');
+const scanlineSlider = document.getElementById('scanlineSlider');
+const asciiSlider = document.getElementById('asciiSlider');
+
+let img = new Image();
+img.src = "./test_images2/ezgif-frame-166.jpg"; // default image
+
+// Store canvases for download
+let canvases = {
+  scanline: null,
+  ascii: null,
+  pixel: null
+};
+
+// Draw default image immediately (even if cached)
+function processDefaultImage() {
+  uploadSection.style.backgroundImage = `url(${img.src})`;
+  uploadSection.style.backgroundSize = "cover";
+  uploadSection.style.backgroundPosition = "center";
+  drawScanline();
+  drawPixelArt();
+  drawASCII();
+}
+
+if (img.complete) {
+  processDefaultImage();
+} else {
+  img.onload = processDefaultImage;
+}
+
+// Drag & drop
+uploadSection.addEventListener('dragover', e => { e.preventDefault(); uploadSection.style.background = "#333"; });
+uploadSection.addEventListener('dragleave', e => { e.preventDefault(); uploadSection.style.background = "#252525"; });
+uploadSection.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')) loadImage(file);
+});
+
+fileInput.addEventListener('change', e => { const file = e.target.files[0]; if(file) loadImage(file); });
+
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = ev => { 
+    img.src = ev.target.result;
+    uploadSection.style.backgroundImage = `url(${ev.target.result})`;
+    uploadSection.style.backgroundSize = "cover";
+    uploadSection.style.backgroundPosition = "center";
+  };
+  reader.readAsDataURL(file);
+}
+
+function setSectionBackground(canvas, section, key) {
+  section.style.backgroundImage = `url(${canvas.toDataURL()})`;
+  canvases[key] = canvas; // save for download
+}
+
+// Scanline
+function drawScanline() {
+  const canvas = document.createElement('canvas');
+  const w = scanlineSection.clientWidth;
+  const h = scanlineSection.clientHeight;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  const scale = Math.max(w/img.width, h/img.height);
+  const sw = img.width*scale; const sh = img.height*scale;
+  const sx = (w-sw)/2; const sy = (h-sh)/2;
+
+  ctx.drawImage(img, sx, sy, sw, sh);
+  let imageData = ctx.getImageData(0,0,w,h);
+  let data = imageData.data;
+  const density = parseInt(scanlineSlider.value);
+  for(let y=0;y<h;y++){
+    if(y%density===0){
+      for(let x=0;x<w;x++){
+        let idx=(y*w+x)*4;
+        data[idx]=data[idx+1]=data[idx+2]=0;
+      }
+    }
+  }
+  ctx.putImageData(imageData,0,0);
+  setSectionBackground(canvas, scanlineSection, "scanline");
+}
+
+// Pixel Art
+function drawPixelArt() {
+  const canvas = document.createElement('canvas');
+  const w = pixelSection.clientWidth; const h = pixelSection.clientHeight;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  const scale = Math.max(w/img.width, h/img.height);
+  const sw = img.width*scale; const sh = img.height*scale;
+  const sx = (w-sw)/2; const sy = (h-sh)/2;
+
+  const blockSize = parseInt(pixelSlider.value);
+  ctx.drawImage(img, sx, sy, sw, sh);
+  let imageData = ctx.getImageData(0,0,w,h);
+  let data = imageData.data;
+
+  const numColors = parseInt(colorSlider.value);
+  const colors = [];
+  for(let i=0;i<data.length;i+=4) colors.push([data[i],data[i+1],data[i+2]]);
+
+  function getClosestColor(r,g,b,palette){
+    let minDist=Infinity, closest=palette[0];
+    for(const c of palette){
+      const d=(r-c[0])**2+(g-c[1])**2+(b-c[2])**2;
+      if(d<minDist){ minDist=d; closest=c;}
+    }
+    return closest;
+  }
+
+  const palette=[]; const step=Math.floor(colors.length/numColors);
+  for(let i=0;i<colors.length && palette.length<numColors;i+=step) palette.push(colors[i]);
+
+  for(let y=0;y<h;y+=blockSize){
+    for(let x=0;x<w;x+=blockSize){
+      let r=0,g=0,b=0,count=0;
+      for(let by=0;by<blockSize;by++){
+        for(let bx=0;bx<blockSize;bx++){
+          let px=x+bx, py=y+by;
+          if(px>=w || py>=h) continue;
+          let idx=(py*w+px)*4;
+          r+=data[idx]; g+=data[idx+1]; b+=data[idx+2]; count++;
+        }
+      }
+      r=Math.floor(r/count); g=Math.floor(g/count); b=Math.floor(b/count);
+      const [nr,ng,nb] = getClosestColor(r,g,b,palette);
+      for(let by=0;by<blockSize;by++){
+        for(let bx=0;bx<blockSize;bx++){
+          let px=x+bx, py=y+by;
+          if(px>=w || py>=h) continue;
+          let idx=(py*w+px)*4;
+          data[idx]=nr; data[idx+1]=ng; data[idx+2]=nb;
+        }
+      }
+    }
+  }
+  ctx.putImageData(imageData,0,0);
+  setSectionBackground(canvas, pixelSection, "pixel");
+}
+
+// ASCII
+function drawASCII() {
+  const canvas = document.createElement('canvas');
+  const w = asciiSection.clientWidth; const h = asciiSection.clientHeight;
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  const tempCanvas = document.createElement('canvas');
+  const scaleVal = parseInt(asciiSlider.value);
+  tempCanvas.width = scaleVal; tempCanvas.height = Math.floor(scaleVal*0.6);
+  const tempCtx = tempCanvas.getContext('2d');
+
+  const scale = Math.max(tempCanvas.width/img.width, tempCanvas.height/img.height);
+  const sw = img.width*scale; const sh = img.height*scale;
+  const sx = (tempCanvas.width-sw)/2; const sy = (tempCanvas.height-sh)/2;
+  tempCtx.drawImage(img, sx, sy, sw, sh);
+
+  let imgData = tempCtx.getImageData(0,0,tempCanvas.width,tempCanvas.height).data;
+  const chars=" .:-=+*#%@";
+  ctx.font = "6px monospace"; ctx.fillStyle = "#aaa";
+
+  for(let y=0;y<tempCanvas.height;y++){
+    for(let x=0;x<tempCanvas.width;x++){
+      let idx=(y*tempCanvas.width+x)*4;
+      let avg=(imgData[idx]+imgData[idx+1]+imgData[idx+2])/3;
+      let char = chars[Math.floor((avg/255)*(chars.length-1))];
+      ctx.fillText(char, x*(w/tempCanvas.width), y*(h/tempCanvas.height));
+    }
+  }
+  setSectionBackground(canvas, asciiSection, "ascii");
+}
+
+// Event listeners
+scanlineSlider.addEventListener('input', drawScanline);
+pixelSlider.addEventListener('input', drawPixelArt);
+colorSlider.addEventListener('input', drawPixelArt);
+asciiSlider.addEventListener('input', drawASCII);
+
+window.addEventListener('resize', () => {
+  if(img.src) { drawScanline(); drawPixelArt(); drawASCII(); }
+});
+
+// Download handlers
+document.getElementById("downloadScanline").addEventListener("click", () => {
+  downloadCanvas(canvases.scanline, "scanline.png");
+});
+document.getElementById("downloadASCII").addEventListener("click", () => {
+  downloadCanvas(canvases.ascii, "ascii.png");
+});
+document.getElementById("downloadPixel").addEventListener("click", () => {
+  downloadCanvas(canvases.pixel, "pixel.png");
+});
+
+function downloadCanvas(canvas, filename) {
+  if (!canvas) return;
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = canvas.toDataURL();
+  link.click();
+}
+</script>
+
+</body>
+</html>

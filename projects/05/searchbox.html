@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retro WebView</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: "Courier New", monospace;
+      display: flex;
+      flex-direction: column;
+      background: #c0c0c0;
+      color: #000;
+    }
+
+    #searchBar {
+      display: flex;
+      align-items: center;
+      padding: 5px;
+      background: #000080;
+      border-bottom: 2px solid #808080;
+    }
+
+    #backButton {
+      padding: 5px 10px;
+      font-size: 14px;
+      border: 2px outset #fff;
+      background: #c0c0c0;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+
+    #urlInput {
+      flex: 1;
+      padding: 5px;
+      font-size: 14px;
+      border: 2px inset #fff;
+      background: #c0c0c0;
+      color: #000;
+    }
+
+    #goButton {
+      padding: 5px 10px;
+      font-size: 14px;
+      border: 2px outset #fff;
+      background: #c0c0c0;
+      cursor: pointer;
+      margin-left: 2px;
+    }
+
+    #webviewContainer {
+      flex: 1;
+      position: relative;
+      border: 2px inset #fff;
+      margin: 5px;
+      background: #fff;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    #fallbackLink {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      font-size: 14px;
+      display: none;
+      padding: 10px;
+      background: #c0c0c0;
+      border: 2px outset #fff;
+    }
+
+    #fallbackLink a {
+      color: #0000ff;
+      text-decoration: underline;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="searchBar">
+    <button id="backButton">←</button>
+    <input type="text" id="urlInput" placeholder="Enter a URL, e.g., https://wikipedia.com">
+    <button id="goButton">Go</button>
+  </div>
+
+  <div id="webviewContainer">
+    <iframe id="webview" src="https://wikipedia.com"></iframe>
+    <div id="fallbackLink">
+      <p>This site cannot be embedded.<br><a id="externalLink" href="#" target="_blank">Open in new tab</a></p>
+    </div>
+  </div>
+
+  <script>
+    const goButton = document.getElementById('goButton');
+    const backButton = document.getElementById('backButton');
+    const urlInput = document.getElementById('urlInput');
+    const webview = document.getElementById('webview');
+    const fallbackLink = document.getElementById('fallbackLink');
+    const externalLink = document.getElementById('externalLink');
+
+    function loadURL() {
+      let url = urlInput.value.trim();
+      if (!url) return;
+
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+
+      fallbackLink.style.display = 'none';
+      webview.style.display = 'block';
+      webview.src = url;
+      externalLink.href = url;
+
+      const timeout = setTimeout(() => {
+        showFallback();
+      }, 3000);
+
+      webview.onload = () => {
+        clearTimeout(timeout);
+        fallbackLink.style.display = 'none';
+      };
+
+      webview.onerror = () => {
+        clearTimeout(timeout);
+        showFallback();
+      };
+    }
+
+    function showFallback() {
+      webview.style.display = 'none';
+      fallbackLink.style.display = 'block';
+    }
+
+    // Go to previous page in iframe history (if available)
+    backButton.addEventListener('click', () => {
+      const frameWindow = webview.contentWindow;
+      try {
+        frameWindow.history.back();
+      } catch {
+        // If same-origin policy blocks it, just reload the last URL
+        webview.src = webview.src;
+      }
+    });
+
+    goButton.addEventListener('click', loadURL);
+    urlInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') loadURL();
+    });
+  </script>
+
+</body>
+</html>

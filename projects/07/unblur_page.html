@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Widget Dashboard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{min-height:100vh;background:url("page_images/noisy3.webp") center/cover no-repeat;cursor:none;font-family:"Segoe UI",Roboto,sans-serif;overflow:auto}
+.neg-rect{position:fixed;pointer-events:none;width:70px;height:180px;transform:translate(-50%,-50%);border:2px solid #fff;box-shadow:0 6px 24px rgba(0,0,0,.45);overflow:hidden;z-index:9999}
+.neg-rect img{position:absolute;width:100vw;height:100vh;object-fit:cover}
+.widget{position:fixed;z-index:10000;padding:6px 10px;background:rgba(0,0,0,.15);border:2px solid #fff;box-shadow:0 4px 0 rgba(0,0,0,.4);backdrop-filter:blur(6px);color:#fff;font-weight:bold;text-shadow:0 0 6px rgba(255,255,255,.6);cursor:grab}
+.widget.dragging{cursor:grabbing}
+.clock{display:flex;gap:6px;font-size:1.2rem}
+.digit{position:relative;width:35px;height:50px;perspective:1000px;background:rgba(0,0,0,.6);border-radius:5px;text-align:center;line-height:50px;overflow:hidden}
+.front,.back{position:absolute;inset:0;backface-visibility:hidden}
+.back{transform:rotateX(-180deg)}
+.flip .front{animation:flipFront .5s forwards}.flip .back{animation:flipBack .5s forwards}
+@keyframes flipFront{to{transform:rotateX(180deg)}}@keyframes flipBack{to{transform:rotateX(0)}}
+.calendar{font-size:1rem;line-height:1.5;display:flex;flex-direction:column;gap:4px}
+.calendar-header{text-align:center;font-weight:bold}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,30px);gap:2px;text-align:center}
+.calendar-grid div{background:rgba(0,0,0,.6);border-radius:3px;padding:4px}
+.today{background:#00f;color:#fff;font-weight:bold}
+.date-widget{font-size:1rem;line-height:1.5;text-align:center;display:flex;flex-direction:column;gap:4px}
+.date-pos{top:380px;left:5px;position:fixed}
+#bottomBar{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);display:flex;align-items:stretch;gap:8px;z-index:12000}
+#musicPlayer{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.25);backdrop-filter:blur(8px);padding:6px 10px;box-shadow:0 4px 0 rgba(0,0,0,.4);color:#000;font-size:1rem}
+#musicPlayer button{background:none;border:none;font-size:1.2rem;cursor:pointer;color:#000}
+#musicPlayer input[type=range]{flex:1;height:4px;cursor:pointer}
+#trackName{font-size:.9rem;font-weight:bold;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;max-width:120px}
+#bgBtn{width:45px;border:none;cursor:pointer;background-size:cover;background-position:center;box-shadow:0 4px 0 rgba(0,0,0,.4)}
+/* Mobile adjustments */
+@media(hover:none) and (pointer:coarse){
+  #calendarContainer,#sysWidget,#bgBtn{display:none!important}
+  .widget:not(#musicPlayer){transform:scale(.65);transform-origin:top left;font-size:.8rem;padding:4px 6px}
+  .digit{width:25px;height:38px;line-height:38px}
+  #dayNumber{font-size:1.8rem!important}
+  #deviceWidget,#deviceWidget img{width:50px;height:50px}
+  .date-pos{top:110px;left:5px}
+  body{cursor:default}
+  #musicPlayer{transform:scale(.8);padding:4px 6px}
+  #trackName{display:none}
+}
+</style>
+</head>
+<body>
+<div class="neg-rect" id="neg"><img id="overlayImg" src="page_images/clear3.webp"></div>
+<div class="widget" id="clockContainer" style="top:70px;left:5px"><div class="clock">
+  <div class="digit" id="h1"><span class="front">0</span><span class="back">0</span></div>
+  <div class="digit" id="h2"><span class="front">0</span><span class="back">0</span></div><div>:</div>
+  <div class="digit" id="m1"><span class="front">0</span><span class="back">0</span></div>
+  <div class="digit" id="m2"><span class="front">0</span><span class="back">0</span></div><div>:</div>
+  <div class="digit" id="s1"><span class="front">0</span><span class="back">0</span></div>
+  <div class="digit" id="s2"><span class="front">0</span><span class="back">0</span></div>
+</div></div>
+<div class="widget" id="calendarContainer" style="top:150px;left:5px"><div class="calendar"><div class="calendar-header" id="monthYear"></div><div class="calendar-grid" id="calendarGrid"></div></div></div>
+<div class="widget date-pos" id="dateContainer"><div class="date-widget" style="gap:8px;align-items:flex-start"><div style="display:flex;align-items:center;gap:12px">
+  <div id="dayNumber" style="font-size:2.5rem;font-weight:bold;line-height:1"></div>
+  <div style="line-height:1.2;font-size:.9rem"><div id="monthName"></div><div id="weekday"></div></div></div>
+  <div style="font-size:.8rem;line-height:1.2"><span id="daysLeft"></span> | <span id="fractionYear"></span></div></div></div>
+<div class="widget" id="deviceWidget" style="top:70px;right:18px;width:80px;height:80px;display:flex;align-items:center;justify-content:center;"><img id="deviceIcon" style="width:65px;height:65px;"></div>
+<div class="widget" id="sysWidget" style="top:170px;right:18px;width:250px;height:150px;display:flex;flex-direction:column;gap:6px;padding:8px;"><canvas id="sysCanvas" width="200" height="100" style="background:rgba(0,0,0,.6);border-radius:5px"></canvas><div style="display:flex;justify-content:space-between;font-size:.8rem"><span id="cpuText">CPU: 0%</span><span id="memText">MEM: 0%</span></div></div>
+<div id="bottomBar">
+  <div id="musicPlayer">
+    <div id="trackName">No track</div>
+    <button id="prevBtn">⏮</button><button id="playBtn">▶️</button>
+    <input type="range" id="seekBar" value="0" min="0" max="100">
+    <button id="nextBtn">⏭</button>
+    <audio id="player"></audio>
+  </div>
+  <button id="bgBtn"></button>
+</div>
+<script>
+const $=id=>document.getElementById(id),rect=$("neg"),img=$("overlayImg");let raf;
+function moveRect(x,y){rect.style.left=x+"px";rect.style.top=y+"px";const r=rect.getBoundingClientRect();img.style.left=(-x+r.width/2)+"px";img.style.top=(-y+r.height/2)+"px";raf=null}
+addEventListener("mousemove",e=>{!raf&&(raf=requestAnimationFrame(()=>moveRect(e.clientX,e.clientY)))});addEventListener("touchmove",e=>{let t=e.touches[0];!raf&&(raf=requestAnimationFrame(()=>moveRect(t.clientX,t.clientY)))});
+function flipTo(d,v){let f=d.querySelector(".front"),b=d.querySelector(".back");if(f.textContent===v)return;b.textContent=v;d.classList.add("flip");setTimeout(()=>{f.textContent=v;d.classList.remove("flip")},500)}
+function updateClock(){let t=new Date().toTimeString().split(" ")[0].replace(/:/g,"");["h1","h2","m1","m2","s1","s2"].forEach((id,i)=>flipTo($(id),t[i]))}
+setInterval(updateClock,1e3);updateClock();
+function updateCalendar(){let n=new Date(),m=n.getMonth(),y=n.getFullYear(),days=new Date(y,m+1,0).getDate(),fd=new Date(y,m,1).getDay(),today=n.getDate();monthYear.textContent=n.toLocaleString('default',{month:'long'})+" "+y;calendarGrid.innerHTML="";for(let i=0;i<fd;i++)calendarGrid.innerHTML+="<div></div>";for(let d=1;d<=days;d++)calendarGrid.innerHTML+=`<div class="${d===today?'today':''}">${d}</div>`}
+updateCalendar();
+function updateDateWidget(){let n=new Date(),s=new Date(n.getFullYear(),0,1),e=new Date(n.getFullYear(),11,31),diff=Math.floor((n-s)/864e5)+1,total=Math.floor((e-s)/864e5)+1,dl=total-diff;dayNumber.textContent=n.getDate();monthName.textContent=n.toLocaleString('default',{month:'short'});weekday.textContent=n.toLocaleString('default',{weekday:'short'});daysLeft.innerText=`${dl} Days Left This Year`;fractionYear.textContent=`${diff}/${total}`}
+updateDateWidget();setInterval(updateDateWidget,6e4);
+deviceIcon.src=/Mobi|Android|iPhone/i.test(navigator.userAgent)?"page_images/mobile_icon.png":"page_images/desktop_icon.png";
+const ctx=sysCanvas.getContext("2d"),cpuData=[],memData=[],maxPoints=50;
+function updateSys(){let c=Math.random()*100|0,m=Math.random()*100|0;cpuData.push(c);memData.push(m);if(cpuData.length>maxPoints)cpuData.shift();if(memData.length>maxPoints)memData.shift();cpuText.textContent=`CPU: ${c}%`;memText.textContent=`MEM: ${m}%`;ctx.clearRect(0,0,sysCanvas.width,sysCanvas.height);ctx.beginPath();ctx.strokeStyle="#00f";cpuData.forEach((v,i)=>{let x=i*(sysCanvas.width/maxPoints),y=sysCanvas.height-(v/100)*sysCanvas.height;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();ctx.beginPath();ctx.strokeStyle="#0f0";memData.forEach((v,i)=>{let x=i*(sysCanvas.width/maxPoints),y=sysCanvas.height-(v/100)*sysCanvas.height;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()}
+setInterval(updateSys,1e3);
+// Music
+const player=$("player"),playBtn=$("playBtn"),prevBtn=$("prevBtn"),nextBtn=$("nextBtn"),seekBar=$("seekBar"),trackName=$("trackName");
+const list=["music/kaleidoscope.mp3","music/twinleaf_town.mp3","music/sunstroke_project.mp3","music/trainer_battle_gen4.mp3","music/Kuthanthram.mp3"];let i=0;
+function loadTrack(n){player.src=list[n];trackName.textContent=list[n].split("/").pop();player.load()}
+function playPause(){if(player.paused){player.play();playBtn.textContent="⏸"}else{player.pause();playBtn.textContent="▶️"}}
+playBtn.onclick=playPause;nextBtn.onclick=()=>{i=(i+1)%list.length;loadTrack(i);player.play();playBtn.textContent="⏸"};prevBtn.onclick=()=>{i=(i-1+list.length)%list.length;loadTrack(i);player.play();playBtn.textContent="⏸"};player.onended=()=>nextBtn.onclick();player.ontimeupdate=()=>{seekBar.value=(player.currentTime/player.duration)*100||0};seekBar.oninput=()=>{player.currentTime=(seekBar.value/100)*player.duration};loadTrack(i);
+// Backgrounds (desktop only)
+const bgs=[{bg:"page_images/noisy3.webp",overlay:"page_images/clear3.webp"},{bg:"page_images/clear4blur.png",overlay:"page_images/clear4.webp"},{bg:"page_images/clear5blur.jpg",overlay:"page_images/clear5.jpg"}];let bi=0;
+function applyBg(i){document.body.style.background=`url("${bgs[i].bg}") center/cover no-repeat`;overlayImg.src=bgs[i].overlay;bgBtn.style.backgroundImage=`url("${bgs[(i+1)%bgs.length].bg}")`}
+if($("bgBtn")){bgBtn.onclick=()=>{bi=(bi+1)%bgs.length;applyBg(bi)};applyBg(bi)}
+// Dragging (desktop only)
+if(!/Mobi|Android|iPhone/i.test(navigator.userAgent)){["clockContainer","calendarContainer","dateContainer","deviceWidget","sysWidget"].forEach(id=>{let el=$(id),drag=0,ox,oy;el.onmousedown=e=>{drag=1;ox=e.clientX-el.getBoundingClientRect().left;oy=e.clientY-el.getBoundingClientRect().top;el.classList.add("dragging")};onmousemove=e=>{if(drag){el.style.left=(e.clientX-ox)+"px";el.style.top=(e.clientY-oy)+"px"}};onmouseup=()=>{drag=0;el.classList.remove("dragging")}})}
+</script>
+</body>
+</html>

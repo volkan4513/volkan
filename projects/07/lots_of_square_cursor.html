@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Glass Edge Cursor (Optimized)</title>
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: linear-gradient(180deg, #0f172a 0%, #071029 60%);
+  cursor: none;
+  overflow: hidden;
+}
+
+.cursor-trail {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.trail-dot {
+  position: absolute;
+  width: 86px;
+  height: 86px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.05);
+  transform: translate(-50%,-50%);
+  will-change: transform, opacity;
+  overflow: hidden;
+}
+
+/* top & bottom edges (subtle chromatic bevel) */
+.trail-dot::before,
+.trail-dot::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 4px;
+}
+.trail-dot::before {
+  top: 0;
+  background: linear-gradient(to bottom, rgba(255,0,0,0.15), transparent);
+}
+.trail-dot::after {
+  bottom: 0;
+  background: linear-gradient(to top, rgba(0,255,255,0.15), transparent);
+}
+
+/* left & right edges */
+.trail-dot span {
+  position: absolute;
+  top: 0; bottom: 0; width: 4px;
+}
+.trail-dot span.left {
+  left: 0;
+  background: linear-gradient(to right, rgba(255,0,255,0.08), transparent);
+}
+.trail-dot span.right {
+  right: 0;
+  background: linear-gradient(to left, rgba(0,255,0,0.08), transparent);
+}
+
+main {
+  padding: 4rem 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+  line-height: 1.6;
+  color: #fff;
+}
+</style>
+</head>
+<body>
+
+<div class="cursor-trail" id="cursorTrail"></div>
+
+<main>
+  <h1>Glass Cursor with Beveled Edges (Optimized)</h1>
+  <p>This version avoids heavy <code>backdrop-filter</code> and uses fewer trail dots for smoother performance on mobile.</p>
+  <section style="height:300vh;"></section>
+</main>
+
+<script>
+(function(){
+  const trailContainer = document.getElementById('cursorTrail');
+
+  const DOTS = 20;      // fewer = lighter
+  const HISTORY = 30;   // smaller buffer
+  const lerpAmt = 0.12; // faster follow, less calc
+
+  const posHistory = [];
+  let pointer = { x: window.innerWidth/2, y: window.innerHeight/2 };
+
+  const dots = [];
+  for(let i=0;i<DOTS;i++){
+    const el = document.createElement('div');
+    el.className='trail-dot';
+
+    // create left/right edges
+    const leftEdge = document.createElement('span');
+    leftEdge.className='left';
+    const rightEdge = document.createElement('span');
+    rightEdge.className='right';
+    el.appendChild(leftEdge);
+    el.appendChild(rightEdge);
+
+    trailContainer.appendChild(el);
+    dots.push({el,x:pointer.x,y:pointer.y});
+  }
+
+  for(let i=0;i<HISTORY;i++) posHistory.push({x:pointer.x,y:pointer.y});
+
+  function updatePointer(x,y){
+    pointer.x=x;
+    pointer.y=y;
+    posHistory.unshift({x,y});
+    if(posHistory.length>HISTORY) posHistory.pop();
+  }
+
+  window.addEventListener('pointermove', e=>updatePointer(e.clientX, e.clientY));
+  window.addEventListener('touchmove', e=>{
+    if(e.touches && e.touches[0]) updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+  }, {passive:true});
+
+  function animate(){
+    for(let i=0;i<dots.length;i++){
+      const dot = dots[i];
+      const t = i/(dots.length-1);
+      const idx = Math.floor(t*(posHistory.length-1));
+      const target = posHistory[idx]||posHistory[posHistory.length-1];
+
+      dot.x += (target.x - dot.x) * lerpAmt;
+      dot.y += (target.y - dot.y) * lerpAmt;
+
+      const sizeFactor = 1.0 - t*0.25;
+      const op = 0.85 - t*0.8;
+      dot.el.style.transform = `translate(${dot.x}px,${dot.y}px) translate(-50%,-50%) scale(${sizeFactor})`;
+      dot.el.style.opacity = op;
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  requestAnimationFrame(animate);
+})();
+</script>
+
+</body>
+</html>

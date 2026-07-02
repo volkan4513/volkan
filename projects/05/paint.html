@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MS Paint Clone</title>
+    <style>
+        /* Global styles and the classic Windows background color */
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            /* Prevent scrollbars on the main body */
+        }
+
+        body {
+            font-family: 'MS Sans Serif', 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000080;
+            /* Blue background behind the app */
+        }
+
+        .window-frame {
+            background-color: #d4d0c8;
+            /* Classic Windows grey */
+            border: 1px solid #000;
+            box-shadow: none;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        /* --- Menu Bar Styles --- */
+        .menu-bar {
+            display: flex;
+            font-size: 12px;
+            cursor: default;
+            background-color: #d4d0c8;
+            padding: 0 2px;
+        }
+
+        .menu-bar>span,
+        .menu-item {
+            position: relative;
+            padding: 2px 8px 2px 4px;
+            border-right: 1px solid #d4d0c8;
+            display: inline-block;
+        }
+
+        .menu-item:hover {
+            background-color: #000080;
+            /* Classic blue hover background */
+            color: #fff;
+            /* White text on hover */
+        }
+
+        /* Dropdown Content Styles */
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            /* Position below the menu item */
+            left: 0;
+            min-width: 130px;
+            background-color: #d4d0c8;
+            border-top: 1px solid #fff;
+            border-left: 1px solid #fff;
+            border-right: 1px solid #000;
+            border-bottom: 1px solid #000;
+            z-index: 10;
+            padding: 1px;
+        }
+
+        .menu-item:hover .dropdown-content {
+            display: block;
+            /* Show on hover */
+        }
+
+        .menu-button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            border: none;
+            padding: 2px 10px 2px 4px;
+            font-family: 'MS Sans Serif', 'Arial', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .menu-button:hover {
+            background-color: #000080;
+            color: #fff;
+        }
+
+
+        #app-container {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        #tools-sidebar {
+            border-top: 1px solid #fff;
+            border-left: 1px solid #fff;
+            border-right: 1px solid #808080;
+            border-bottom: 1px solid #808080;
+            background-color: #d4d0c8;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .tool-button {
+            width: 24px;
+            height: 24px;
+            font-size: 16px;
+            line-height: 24px;
+            text-align: center;
+            padding: 0;
+            border: 1px solid #d4d0c8;
+            background-color: #d4d0c8;
+            cursor: pointer;
+        }
+
+        .tool-button:hover {
+            border-top-color: #fff;
+            border-left-color: #fff;
+            border-right-color: #808080;
+            border-bottom-color: #808080;
+        }
+
+        .tool-button.active {
+            border-top-color: #808080;
+            border-left-color: #808080;
+            border-right-color: #fff;
+            border-bottom-color: #fff;
+            background-color: #c0c0c0;
+        }
+
+        #options-panel {
+            display: flex;
+            flex-direction: column;
+            padding: 4px;
+            margin-bottom: 4px;
+            border-top: 1px solid #fff;
+            border-left: 1px solid #fff;
+            border-right: 1px solid #808080;
+            border-bottom: 1px solid #808080;
+        }
+
+        /* Hiding controls not in the classic UI */
+        #brushSize,
+        #colorPickerLabel,
+        #brushSizeLabel {
+            display: none;
+        }
+
+        /* --- Canvas Area (Takes all remaining space) --- */
+        #canvasContainer {
+            flex-grow: 1;
+            overflow: hidden;
+            border-top: 1px solid #808080;
+            border-left: 1px solid #808080;
+            border-right: 1px solid #fff;
+            border-bottom: 1px solid #fff;
+        }
+
+        #canvas {
+            /* The actual canvas border (inset look) */
+            border: 2px solid #a0a0a0;
+            border-top-color: #000;
+            border-left-color: #000;
+            border-right-color: #fff;
+            border-bottom-color: #fff;
+            background-color: #ffffff;
+            display: block;
+            touch-action: none;
+            cursor: crosshair;
+        }
+
+
+        /* --- Color Palette Styles (FIXED FOR 9X2) --- */
+        #color-palette-container {
+            border-top: 1px solid #fff;
+            border-left: 1px solid #fff;
+            border-right: 1px solid #808080;
+            border-bottom: 1px solid #808080;
+            background-color: #d4d0c8;
+            padding: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        #color-boxes {
+            display: grid;
+            /* This is the fix: 9 columns * 16px wide = 144px total width */
+            width: 144px;
+            grid-template-columns: repeat(9, 1fr);
+        }
+
+        .color-swatch {
+            width: 14px;
+            height: 14px;
+            /* 14px content + 1px border on all sides = 16px total width/height */
+            border: 1px solid #d4d0c8;
+            cursor: pointer;
+        }
+
+        .color-swatch.selected {
+            border: 2px solid #000;
+            outline: 1px solid #fff;
+        }
+
+        #color-indicators {
+            position: relative;
+            width: 35px;
+            height: 30px;
+            margin-right: 5px;
+            /* Spacing between indicators and swatches */
+            border-top: 1px solid #808080;
+            border-left: 1px solid #808080;
+            border-right: 1px solid #fff;
+            border-bottom: 1px solid #fff;
+        }
+
+        #foreground-color,
+        #background-color {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border: 1px solid #000;
+            background-color: #000;
+        }
+
+        #foreground-color {
+            top: 2px;
+            left: 2px;
+            z-index: 2;
+        }
+
+        #background-color {
+            top: 10px;
+            left: 10px;
+            background-color: #fff;
+        }
+
+        #status-bar {
+            border-top: 1px solid #808080;
+            border-bottom: 1px solid #fff;
+            background-color: #d4d0c8;
+            font-size: 12px;
+            cursor: default;
+            padding: 2px 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="window-frame">
+
+
+        <div class="menu-bar">
+            <div class="menu-item">
+                <span><u>F</u>ile</span>
+                <div class="dropdown-content">
+                    <button id="save-menu-item" class="menu-button">Save</button>
+                </div>
+            </div>
+            <div class="menu-item">
+                <span><u>E</u>dit</span>
+                <div class="dropdown-content">
+                    <button id="undo-menu-item" class="menu-button">Undo</button>
+                    <button id="clear-menu-item" class="menu-button">Clear Canvas</button>
+                </div>
+            </div>
+            <span><u>V</u>iew</span>
+            <span><u>I</u>mage</span>
+            <span><u>C</u>olors</span>
+            <span><u>H</u>elp</span>
+        </div>
+
+        <div id="app-container">
+            <div id="tools-sidebar">
+                <button class="tool-button active" id="pencilBtn" title="Pencil">🖊️</button>
+                <button class="tool-button" id="eraserBtn" title="Eraser">🧽</button>
+
+                <button class="tool-button" id="lineBtn" title="Line Tool"> / </button> 
+                <button class="tool-button" id="fillBtn" title="Fill Tool" style="background: url(page_images/bucket.webp); background-size: contain;"> </button>
+                <button class="tool-button" id="rectBtn" title="Rectangle">◻️</button>
+                <button class="tool-button" id="circleBtn" title="Circle">⚫</button>
+
+            </div>
+
+            <div id="canvasContainer">
+                <canvas id="canvas" width="800" height="600"></canvas>
+            </div>
+        </div>
+
+        <div id="color-palette-container">
+            <div id="color-indicators">
+                <div id="background-color"></div>
+                <div id="foreground-color"></div>
+            </div>
+            <div id="color-boxes">
+                <div class="color-swatch" style="background-color: #ffffff;"></div>
+                <div class="color-swatch" style="background-color: #000000;"></div>
+                <div class="color-swatch" style="background-color: #800000;"></div>
+                <div class="color-swatch" style="background-color: #008000;"></div>
+                <div class="color-swatch" style="background-color: #808000;"></div>
+                <div class="color-swatch" style="background-color: #000080;"></div>
+                <div class="color-swatch" style="background-color: #800080;"></div>
+                <div class="color-swatch" style="background-color: #008080;"></div>
+                <div class="color-swatch" style="background-color: #c0c0c0;"></div>
+                <div class="color-swatch" style="background-color: #808080;"></div>
+                <div class="color-swatch" style="background-color: #ff0000;"></div>
+                <div class="color-swatch" style="background-color: #00ff00;"></div>
+                <div class="color-swatch" style="background-color: #ffff00;"></div>
+                <div class="color-swatch" style="background-color: #0000ff;"></div>
+                <div class="color-swatch" style="background-color: #ff00ff;"></div>
+                <div class="color-swatch" style="background-color: #00ffff;"></div>
+                <div class="color-swatch" style="background-color: #d4d0c8;"></div>
+            </div>
+        </div>
+
+        <div id="status-bar">
+            For Help, click Help Topics on the Help Menu.
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const colorSwatches = document.querySelectorAll('.color-swatch');
+        const pencilBtn = document.getElementById('pencilBtn');
+        const eraserBtn = document.getElementById('eraserBtn');
+        const fillBtn = document.getElementById('fillBtn');
+        const rectBtn = document.getElementById('rectBtn');
+        const circleBtn = document.getElementById('circleBtn');
+        const lineBtn = document.getElementById('lineBtn'); // NEW: Line tool button
+
+        const foregroundColorIndicator = document.getElementById('foreground-color');
+        const backgroundColorIndicator = document.getElementById('background-color');
+
+        const undoMenuItem = document.getElementById('undo-menu-item');
+        const clearMenuItem = document.getElementById('clear-menu-item');
+        const saveMenuItem = document.getElementById('save-menu-item');
+
+        // --- Core Variables ---
+        let drawing = false;
+        let isErasing = false;
+        let history = [];
+        const maxHistory = 50;
+        let activeTool = 'pencil';
+
+        let startX, startY;
+        let snapshot;
+
+        let fgColor = '#000000'; // Primary drawing color (LMB)
+        let bgColor = '#FFFFFF'; // Secondary/Eraser color (RMB)
+
+
+        // --- History & Undo ---
+        function saveHistory() {
+            if (history.length >= maxHistory) history.shift();
+            history.push(canvas.toDataURL());
+        }
+
+        function undo() {
+            if (history.length <= 1) return; // Keep at least the initial state
+            history.pop();
+            const previous = history.pop();
+
+            const img = new Image();
+            img.src = previous;
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                saveHistory(false);
+            };
+        }
+
+
+        // --- Color Management ---
+        function updateColorIndicators() {
+            foregroundColorIndicator.style.backgroundColor = fgColor;
+            backgroundColorIndicator.style.backgroundColor = bgColor;
+        }
+
+        function selectFgColor(color) {
+            fgColor = color;
+            updateColorIndicators();
+        }
+
+        colorSwatches.forEach(swatch => {
+            const color = swatch.style.backgroundColor;
+            if (color === 'rgb(0, 0, 0)') {
+                swatch.classList.add('selected');
+            }
+
+            swatch.addEventListener('click', (e) => {
+                selectFgColor(e.target.style.backgroundColor);
+                document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+                e.target.classList.add('selected');
+            });
+
+            swatch.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                bgColor = e.target.style.backgroundColor;
+                updateColorIndicators();
+            });
+        });
+
+
+        // --- Tool Activation (FIXED) ---
+        function activateTool(toolName) {
+            activeTool = toolName;
+            isErasing = (toolName === 'eraser');
+
+            document.querySelectorAll('.tool-button').forEach(btn => btn.classList.remove('active'));
+
+            const toolButton = document.getElementById(toolName + 'Btn');
+            if (toolButton) {
+                toolButton.classList.add('active');
+            }
+
+            // Set cursor logic
+            if (toolName === 'pencil' || toolName === 'eraser' || toolName === 'line') {
+                canvas.style.cursor = 'crosshair';
+            } else {
+                canvas.style.cursor = 'default';
+            }
+        }
+
+        // --- Drawing & Shape Helpers ---
+        function setDrawSettings(isSecondary) {
+            ctx.lineWidth = isErasing ? 8 : 1;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = isErasing ? bgColor : (isSecondary ? bgColor : fgColor);
+            ctx.fillStyle = isErasing ? bgColor : (isSecondary ? bgColor : fgColor);
+        }
+
+        function getCanvasSnapshot() {
+            snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        function restoreCanvasSnapshot() {
+            if (snapshot) {
+                ctx.putImageData(snapshot, 0, 0);
+            }
+        }
+
+        function drawRectangle(x1, y1, x2, y2, fill) {
+            const x = Math.min(x1, x2);
+            const y = Math.min(y1, y2);
+            const width = Math.abs(x2 - x1);
+            const height = Math.abs(y2 - y1);
+
+            ctx.beginPath();
+            if (fill) {
+                ctx.fillRect(x, y, width, height);
+            } else {
+                ctx.strokeRect(x, y, width, height);
+            }
+            ctx.closePath();
+        }
+
+        function drawCircle(x1, y1, x2, y2, fill) {
+            const centerX = (x1 + x2) / 2;
+            const centerY = (y1 + y2) / 2;
+            const radius = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2)) / 2;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            if (fill) {
+                ctx.fill();
+            } else {
+                ctx.stroke();
+            }
+            ctx.closePath();
+        }
+
+        function drawLine(x1, y1, x2, y2) { // NEW: Line drawing function
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+
+        // --- FLOOD FILL LOGIC (FIXED COLOR PARSING) ---
+
+        function hexToRgb(color) {
+            if (color.startsWith('#')) {
+                // Handle hex format (#RRGGBB or #RGB)
+                const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+                let hex = color.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)] : [0, 0, 0];
+            } else if (color.startsWith('rgb')) {
+                // Handle rgb format (rgb(r, g, b) or rgba(r, g, b, a))
+                const rgb = color.match(/\d+/g).map(Number);
+                return [rgb[0], rgb[1], rgb[2]];
+            }
+            return [0, 0, 0]; // Default to black if format is unrecognized
+        }
+
+        function getColorAt(x, y, data, w) {
+            const index = (y * w + x) * 4;
+            return [data[index], data[index + 1], data[index + 2]];
+        }
+
+        function colorMatch(color1, color2) {
+            // Check R, G, B components
+            return color1[0] === color2[0] && color1[1] === color2[1] && color1[2] === color2[2];
+        }
+
+        function executeFloodFill(x, y, fillColor) {
+            saveHistory();
+
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+            const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+            const data = imageData.data;
+
+            if (x < 0 || x >= canvasWidth || y < 0 || y >= canvasHeight) return;
+
+            const targetColor = getColorAt(x, y, data, canvasWidth);
+            const newColor = hexToRgb(fillColor);
+
+            if (colorMatch(targetColor, newColor)) {
+                return;
+            }
+
+            const queue = [];
+            queue.push([x, y]);
+
+            while (queue.length) {
+                const [cx, cy] = queue.shift();
+
+                let index;
+
+                // Check and fill left side (West)
+                let westX = cx;
+                while (westX >= 0 && colorMatch(getColorAt(westX, cy, data, canvasWidth), targetColor)) {
+                    index = (cy * canvasWidth + westX) * 4;
+                    data[index] = newColor[0];
+                    data[index + 1] = newColor[1];
+                    data[index + 2] = newColor[2];
+
+                    if (cy > 0 && colorMatch(getColorAt(westX, cy - 1, data, canvasWidth), targetColor)) {
+                        queue.push([westX, cy - 1]);
+                    }
+                    if (cy < canvasHeight - 1 && colorMatch(getColorAt(westX, cy + 1, data, canvasWidth), targetColor)) {
+                        queue.push([westX, cy + 1]);
+                    }
+
+                    westX--;
+                }
+
+                // Check and fill right side (East)
+                let eastX = cx + 1;
+                while (eastX < canvasWidth && colorMatch(getColorAt(eastX, cy, data, canvasWidth), targetColor)) {
+                    index = (cy * canvasWidth + eastX) * 4;
+                    data[index] = newColor[0];
+                    data[index + 1] = newColor[1];
+                    data[index + 2] = newColor[2];
+
+                    if (cy > 0 && colorMatch(getColorAt(eastX, cy - 1, data, canvasWidth), targetColor)) {
+                        queue.push([eastX, cy - 1]);
+                    }
+                    if (cy < canvasHeight - 1 && colorMatch(getColorAt(eastX, cy + 1, data, canvasWidth), targetColor)) {
+                        queue.push([eastX, cy + 1]);
+                    }
+
+                    eastX++;
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+
+        // --- Event Handlers ---
+
+        canvas.addEventListener('mousedown', (e) => {
+            const isLMB = e.button === 0;
+            const isRMB = e.button === 2;
+
+            if (!isLMB && !isRMB) return;
+
+            startX = e.offsetX;
+            startY = e.offsetY;
+
+            if (activeTool === 'fill') {
+                const fillColor = isRMB ? bgColor : fgColor;
+                executeFloodFill(startX, startY, fillColor);
+                return;
+            }
+
+            // For drawing/shapes
+            saveHistory();
+            drawing = true;
+
+            if (activeTool !== 'pencil' && activeTool !== 'eraser') {
+                getCanvasSnapshot(); // Snapshot for shapes
+            }
+
+            if (activeTool === 'pencil' || activeTool === 'eraser' || activeTool === 'line') {
+                setDrawSettings(isRMB);
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!drawing) return;
+
+            const x = e.offsetX;
+            const y = e.offsetY;
+            const isRMB = e.buttons === 2;
+
+            if (activeTool === 'pencil' || activeTool === 'eraser') {
+                setDrawSettings(isRMB);
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            } else if (activeTool === 'line') {
+                restoreCanvasSnapshot(); // Restore snapshot for dynamic preview
+                setDrawSettings(isRMB);
+                drawLine(startX, startY, x, y);
+            } else if (activeTool === 'rectangle') {
+                restoreCanvasSnapshot();
+                setDrawSettings(isRMB);
+                drawRectangle(startX, startY, x, y, false);
+            } else if (activeTool === 'circle') {
+                restoreCanvasSnapshot();
+                setDrawSettings(isRMB);
+                drawCircle(startX, startY, x, y, false);
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (!drawing) return;
+
+            const x = e.offsetX;
+            const y = e.offsetY;
+            const isRMB = e.button === 2;
+            drawing = false;
+
+            if (activeTool === 'line') {
+                restoreCanvasSnapshot(); // Restore before final draw
+                setDrawSettings(isRMB);
+                drawLine(startX, startY, x, y);
+            } else if (activeTool === 'rectangle') {
+                restoreCanvasSnapshot();
+                setDrawSettings(isRMB);
+                drawRectangle(startX, startY, x, y, isRMB);
+            } else if (activeTool === 'circle') {
+                restoreCanvasSnapshot();
+                setDrawSettings(isRMB);
+                drawCircle(startX, startY, x, y, isRMB);
+            }
+
+            ctx.closePath();
+            snapshot = null;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            drawing = false;
+            ctx.closePath();
+            snapshot = null;
+        });
+
+        canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+
+        // --- Tool Button Event Listeners and Menu Handlers ---
+
+        pencilBtn.addEventListener('click', () => activateTool('pencil'));
+        eraserBtn.addEventListener('click', () => activateTool('eraser'));
+        fillBtn.addEventListener('click', () => activateTool('fill'));
+        rectBtn.addEventListener('click', () => activateTool('rectangle'));
+        circleBtn.addEventListener('click', () => activateTool('circle'));
+        lineBtn.addEventListener('click', () => activateTool('line')); // NEW: Line tool event
+
+        undoMenuItem.addEventListener('click', undo);
+
+        clearMenuItem.addEventListener('click', () => {
+            saveHistory();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        });
+
+        saveMenuItem.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'mspaint-drawing.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                undo();
+            }
+        });
+
+        // --- Initialization ---
+        updateColorIndicators();
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        saveHistory();
+
+        activateTool('pencil');
+    </script>
+
+</body>
+
+</html>
