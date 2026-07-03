@@ -140,6 +140,25 @@
             cursor: pointer;
             z-index: 5;
         }
+
+        @media (max-width: 768px) {
+            body {
+                display: block;
+            }
+
+            .bg-sequence {
+                display: none;
+            }
+
+            #page2-btn {
+                display: none;
+            }
+
+            .stack-wrapper {
+                width: 100vw;
+                aspect-ratio: 1096 / 2233;
+            }
+        }
     </style>
 </head>
 
@@ -239,12 +258,13 @@
         document.getElementById('popup-close').addEventListener('click', closePopup);
         popupOverlay.addEventListener('click', e => { if (e.target === popupOverlay) closePopup(); });
 
-        function paintContained(ctx, img) {
-            const scale = Math.min(W / img.naturalWidth, H / img.naturalHeight);
+        function paintContained(ctx, img, targetW, targetH) {
+            const tw = targetW ?? W, th = targetH ?? H;
+            const scale = Math.min(tw / img.naturalWidth, th / img.naturalHeight);
             const w = img.naturalWidth * scale;
             const h = img.naturalHeight * scale;
-            ctx.clearRect(0, 0, W, H);
-            ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+            ctx.clearRect(0, 0, tw, th);
+            ctx.drawImage(img, (tw - w) / 2, (th - h) / 2, w, h);
         }
 
         function alpha(ctx, x, y) {
@@ -286,9 +306,14 @@
                 .filter(el => !noHighlight(imgName(el).toLowerCase()))
                 .reverse();
 
+            const HIT_MAX_DIM = 300; // hit-test canvases are downscaled to this size for performance
+            const hitScale = Math.min(1, HIT_MAX_DIM / Math.max(W, H));
+            const hitW = Math.max(1, Math.round(W * hitScale));
+            const hitH = Math.max(1, Math.round(H * hitScale));
+
             const entries = hitLayers.map(el => {
                 const canvas = document.createElement('canvas');
-                canvas.width = W; canvas.height = H;
+                canvas.width = hitW; canvas.height = hitH;
                 return {
                     el,
                     ctx: canvas.getContext('2d', { willReadFrequently: true }),
@@ -298,13 +323,14 @@
 
             await Promise.all(entries.map(entry => new Promise(resolve => {
                 const img = entry.el;
-                const paint = () => { paintContained(entry.ctx, img); entry.ready = true; resolve(); };
+                const paint = () => { paintContained(entry.ctx, img, hitW, hitH); entry.ready = true; resolve(); };
                 img.complete && img.naturalWidth ? paint() : img.addEventListener('load', paint);
             })));
 
             function hitAt(mx, my) {
+                const sx = mx * hitScale, sy = my * hitScale;
                 for (const e of entries)
-                    if (e.ready && alpha(e.ctx, mx, my) > 8) return e.el;
+                    if (e.ready && alpha(e.ctx, sx, sy) > 8) return e.el;
                 return null;
             }
 
@@ -362,9 +388,9 @@
                 });
             });
 
-            wrapper.addEventListener('click', e => {
+            function handleTap(clientX, clientY) {
                 const r = wrapper.getBoundingClientRect();
-                const hit = hitAt(e.clientX - r.left, e.clientY - r.top);
+                const hit = hitAt(clientX - r.left, clientY - r.top);
                 if (!hit) return;
                 const name = imgName(hit);
                 console.log(name);
@@ -376,6 +402,22 @@
                 } else if (name in scrollDown) {
                     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                 }
+            }
+
+            wrapper.addEventListener('click', e => {
+                handleTap(e.clientX, e.clientY);
+            });
+
+            wrapper.addEventListener('touchstart', e => {
+                const r = wrapper.getBoundingClientRect();
+                const t = e.touches[0];
+                const hit = hitAt(t.clientX - r.left, t.clientY - r.top);
+                setActive(hit);
+            }, { passive: true });
+
+            wrapper.addEventListener('touchend', e => {
+                const t = e.changedTouches[0];
+                handleTap(t.clientX, t.clientY);
             });
 
             wrapper.addEventListener('mouseleave', () => {
