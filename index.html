@@ -1,13 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PORTFOLIO</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-        html, body {
+        html,
+        body {
             overflow-x: hidden;
         }
 
@@ -17,6 +23,30 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+        }
+
+        .bg-sequence {
+            position: fixed;
+            top: 0;
+            /* Reduce width from 50% so they only occupy the side margins */
+            width: 30vw;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        #bg-sequence-left {
+            left: 0;
+            /* Keeps the image anchored to the left edge so it scales correctly */
+            object-position: left center;
+        }
+
+        #bg-sequence-right {
+            right: 0;
+            /* Keeps the image anchored to the right edge */
+            object-position: right center;
         }
 
         .stack-wrapper {
@@ -25,13 +55,16 @@
             aspect-ratio: 1;
             cursor: default;
             overflow: hidden;
+            z-index: 1;
         }
 
 
         .layer {
             position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
             pointer-events: none;
             filter: none;
@@ -42,10 +75,6 @@
         .layer.active {
             transform: scale(1.025);
             z-index: 10;
-        }
-
-        .layer.dimmed {
-            filter: brightness(0.55);
         }
 
         /* --- popup modal --- */
@@ -59,7 +88,9 @@
             justify-content: center;
         }
 
-        #popup-overlay.open { display: flex; }
+        #popup-overlay.open {
+            display: flex;
+        }
 
         #popup-inner {
             position: relative;
@@ -94,23 +125,28 @@
             line-height: 1;
         }
 
-        #popup-close:hover { background: #ddd; }
+        #popup-close:hover {
+            background: #ddd;
+        }
 
         #page2-btn {
             position: fixed;
-            top: 50%;
-            right: 40px;
-            transform: translateY(-50%);
-            width: 280px;
-            height: 480px;
-            border: 2px solid #fff;
-            background: #000;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            height: 180px;
+            border: none;
+            background: url('images_to_use/page2_btn_image.webp') no-repeat center / contain;
             cursor: pointer;
             z-index: 5;
         }
     </style>
 </head>
+
 <body>
+
+    <img id="bg-sequence-left" class="bg-sequence" alt="">
+    <img id="bg-sequence-right" class="bg-sequence" alt="">
 
     <button id="page2-btn" onclick="window.location.href='page2.html'"></button>
 
@@ -125,9 +161,50 @@
     </div>
 
     <script>
-        const wrapper      = document.getElementById('wrapper');
+        const wrapper = document.getElementById('wrapper');
         const popupOverlay = document.getElementById('popup-overlay');
-        const popupImg     = document.getElementById('popup-img');
+        const popupImg = document.getElementById('popup-img');
+
+        // --- animated background image sequences (left + right) ---
+        // Frames live in a folder named _a_frm{N},40.jpg
+        // START/END set the first/last frame number (inclusive) to use.
+        // Give left/right different DIR values to use different sequences.
+        const BG_LEFT = {
+            el: document.getElementById('bg-sequence-left'),
+            dir: 'images_to_use/bg_sequence_01/',
+            start: 0,
+            end: 9,
+            fps: 5,
+            pattern: n => '_a_frm' + n + ',170.jpg',
+        };
+
+        const BG_RIGHT = {
+            el: document.getElementById('bg-sequence-right'),
+            dir: 'images_to_use/bg_sequence_02/',
+            start: 1,
+            end: 6,
+            fps: 12,
+            pattern: n => '_a_frm' + n + ',100.jpg',
+        };
+
+        function initBgSequence({ el, dir, start, end, fps, pattern }) {
+            const frames = [];
+            for (let n = start; n <= end; n++) {
+                frames.push(dir + pattern(n));
+            }
+
+            if (!frames.length) return;
+
+            let i = 0;
+            el.src = frames[0];
+            setInterval(() => {
+                i = (i + 1) % frames.length;
+                el.src = frames[i];
+            }, 1000 / fps);
+        }
+
+        initBgSequence(BG_LEFT);
+        initBgSequence(BG_RIGHT);
 
         const W = wrapper.offsetWidth;
         const H = wrapper.offsetHeight;
@@ -137,9 +214,9 @@
 
         async function getPopupImages() {
             if (cachedPopupImages) return cachedPopupImages;
-            const res  = await fetch('popup_random_images/');
+            const res = await fetch('popup_random_images/');
             const html = await res.text();
-            const doc  = new DOMParser().parseFromString(html, 'text/html');
+            const doc = new DOMParser().parseFromString(html, 'text/html');
             cachedPopupImages = [...doc.querySelectorAll('a[href]')]
                 .map(a => a.getAttribute('href'))
                 .filter(href => /\.(png|jpg|jpeg|webp|gif)$/i.test(href));
@@ -164,7 +241,7 @@
 
         function paintContained(ctx, img) {
             const scale = Math.min(W / img.naturalWidth, H / img.naturalHeight);
-            const w = img.naturalWidth  * scale;
+            const w = img.naturalWidth * scale;
             const h = img.naturalHeight * scale;
             ctx.clearRect(0, 0, W, H);
             ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
@@ -180,12 +257,12 @@
         }
 
         async function init() {
-            const config    = await fetch('functions_to_work.json').then(r => r.json());
+            const config = await fetch('functions_to_work.json').then(r => r.json());
             const filenames = [...(config[0]?.image_filenames ?? [])].reverse();
 
-            const namesToLink     = config[0]?.names_to_link     ?? {};
+            const namesToLink = config[0]?.names_to_link ?? {};
             const openRandomPopup = config[0]?.open_random_popup ?? {};
-            const scrollDown      = config[0]?.scroll_down       ?? {};
+            const scrollDown = config[0]?.scroll_down ?? {};
 
             const EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg'];
 
@@ -198,7 +275,7 @@
             filenames.forEach(name => {
                 const img = document.createElement('img');
                 img.className = 'layer';
-                img.alt       = decodeURIComponent(name);
+                img.alt = decodeURIComponent(name);
                 wrapper.appendChild(img);
                 loadWithFallback(img, name, 0);
             });
@@ -220,7 +297,7 @@
             });
 
             await Promise.all(entries.map(entry => new Promise(resolve => {
-                const img   = entry.el;
+                const img = entry.el;
                 const paint = () => { paintContained(entry.ctx, img); entry.ready = true; resolve(); };
                 img.complete && img.naturalWidth ? paint() : img.addEventListener('load', paint);
             })));
@@ -252,19 +329,16 @@
                     hit.style.filter = OUTLINE;
                     hit.classList.add('active');
                 }
-                allLayers.forEach(el => {
-                    if (el !== hit) el.classList.toggle('dimmed', !!hit);
-                });
                 active = hit;
             }
 
-            let rafPending  = false;
-            let pendingHit  = null;
+            let rafPending = false;
+            let pendingHit = null;
             let pendingCount = 0;
             const SWITCH_DELAY_FRAMES = 3;
 
             wrapper.addEventListener('mousemove', e => {
-                const r   = wrapper.getBoundingClientRect();
+                const r = wrapper.getBoundingClientRect();
                 const hit = hitAt(e.clientX - r.left, e.clientY - r.top);
 
                 if (hit === active) {
@@ -289,8 +363,8 @@
             });
 
             wrapper.addEventListener('click', e => {
-                const r    = wrapper.getBoundingClientRect();
-                const hit  = hitAt(e.clientX - r.left, e.clientY - r.top);
+                const r = wrapper.getBoundingClientRect();
+                const hit = hitAt(e.clientX - r.left, e.clientY - r.top);
                 if (!hit) return;
                 const name = imgName(hit);
                 console.log(name);
@@ -309,8 +383,9 @@
             });
         }
 
-init().catch(err => console.error('Failed to load images:', err));
+        init().catch(err => console.error('Failed to load images:', err));
     </script>
 
 </body>
+
 </html>
