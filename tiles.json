@@ -1,0 +1,763 @@
+{
+    "levels": [
+        {
+            "name": "level1",
+            "gridCols": 6,
+            "gridRows": 6,
+            "tiles": [
+                {
+                    "id": "tile1782997179350",
+                    "color": "#998c4d",
+                    "row": 0,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "tile1782997183471",
+                    "color": "#998c4d",
+                    "row": 3,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 11
+                },
+                {
+                    "id": "tile1782997198311",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "tile1782997222599",
+                    "color": "#808080",
+                    "row": 1,
+                    "col": 4,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 22
+                },
+                {
+                    "id": "tile1782997230766",
+                    "color": "#8292e3",
+                    "row": 2,
+                    "col": 0,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 21
+                },
+                {
+                    "id": "tile1782997248102",
+                    "color": "#969dc0",
+                    "row": 4,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1782997254023",
+                    "color": "#ffffff",
+                    "row": 4,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "tile1782997269799",
+                    "color": "#c18c44",
+                    "row": 4,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 8
+                }
+            ]
+        },
+        {
+            "name": "level2",
+            "gridCols": 6,
+            "gridRows": 7,
+            "tiles": [
+                {
+                    "id": "tile1782996395607",
+                    "color": "#7a6f5d",
+                    "row": 6,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "tile1782996405583",
+                    "color": "#ffffff",
+                    "row": 0,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 7
+                },
+                {
+                    "id": "tile1782996419183",
+                    "color": "#ffffff",
+                    "row": 0,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1782996441039",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "tile1782996463503",
+                    "color": "#6fd8fb",
+                    "row": 1,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "tile1782996473974",
+                    "color": "#6fd8fb",
+                    "row": 2,
+                    "col": 4,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "tile1782996482720",
+                    "color": "#888181",
+                    "row": 1,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 3
+                },
+                {
+                    "id": "tile1782996489527",
+                    "color": "#ffffff",
+                    "row": 3,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "tile1782996493648",
+                    "color": "#6fd8fb",
+                    "row": 2,
+                    "col": 1,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "tile1782996498335",
+                    "color": "#888181",
+                    "row": 4,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 2
+                },
+                {
+                    "id": "tile1782996502863",
+                    "color": "#7a6f5d",
+                    "row": 4,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "tile1782996505142",
+                    "color": "#7a6f5d",
+                    "row": 5,
+                    "col": 3,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 10
+                },
+                {
+                    "id": "tile1782996513694",
+                    "color": "#ffffff",
+                    "row": 5,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 7
+                },
+                {
+                    "id": "tile1782996524295",
+                    "color": "#adc1c7",
+                    "row": 5,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                }
+            ]
+        },
+        {
+            "name": "level3",
+            "gridCols": 5,
+            "gridRows": 6,
+            "tiles": [
+                {
+                    "id": "tile1782996555943",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "tile1782996563999",
+                    "color": "#6fd8fb",
+                    "row": 3,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "tile1782996676431",
+                    "color": "#bf77da",
+                    "row": 1,
+                    "col": 2,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 20
+                },
+                {
+                    "id": "tile1782996729679",
+                    "color": "#d9d9d9",
+                    "row": 4,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 7
+                },
+                {
+                    "id": "tile1782996733783",
+                    "color": "#d9d9d9",
+                    "row": 5,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 4
+                },
+                {
+                    "id": "tile1782996737751",
+                    "color": "#6fd8fb",
+                    "row": 4,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "tile1782996750110",
+                    "color": "#d9d9d9",
+                    "row": 3,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 1
+                },
+                {
+                    "id": "tile1782996754230",
+                    "color": "#6fd8fb",
+                    "row": 1,
+                    "col": 4,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                }
+            ]
+        },
+        {
+            "name": "level4",
+            "gridCols": 6,
+            "gridRows": 6,
+            "tiles": [
+                {
+                    "id": "tile1782996787063",
+                    "color": "#d2b679",
+                    "row": 0,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 8
+                },
+                {
+                    "id": "tile1782996789903",
+                    "color": "#d2b679",
+                    "row": 1,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 7
+                },
+                {
+                    "id": "tile1782996809127",
+                    "color": "#d2b679",
+                    "row": 1,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 8
+                },
+                {
+                    "id": "tile1782996813359",
+                    "color": "#d68aff",
+                    "row": 0,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 11
+                },
+                {
+                    "id": "tile1782996829879",
+                    "color": "#b8c78e",
+                    "row": 3,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "tile1782996840487",
+                    "color": "#b8c78e",
+                    "row": 4,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 10
+                },
+                {
+                    "id": "tile1782996844166",
+                    "color": "#b8a561",
+                    "row": 5,
+                    "col": 0,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "tile1782996862095",
+                    "color": "#635840",
+                    "row": 5,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 5
+                },
+                {
+                    "id": "tile1782996879871",
+                    "color": "#ffffff",
+                    "row": 2,
+                    "col": 0,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 20
+                },
+                {
+                    "id": "tile1782996890887",
+                    "color": "#ffffff",
+                    "row": 2,
+                    "col": 4,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1782996900063",
+                    "color": "#a39f9f",
+                    "row": 2,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "tile1782996904262",
+                    "color": "#a39f9f",
+                    "row": 1,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "tile1782996912494",
+                    "color": "#a8bcdc",
+                    "row": 4,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "tile1782996926966",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                }
+            ]
+        },
+        {
+            "name": "level5",
+            "gridCols": 6,
+            "gridRows": 6,
+            "tiles": [
+                {
+                    "id": "tile1782996956726",
+                    "color": "#f0befe",
+                    "row": 0,
+                    "col": 1,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 20
+                },
+                {
+                    "id": "tile1782996960815",
+                    "color": "#b7ad7b",
+                    "row": 1,
+                    "col": 4,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 21
+                },
+                {
+                    "id": "tile1782996987615",
+                    "color": "#ffffff",
+                    "row": 0,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1782996998079",
+                    "color": "#7699c6",
+                    "row": 3,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "tile1782997013735",
+                    "color": "#ffffff",
+                    "row": 3,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 1
+                },
+                {
+                    "id": "tile1782997016624",
+                    "color": "#ffffff",
+                    "row": 0,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 4
+                },
+                {
+                    "id": "tile1782997027423",
+                    "color": "#dbb051",
+                    "row": 4,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 2
+                },
+                {
+                    "id": "tile1782997033303",
+                    "color": "#85734c",
+                    "row": 5,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 5
+                },
+                {
+                    "id": "tile1782997044903",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                }
+            ]
+        }
+    ],
+    "sprites": [
+        {
+            "sheetCol": 0,
+            "sheetRow": 0,
+            "cellsWide": 2,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 2,
+            "sheetRow": 0,
+            "cellsWide": 2,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 4,
+            "sheetRow": 0,
+            "cellsWide": 2,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 0,
+            "sheetRow": 1,
+            "cellsWide": 2,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 2,
+            "sheetRow": 1,
+            "cellsWide": 2,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 4,
+            "sheetRow": 1,
+            "cellsWide": 2,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 0,
+            "sheetRow": 2,
+            "cellsWide": 2,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 2,
+            "sheetRow": 2,
+            "cellsWide": 2,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 4,
+            "sheetRow": 2,
+            "cellsWide": 2,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 0,
+            "sheetRow": 3,
+            "cellsWide": 3,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 3,
+            "sheetRow": 3,
+            "cellsWide": 3,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 0,
+            "sheetRow": 4,
+            "cellsWide": 3,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 3,
+            "sheetRow": 4,
+            "cellsWide": 3,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 0,
+            "sheetRow": 5,
+            "cellsWide": 4,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 0,
+            "sheetRow": 6,
+            "cellsWide": 4,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 0,
+            "sheetRow": 7,
+            "cellsWide": 4,
+            "cellsTall": 1,
+            "direction": "horizontal"
+        },
+        {
+            "sheetCol": 4,
+            "sheetRow": 5,
+            "cellsWide": 1,
+            "cellsTall": 2,
+            "direction": "vertical"
+        },
+        {
+            "sheetCol": 5,
+            "sheetRow": 5,
+            "cellsWide": 1,
+            "cellsTall": 2,
+            "direction": "vertical"
+        },
+        {
+            "sheetCol": 4,
+            "sheetRow": 7,
+            "cellsWide": 1,
+            "cellsTall": 2,
+            "direction": "vertical"
+        },
+        {
+            "sheetCol": 5,
+            "sheetRow": 7,
+            "cellsWide": 1,
+            "cellsTall": 2,
+            "direction": "vertical"
+        },
+        {
+            "sheetCol": 3,
+            "sheetRow": 9,
+            "cellsWide": 1,
+            "cellsTall": 3,
+            "direction": "vertical"
+        },
+        {
+            "sheetCol": 4,
+            "sheetRow": 9,
+            "cellsWide": 1,
+            "cellsTall": 3,
+            "direction": "vertical"
+        },
+        {
+            "sheetCol": 5,
+            "sheetRow": 9,
+            "cellsWide": 1,
+            "cellsTall": 3,
+            "direction": "vertical"
+        },
+        {
+            "sheetCol": 0,
+            "sheetRow": 8,
+            "cellsWide": 1,
+            "cellsTall": 4,
+            "direction": "vertical"
+        },
+        {
+            "sheetCol": 1,
+            "sheetRow": 8,
+            "cellsWide": 1,
+            "cellsTall": 4,
+            "direction": "vertical"
+        },
+        {
+            "sheetCol": 2,
+            "sheetRow": 8,
+            "cellsWide": 1,
+            "cellsTall": 4,
+            "direction": "vertical"
+        }
+    ]
+}

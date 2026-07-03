@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Layer Stack</title>
+    <title>PORTFOLIO</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            overflow-x: hidden;
+        }
 
         body {
             background: #0d0d0d;
@@ -20,6 +24,7 @@
             width: 100vw;
             aspect-ratio: 1;
             cursor: default;
+            overflow: hidden;
         }
 
 
@@ -30,6 +35,17 @@
             object-fit: contain;
             pointer-events: none;
             filter: none;
+            transform: scale(1);
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+
+        .layer.active {
+            transform: scale(1.025);
+            z-index: 10;
+        }
+
+        .layer.dimmed {
+            filter: brightness(0.55);
         }
 
         /* --- popup modal --- */
@@ -79,9 +95,24 @@
         }
 
         #popup-close:hover { background: #ddd; }
+
+        #page2-btn {
+            position: fixed;
+            top: 50%;
+            right: 40px;
+            transform: translateY(-50%);
+            width: 280px;
+            height: 480px;
+            border: 2px solid #fff;
+            background: #000;
+            cursor: pointer;
+            z-index: 5;
+        }
     </style>
 </head>
 <body>
+
+    <button id="page2-btn" onclick="window.location.href='page2.html'"></button>
 
     <div class="stack-wrapper" id="wrapper"></div>
 
@@ -156,12 +187,20 @@
             const openRandomPopup = config[0]?.open_random_popup ?? {};
             const scrollDown      = config[0]?.scroll_down       ?? {};
 
-            filenames.forEach(filename => {
+            const EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg'];
+
+            function loadWithFallback(img, name, extIndex) {
+                if (extIndex >= EXTENSIONS.length) return;
+                img.onerror = () => loadWithFallback(img, name, extIndex + 1);
+                img.src = 'images_to_use/' + name + '.' + EXTENSIONS[extIndex];
+            }
+
+            filenames.forEach(name => {
                 const img = document.createElement('img');
                 img.className = 'layer';
-                img.src       = 'images_to_use/' + filename;
-                img.alt       = decodeURIComponent(filename).replace(/\.[^.]+$/, '');
+                img.alt       = decodeURIComponent(name);
                 wrapper.appendChild(img);
+                loadWithFallback(img, name, 0);
             });
 
             const noHighlight = name => name.startsWith('base') || name.includes('text') || name.includes('noselect');
@@ -192,7 +231,7 @@
                 return null;
             }
 
-            const OUTLINE_WIDTH = 1; // px — change to adjust highlight border thickness
+            const OUTLINE_WIDTH = 2; // px — change to adjust highlight border thickness
             const d = OUTLINE_WIDTH, hh = Math.round(d / 2);
             const OUTLINE =
                 `drop-shadow(${d}px 0 0 white) drop-shadow(-${d}px 0 0 white) ` +
@@ -200,16 +239,53 @@
                 `drop-shadow(${hh}px ${hh}px 0 white) drop-shadow(-${hh}px -${hh}px 0 white) ` +
                 `drop-shadow(${hh}px -${hh}px 0 white) drop-shadow(-${hh}px ${hh}px 0 white)`;
 
+            const allLayers = [...wrapper.querySelectorAll('.layer')];
             let active = null;
+
+            function setActive(hit) {
+                if (hit === active) return;
+                if (active) {
+                    active.style.filter = 'none';
+                    active.classList.remove('active');
+                }
+                if (hit) {
+                    hit.style.filter = OUTLINE;
+                    hit.classList.add('active');
+                }
+                allLayers.forEach(el => {
+                    if (el !== hit) el.classList.toggle('dimmed', !!hit);
+                });
+                active = hit;
+            }
+
+            let rafPending  = false;
+            let pendingHit  = null;
+            let pendingCount = 0;
+            const SWITCH_DELAY_FRAMES = 3;
 
             wrapper.addEventListener('mousemove', e => {
                 const r   = wrapper.getBoundingClientRect();
                 const hit = hitAt(e.clientX - r.left, e.clientY - r.top);
-                if (hit !== active) {
-                    if (active) active.style.filter = 'none';
-                    if (hit)    hit.style.filter    = OUTLINE;
-                    active = hit;
+
+                if (hit === active) {
+                    pendingHit = null;
+                    pendingCount = 0;
+                    return;
                 }
+
+                if (hit !== pendingHit) {
+                    pendingHit = hit;
+                    pendingCount = 0;
+                }
+                pendingCount++;
+
+                if (pendingCount < SWITCH_DELAY_FRAMES) return;
+                if (rafPending) return;
+                rafPending = true;
+                requestAnimationFrame(() => {
+                    rafPending = false;
+                    setActive(pendingHit);
+                });
             });
 
             wrapper.addEventListener('click', e => {
@@ -229,7 +305,7 @@
             });
 
             wrapper.addEventListener('mouseleave', () => {
-                if (active) { active.style.filter = 'none'; active = null; }
+                setActive(null);
             });
         }
 

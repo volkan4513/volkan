@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escape Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background:
+                radial-gradient(circle at 50% 30%, #1c2b22 0%, #0d0d0d 60%),
+                repeating-linear-gradient(45deg, #111 0px, #111 2px, #0d0d0d 2px, #0d0d0d 40px);
+            min-height: 100vh;
+            color: #fff;
+            font-family: sans-serif;
+            font-size: 24px;
+        }
+
+        .side-button {
+            position: fixed;
+            top: 50%;
+            right: 40px;
+            transform: translateY(-50%);
+            width: 280px;
+            height: 480px;
+            border: 2px solid #fff;
+            background: #000;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .board-wrapper {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .board {
+            position: relative;
+            display: grid;
+            border: 2px solid #fff;
+            border-right: none;
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity 1.1s ease, transform 1.1s ease;
+        }
+
+        .board.transitioning {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+
+        .flash-overlay {
+            position: absolute;
+            inset: 0;
+            background: #fff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .flash-overlay.flash {
+            animation: flash-white 1.4s ease-out;
+        }
+
+        @keyframes flash-white {
+            0% { opacity: 0; }
+            25% { opacity: 0.85; }
+            100% { opacity: 0; }
+        }
+
+        .flash-success-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.7);
+            font-size: 42px;
+            font-weight: bold;
+            color: #2e7d32;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 51;
+            text-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+        }
+
+        .flash-success-text.show {
+            animation: flash-success-pop 1.6s ease-out;
+        }
+
+        @keyframes flash-success-pop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            25% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .board .gate {
+            position: absolute;
+            right: -2px;
+            width: 2px;
+            background: #0d0d0d;
+            z-index: 5;
+        }
+
+        .cell {
+            border: 1px solid #333;
+        }
+
+        .tile {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: grab;
+            transition: transform 0.15s ease-out;
+        }
+
+        .tile.dragging {
+            cursor: grabbing;
+            transition: none;
+            z-index: 10;
+        }
+
+        .tile.win-tile {
+            z-index: 2;
+            filter: drop-shadow(0 0 6px rgba(255, 60, 60, 0.9)) drop-shadow(0 0 16px rgba(255, 60, 60, 0.6));
+            animation: win-tile-pulse 1.6s ease-in-out infinite;
+        }
+
+        @keyframes win-tile-pulse {
+            0%, 100% {
+                filter: drop-shadow(0 0 6px rgba(255, 60, 60, 0.9)) drop-shadow(0 0 16px rgba(255, 60, 60, 0.5));
+            }
+            50% {
+                filter: drop-shadow(0 0 10px rgba(255, 90, 90, 1)) drop-shadow(0 0 26px rgba(255, 60, 60, 0.85));
+            }
+        }
+
+        .tile-sprite {
+            width: 100%;
+            height: 100%;
+            background-repeat: no-repeat;
+        }
+
+        .tile-sprite.rotated {
+            transform: rotate(90deg);
+            transform-origin: center;
+        }
+
+
+        .level-bar {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 26px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #4caf50;
+            text-shadow: 0 0 12px rgba(76, 175, 80, 0.6);
+        }
+
+        .timer {
+            position: fixed;
+            top: calc(50% - var(--board-half-h, 200px) - 90px);
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 48px;
+            font-weight: bold;
+            font-variant-numeric: tabular-nums;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .timer.warning {
+            color: #ff6b6b;
+        }
+
+        .skip-btn {
+            position: fixed;
+            top: calc(50% - var(--board-half-h, 200px) - 90px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #555;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .skip-btn.show {
+            display: block;
+        }
+
+        .struggling-message {
+            position: fixed;
+            top: calc(50% - var(--board-half-h, 200px) - 130px);
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            color: #ffcc66;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            text-align: center;
+        }
+
+        .struggling-message.show {
+            opacity: 1;
+        }
+
+        .score-panel {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 14px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .score-panel-title {
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #4caf50;
+            margin-bottom: 4px;
+        }
+
+        .score-entry {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        .score-entry .score-time {
+            color: #4caf50;
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+
+<body>
+    <button class="side-button" onclick="window.location.href='index.html'"></button>
+
+    <div class="level-bar" id="levelBar"></div>
+    <div class="timer" id="timer">5:00</div>
+
+    <div class="score-panel" id="scorePanel">
+        <div class="score-panel-title">Scores</div>
+    </div>
+
+    <button class="skip-btn" id="skipBtn">Skip</button>
+    <div class="struggling-message" id="strugglingMessage">You are struggling, wanna try another one?</div>
+
+    <div class="board-wrapper">
+        <div class="board" id="board">
+            <div class="flash-overlay" id="flashOverlay"></div>
+            <div class="flash-success-text" id="flashSuccessText">Success!</div>
+        </div>
+    </div>
+
+    <script>
+        const CELL_PX = 110;
+        const LEVEL_TIME_MS = 3 * 60 * 1000;
+        const SHEET_CELL = 80; // sprite sheet is authored on an 80px grid, same as game tiles
+
+        function spriteRect(s) {
+            return { sheetX: s.sheetCol * SHEET_CELL, sheetY: s.sheetRow * SHEET_CELL, sheetW: s.cellsWide * SHEET_CELL, sheetH: s.cellsTall * SHEET_CELL };
+        }
+
+        async function init() {
+            const config = await fetch('tiles.json').then(r => r.json());
+            const spriteList = config.sprites || [];
+            const sheetImg = new Image();
+            const sheetLoaded = new Promise(resolve => {
+                sheetImg.onload = resolve;
+                sheetImg.onerror = resolve;
+            });
+            sheetImg.src = 'images_to_use/tiles_texture.webp';
+            await sheetLoaded;
+            const SHEET_W = sheetImg.naturalWidth || 480;
+            const SHEET_H = sheetImg.naturalHeight || 640;
+
+            function applySpriteStyle(el, spriteIndex, targetWidthPx, targetHeightPx) {
+                const s = spriteList[spriteIndex];
+                if (!s) return;
+                const rect = spriteRect(s);
+                const scaleX = targetWidthPx / rect.sheetW;
+                const scaleY = targetHeightPx / rect.sheetH;
+                el.style.backgroundImage = "url('images_to_use/tiles_texture.webp')";
+                el.style.backgroundSize = `${SHEET_W * scaleX}px ${SHEET_H * scaleY}px`;
+                el.style.backgroundPosition = `-${rect.sheetX * scaleX}px -${rect.sheetY * scaleY}px`;
+            }
+
+            const board = document.getElementById('board');
+            const levels = config.levels || [];
+            const levelBar = document.getElementById('levelBar');
+            const timerEl = document.getElementById('timer');
+            const skipBtn = document.getElementById('skipBtn');
+            const strugglingMessage = document.getElementById('strugglingMessage');
+            const scorePanel = document.getElementById('scorePanel');
+            const flashOverlay = document.getElementById('flashOverlay');
+            const flashSuccessText = document.getElementById('flashSuccessText');
+
+            let currentLevelIndex = 0;
+            let COLS = 6, ROWS = 6;
+            const CELL_W = CELL_PX, CELL_H = CELL_PX;
+            let timerInterval = null;
+            let levelEndTime = 0;
+            let timerStarted = false;
+            let autoAdvanceTimeout = null;
+            const scores = [];
+
+            function renderScorePanel() {
+                scorePanel.querySelectorAll('.score-entry').forEach(el => el.remove());
+                scores.forEach(entry => {
+                    const row = document.createElement('div');
+                    row.className = 'score-entry';
+                    const name = document.createElement('span');
+                    name.textContent = entry.name;
+                    const time = document.createElement('span');
+                    time.className = 'score-time';
+                    time.textContent = entry.time;
+                    row.appendChild(name);
+                    row.appendChild(time);
+                    scorePanel.appendChild(row);
+                });
+            }
+
+            function renderLevelBar() {
+                levelBar.textContent = levels[currentLevelIndex] ? levels[currentLevelIndex].name : '';
+            }
+
+            function formatTime(ms) {
+                const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+                const m = Math.floor(totalSeconds / 60);
+                const s = totalSeconds % 60;
+                return `${m}:${String(s).padStart(2, '0')}`;
+            }
+
+            function stopTimer() {
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+            }
+
+            function resetTimerState() {
+                stopTimer();
+                timerStarted = false;
+                timerEl.classList.remove('warning');
+                skipBtn.classList.remove('show');
+                strugglingMessage.classList.remove('show');
+                timerEl.textContent = formatTime(LEVEL_TIME_MS);
+            }
+
+            function startTimer() {
+                if (timerStarted) return;
+                timerStarted = true;
+                stopTimer();
+                levelEndTime = Date.now() + LEVEL_TIME_MS;
+                timerEl.classList.remove('warning');
+                skipBtn.classList.remove('show');
+                strugglingMessage.classList.remove('show');
+                updateTimerDisplay();
+                timerInterval = setInterval(updateTimerDisplay, 250);
+            }
+
+            function updateTimerDisplay() {
+                const remaining = levelEndTime - Date.now();
+                timerEl.textContent = formatTime(remaining);
+                if (remaining <= 0) {
+                    timerEl.textContent = '0:00';
+                    timerEl.classList.add('warning');
+                    skipBtn.classList.add('show');
+                    strugglingMessage.classList.add('show');
+                    stopTimer();
+                }
+            }
+
+            function loadLevel(idx) {
+                if (autoAdvanceTimeout) {
+                    clearTimeout(autoAdvanceTimeout);
+                    autoAdvanceTimeout = null;
+                }
+                currentLevelIndex = idx;
+                renderLevelBar();
+                const lvl = levels[idx];
+                COLS = lvl.gridCols || lvl.gridSize || config.gridSize || 6;
+                ROWS = lvl.gridRows || lvl.gridSize || config.gridSize || 6;
+                board.style.width = (COLS * CELL_W) + 'px';
+                board.style.height = (ROWS * CELL_H) + 'px';
+                board.style.gridTemplateColumns = `repeat(${COLS}, ${CELL_W}px)`;
+                board.style.gridTemplateRows = `repeat(${ROWS}, ${CELL_H}px)`;
+                document.documentElement.style.setProperty('--board-half-h', ((ROWS * CELL_H) / 2) + 'px');
+                buildBoard(lvl.tiles);
+                resetTimerState();
+            }
+
+            skipBtn.addEventListener('click', goToNextLevel);
+
+            function buildBoard(tileConfigs) {
+                board.innerHTML = '';
+                board.appendChild(flashOverlay);
+                board.appendChild(flashSuccessText);
+                for (let i = 0; i < COLS * ROWS; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    board.appendChild(cell);
+                }
+
+                const winTileCfg = tileConfigs.find(c => c.isWinTile && c.winDirection === 'right');
+                if (winTileCfg) {
+                    const gate = document.createElement('div');
+                    gate.className = 'gate';
+                    gate.style.top = (winTileCfg.row * CELL_H) + 'px';
+                    gate.style.height = (winTileCfg.height * CELL_H) + 'px';
+                    board.appendChild(gate);
+                }
+
+                const tiles = tileConfigs.map(cfg => {
+                    const el = document.createElement('div');
+                    el.className = 'tile' + (cfg.isWinTile ? ' win-tile' : '');
+                    const w = cfg.width * CELL_W;
+                    const h = cfg.height * CELL_H;
+                    el.style.width = `${w}px`;
+                    el.style.height = `${h}px`;
+
+                    if (typeof cfg.spriteIndex === 'number' && spriteList[cfg.spriteIndex]) {
+                        const spriteDef = spriteList[cfg.spriteIndex];
+                        const rotated = cfg.direction !== spriteDef.direction;
+                        const inner = document.createElement('div');
+                        inner.className = 'tile-sprite' + (rotated ? ' rotated' : '');
+                        if (rotated) {
+                            applySpriteStyle(inner, cfg.spriteIndex, h, w);
+                            inner.style.width = `${h}px`;
+                            inner.style.height = `${w}px`;
+                            inner.style.position = 'absolute';
+                            inner.style.left = `${(w - h) / 2}px`;
+                            inner.style.top = `${(h - w) / 2}px`;
+                        } else {
+                            applySpriteStyle(inner, cfg.spriteIndex, w, h);
+                        }
+                        el.appendChild(inner);
+                    } else {
+                        el.style.background = cfg.color;
+                    }
+
+                    board.appendChild(el);
+
+                    const tile = {
+                        ...cfg,
+                        el,
+                        dragging: false,
+                        startPos: 0,
+                        startCoord: 0,
+                        escaped: false
+                    };
+
+                    render(tile);
+                    attachHandlers(tile);
+                    return tile;
+                });
+
+                function occupancyExcept(skip) {
+                    return tiles.filter(t => t !== skip);
+                }
+
+                function render(tile) {
+                    tile.el.style.transform = `translate(${tile.col * CELL_W}px, ${tile.row * CELL_H}px)`;
+                }
+
+                function clamp(v, min, max) {
+                    return Math.max(min, Math.min(max, v));
+                }
+
+                function rangesOverlap(aStart, aLen, bStart, bLen) {
+                    return aStart < bStart + bLen && bStart < aStart + aLen;
+                }
+
+                function collidesAt(row, col, width, height, others) {
+                    return others.some(other =>
+                        rangesOverlap(row, height, other.row, other.height) &&
+                        rangesOverlap(col, width, other.col, other.width)
+                    );
+                }
+
+                function computeBounds(tile, others) {
+                    const horizontal = tile.direction === 'horizontal';
+                    const mainStart = horizontal ? tile.col : tile.row;
+
+                    const hardMax = horizontal ? (COLS - tile.width) : (ROWS - tile.height);
+                    let allowExitMax = hardMax;
+                    if (tile.isWinTile && tile.winDirection === 'right' && horizontal) {
+                        allowExitMax = COLS;
+                    }
+
+                    function fits(pos) {
+                        const row = horizontal ? tile.row : pos;
+                        const col = horizontal ? pos : tile.col;
+                        return !collidesAt(row, col, tile.width, tile.height, others);
+                    }
+
+                    let min = mainStart;
+                    while (min - 1 >= 0 && fits(min - 1)) min -= 1;
+
+                    let max = mainStart;
+                    while (max + 1 <= hardMax && fits(max + 1)) max += 1;
+
+                    if (allowExitMax > hardMax && max === hardMax) {
+                        max = allowExitMax;
+                    }
+
+                    return { min, max, allowExitMax };
+                }
+
+                function attachHandlers(tile) {
+                    const horizontal = tile.direction === 'horizontal';
+
+                    function onDown(e) {
+                        startTimer();
+                        tile.dragging = true;
+                        tile.el.classList.add('dragging');
+                        tile.startCoord = horizontal ? e.clientX : e.clientY;
+                        tile.startPos = horizontal ? tile.col : tile.row;
+                        tile.el.setPointerCapture(e.pointerId);
+                    }
+
+                    function onMove(e) {
+                        if (!tile.dragging) return;
+                        const others = occupancyExcept(tile);
+                        const { min, max, allowExitMax } = computeBounds(tile, others);
+
+                        const hardMax = horizontal ? (COLS - tile.width) : (ROWS - tile.height);
+                        const dragLimit = (max === hardMax && allowExitMax > hardMax) ? allowExitMax : max;
+
+                        const current = horizontal ? e.clientX : e.clientY;
+                        const delta = (current - tile.startCoord) / (horizontal ? CELL_W : CELL_H);
+                        let rawPos = tile.startPos + delta;
+
+                        rawPos = clamp(rawPos, min, dragLimit);
+
+                        if (horizontal) {
+                            tile.el.style.transform = `translate(${rawPos * CELL_W}px, ${tile.row * CELL_H}px)`;
+                        } else {
+                            tile.el.style.transform = `translate(${tile.col * CELL_W}px, ${rawPos * CELL_H}px)`;
+                        }
+                        tile._rawPos = rawPos;
+                        tile._bounds = { min, max, allowExitMax };
+                    }
+
+                    function onUp(e) {
+                        if (!tile.dragging) return;
+                        tile.dragging = false;
+                        tile.el.classList.remove('dragging');
+
+                        const { min, max, allowExitMax } = tile._bounds || computeBounds(tile, occupancyExcept(tile));
+                        let rawPos = tile._rawPos !== undefined ? tile._rawPos : (horizontal ? tile.col : tile.row);
+
+                        let snapped;
+                        if (tile.isWinTile && horizontal && tile.winDirection === 'right' && rawPos > max) {
+                            const exitThreshold = max + (allowExitMax - max) * 0.5;
+                            if (rawPos >= exitThreshold) {
+                                snapped = allowExitMax;
+                            } else {
+                                snapped = max;
+                            }
+                        } else {
+                            snapped = clamp(Math.round(rawPos), min, max);
+                        }
+
+                        if (horizontal) {
+                            tile.col = snapped;
+                        } else {
+                            tile.row = snapped;
+                        }
+                        render(tile);
+
+                        if (tile.isWinTile && horizontal && tile.winDirection === 'right' && snapped >= allowExitMax) {
+                            tile.escaped = true;
+                            showSuccess();
+                        }
+                    }
+
+                    tile.el.addEventListener('pointerdown', onDown);
+                    tile.el.addEventListener('pointermove', onMove);
+                    tile.el.addEventListener('pointerup', onUp);
+                    tile.el.addEventListener('pointercancel', onUp);
+                }
+            }
+
+            function goToNextLevel() {
+                const nextIdx = currentLevelIndex < levels.length - 1 ? currentLevelIndex + 1 : 0;
+                board.classList.add('transitioning');
+                setTimeout(() => {
+                    loadLevel(nextIdx);
+                    requestAnimationFrame(() => board.classList.remove('transitioning'));
+                }, 1100);
+            }
+
+            function showSuccess() {
+                stopTimer();
+                skipBtn.classList.remove('show');
+                strugglingMessage.classList.remove('show');
+
+                flashOverlay.classList.remove('flash');
+                void flashOverlay.offsetWidth;
+                flashOverlay.classList.add('flash');
+
+                flashSuccessText.classList.remove('show');
+                void flashSuccessText.offsetWidth;
+                flashSuccessText.classList.add('show');
+
+                const elapsed = Math.min(LEVEL_TIME_MS, Date.now() - (levelEndTime - LEVEL_TIME_MS));
+                const lvl = levels[currentLevelIndex];
+                scores.push({ name: lvl ? lvl.name : `Level ${currentLevelIndex + 1}`, time: formatTime(elapsed) });
+                renderScorePanel();
+
+                autoAdvanceTimeout = setTimeout(goToNextLevel, 1500);
+            }
+
+            if (levels.length) loadLevel(0);
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

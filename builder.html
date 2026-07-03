@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tile Builder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0d0d0d;
+            min-height: 100vh;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        .top-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .level-tab {
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 8px 16px;
+            cursor: grab;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .level-tab.active {
+            background: #333;
+            border-color: #4caf50;
+        }
+
+        .level-tab.dragging {
+            opacity: 0.4;
+        }
+
+        .level-tab.drag-over {
+            border-color: #6fd8fb;
+            box-shadow: inset 0 0 0 2px #6fd8fb;
+        }
+
+        .level-tab .del-btn {
+            background: transparent;
+            border: none;
+            color: #e57373;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+        }
+
+        .add-level-btn {
+            background: #4caf50;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .board-wrapper {
+            margin-bottom: 20px;
+        }
+
+        .board {
+            position: relative;
+            display: grid;
+            border: 2px solid #fff;
+        }
+
+        .cell {
+            border: 1px solid #333;
+            cursor: pointer;
+        }
+
+        .cell:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .tile {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #000;
+            border: 1px solid rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .actions button {
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .actions .save-btn {
+            background: #4caf50;
+            color: #000;
+            border: none;
+            font-weight: bold;
+        }
+
+        .actions .delete-tile-btn {
+            background: #a33;
+            border: none;
+        }
+
+        /* popup */
+        #overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+
+        #overlay.open {
+            display: flex;
+        }
+
+        #popup {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 24px;
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        #popup h2 {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 13px;
+        }
+
+        .field input,
+        .field select {
+            background: #0d0d0d;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .popup-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .popup-actions button {
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #444;
+            background: #0d0d0d;
+            color: #fff;
+        }
+
+        .popup-actions .confirm {
+            background: #4caf50;
+            color: #000;
+            border: none;
+            font-weight: bold;
+        }
+
+        .checkbox-field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .sprite-thumb {
+            width: 48px;
+            height: 24px;
+            background-image: url('images_to_use/tiles_texture.webp');
+            background-repeat: no-repeat;
+            border: 2px solid #444;
+            border-radius: 3px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .sprite-thumb.selected {
+            border-color: #4caf50;
+        }
+
+        .sprite-thumb.none-thumb {
+            width: 48px;
+            height: 24px;
+            background: #0d0d0d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #999;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .manage-sprites-btn {
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        #spriteEditorOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+        }
+
+        #spriteEditorOverlay.open {
+            display: flex;
+        }
+
+        #spriteEditorPanel {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            max-width: 95vw;
+            max-height: 90vh;
+        }
+
+        #spriteSheetWrapper {
+            position: relative;
+            overflow: auto;
+            max-height: 80vh;
+            border: 1px solid #444;
+        }
+
+        #spriteSheetGrid {
+            position: relative;
+            display: block;
+        }
+
+        #spriteSheetImg {
+            display: block;
+        }
+
+        .sheet-cell-overlay {
+            position: absolute;
+            box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            cursor: crosshair;
+        }
+
+        .sheet-cell-overlay.in-selection {
+            background: rgba(76, 175, 80, 0.35);
+            border-color: #4caf50;
+        }
+
+        .sheet-cell-overlay.defined {
+            border-color: #6fd8fb;
+            box-shadow: inset 0 0 0 1px #6fd8fb;
+        }
+
+        #spriteEditorSidebar {
+            width: 260px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        #spriteList {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 400px;
+        }
+
+        .sprite-list-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #0d0d0d;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 6px;
+        }
+
+        .sprite-list-item .sprite-list-thumb {
+            width: 48px;
+            height: 24px;
+            background-image: url('images_to_use/tiles_texture.webp');
+            background-repeat: no-repeat;
+            border: 1px solid #333;
+            flex-shrink: 0;
+        }
+
+        .sprite-list-item .sprite-list-label {
+            flex: 1;
+            font-size: 12px;
+        }
+
+        .sprite-list-item button {
+            background: transparent;
+            border: none;
+            color: #e57373;
+            cursor: pointer;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Tile Level Builder</h1>
+    <div class="hint">Click an empty cell to add a tile. Click an existing tile to edit/delete/copy it.</div>
+    <div class="hint" id="clipboardHint" style="display:none; color:#4caf50;">
+        Tile copied — click an empty cell to paste it.
+        <button id="clearClipboardBtn" style="background:transparent; border:none; color:#e57373; cursor:pointer; text-decoration:underline; font-size:12px;">clear</button>
+    </div>
+
+    <div class="top-bar" id="gridSizeBar" style="margin-bottom:4px;">
+        <label for="gridColsInput" style="font-size:14px;">Columns</label>
+        <input type="number" id="gridColsInput" min="2" max="20" value="6" style="width:60px; background:#0d0d0d; color:#fff; border:1px solid #444; border-radius:4px; padding:6px;">
+        <label for="gridRowsInput" style="font-size:14px;">Rows</label>
+        <input type="number" id="gridRowsInput" min="2" max="20" value="6" style="width:60px; background:#0d0d0d; color:#fff; border:1px solid #444; border-radius:4px; padding:6px;">
+    </div>
+
+    <div class="hint">Drag a level tab to reorder levels.</div>
+    <div class="top-bar" id="levelTabs"></div>
+    <div class="top-bar" style="margin-top:-10px;">
+        <button id="copyLevelBtn">Copy Level</button>
+        <button id="pasteLevelBtn" style="display:none;">Paste Level Here (overwrite)</button>
+        <button id="pasteAsNewLevelBtn" style="display:none;">Paste As New Level</button>
+    </div>
+
+    <button class="manage-sprites-btn" id="manageSpritesBtn">Manage Sprites</button>
+
+    <div class="board-wrapper">
+        <div class="board" id="board"></div>
+    </div>
+
+    <div class="actions">
+        <button id="saveBtn" class="save-btn">Save (download tiles.json)</button>
+        <button id="playBtn">Open Page 2</button>
+    </div>
+
+    <div id="spriteEditorOverlay">
+        <div id="spriteEditorPanel">
+            <div id="spriteSheetWrapper">
+                <div id="spriteSheetGrid">
+                    <img id="spriteSheetImg" src="images_to_use/tiles_texture.webp" alt="vehicle sheet">
+                </div>
+            </div>
+            <div id="spriteEditorSidebar">
+                <h2 style="font-size:16px;">Manage Sprites</h2>
+                <div class="hint" style="margin-bottom:0;">Click a cell to select just that tile. Shift+click (or Ctrl+click) another cell to extend the selection into a rectangle. Then set direction and save.</div>
+                <div class="field">
+                    <label>Selection</label>
+                    <div id="selectionInfo" style="font-size:12px; color:#999;">No cells selected</div>
+                </div>
+                <div class="field">
+                    <label>Native direction of selected art</label>
+                    <select id="spriteDirectionSelect">
+                        <option value="horizontal">Horizontal</option>
+                        <option value="vertical">Vertical</option>
+                    </select>
+                </div>
+                <div class="popup-actions" style="justify-content:flex-start;">
+                    <button id="saveSpriteBtn" class="confirm">Save Sprite</button>
+                    <button id="clearSelectionBtn">Clear Selection</button>
+                </div>
+                <div id="spriteList"></div>
+                <div class="popup-actions">
+                    <button id="closeSpriteEditorBtn">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <div id="popup">
+            <h2 id="popupTitle">Add Tile</h2>
+
+            <div class="field">
+                <label>Width</label>
+                <input type="number" id="fWidth" min="1" max="6" value="1">
+            </div>
+            <div class="field">
+                <label>Height</label>
+                <input type="number" id="fHeight" min="1" max="6" value="1">
+            </div>
+            <div class="field">
+                <label>Color</label>
+                <input type="color" id="fColor" value="#4caf50">
+            </div>
+            <div class="field">
+                <label>Vehicle Texture (optional)</label>
+                <div id="spritePicker" style="display:flex; flex-wrap:wrap; gap:6px; max-height:160px; overflow-y:auto; padding:6px; border:1px solid #444; border-radius:4px;"></div>
+            </div>
+            <div class="field">
+                <label>Alignment / Direction</label>
+                <select id="fDirection">
+                    <option value="horizontal">Horizontal</option>
+                    <option value="vertical">Vertical</option>
+                </select>
+            </div>
+            <div class="checkbox-field">
+                <input type="checkbox" id="fIsWin">
+                <label for="fIsWin">Win tile (exits right)</label>
+            </div>
+
+            <div class="popup-actions">
+                <button id="copyTileBtn" style="display:none;">Copy</button>
+                <button id="deleteTileBtn" style="display:none; color:#e57373;">Delete</button>
+                <button id="cancelBtn">Cancel</button>
+                <button id="confirmBtn" class="confirm">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CELL_PX = 80;
+        let COLS = 6;
+        let ROWS = 6;
+        const CELL_W = CELL_PX;
+        const CELL_H = CELL_PX;
+
+        let config = { levels: [] };
+        let currentLevelIndex = 0;
+        let editingTileIndex = null; // index within current level's tiles, or null when adding
+        let pendingCell = null; // {row, col} when adding via empty cell click
+        let clipboardTile = null; // copied tile properties (excluding position), awaiting paste
+        let selectedSpriteIndex = null; // index into config.sprites for the popup currently open
+
+        const SHEET_CELL = 80; // sprite sheet is authored on an 80px grid, same as game tiles
+        let SHEET_W = 480, SHEET_H = 640; // updated once the sheet image loads
+
+        // derive a sprite's on-screen pixel rect + native tile footprint from its cell selection
+        function spriteRect(s) {
+            return { sheetX: s.sheetCol * SHEET_CELL, sheetY: s.sheetRow * SHEET_CELL, sheetW: s.cellsWide * SHEET_CELL, sheetH: s.cellsTall * SHEET_CELL };
+        }
+
+        function spriteFootprint(s) {
+            // footprint is the tile width/height when placed matching its authored direction
+            return { tileWidth: s.cellsWide, tileHeight: s.cellsTall };
+        }
+
+        const board = document.getElementById('board');
+        const levelTabs = document.getElementById('levelTabs');
+        const overlay = document.getElementById('overlay');
+
+        const gridColsInput = document.getElementById('gridColsInput');
+        const gridRowsInput = document.getElementById('gridRowsInput');
+
+        function currentLevel() {
+            return config.levels[currentLevelIndex];
+        }
+
+        async function init() {
+            try {
+                const res = await fetch('tiles.json');
+                config = await res.json();
+            } catch (e) {
+                config = { levels: [] };
+            }
+            if (!config.levels || !config.levels.length) {
+                config.levels = [{ name: 'level1', gridCols: 6, gridRows: 6, tiles: [] }];
+            }
+            // migrate legacy top-level/global gridSize onto each level if missing
+            config.levels.forEach(lvl => {
+                if (!lvl.gridCols) lvl.gridCols = config.gridCols || config.gridSize || 6;
+                if (!lvl.gridRows) lvl.gridRows = config.gridRows || config.gridSize || 6;
+            });
+            delete config.gridSize;
+            delete config.gridCols;
+            delete config.gridRows;
+            currentLevelIndex = 0;
+            loadLevelDims();
+            renderTabs();
+            renderBoard();
+        }
+
+        function loadLevelDims() {
+            COLS = currentLevel().gridCols;
+            ROWS = currentLevel().gridRows;
+            gridColsInput.value = COLS;
+            gridRowsInput.value = ROWS;
+            applyBoardGridStyle();
+        }
+
+        function applyBoardGridStyle() {
+            board.style.width = (COLS * CELL_W) + 'px';
+            board.style.height = (ROWS * CELL_H) + 'px';
+            board.style.gridTemplateColumns = `repeat(${COLS}, ${CELL_W}px)`;
+            board.style.gridTemplateRows = `repeat(${ROWS}, ${CELL_H}px)`;
+        }
+
+        function handleGridDimChange() {
+            const newCols = Math.max(2, Math.min(20, parseInt(gridColsInput.value) || 6));
+            const newRows = Math.max(2, Math.min(20, parseInt(gridRowsInput.value) || 6));
+            gridColsInput.value = newCols;
+            gridRowsInput.value = newRows;
+
+            const outOfBounds = currentTiles().some(t => t.row + t.height > newRows || t.col + t.width > newCols);
+            if (outOfBounds && !confirm('Some tiles in this level fall outside the new grid size and may render incorrectly. Continue?')) {
+                gridColsInput.value = COLS;
+                gridRowsInput.value = ROWS;
+                return;
+            }
+
+            COLS = newCols;
+            ROWS = newRows;
+            currentLevel().gridCols = COLS;
+            currentLevel().gridRows = ROWS;
+            applyBoardGridStyle();
+            renderBoard();
+        }
+
+        gridColsInput.addEventListener('change', handleGridDimChange);
+        gridRowsInput.addEventListener('change', handleGridDimChange);
+
+        let dragLevelIndex = null;
+
+        function renderTabs() {
+            levelTabs.innerHTML = '';
+            config.levels.forEach((lvl, idx) => {
+                const tab = document.createElement('div');
+                tab.className = 'level-tab' + (idx === currentLevelIndex ? ' active' : '');
+                tab.draggable = true;
+
+                const label = document.createElement('span');
+                label.textContent = lvl.name;
+                tab.appendChild(label);
+
+                const del = document.createElement('button');
+                del.className = 'del-btn';
+                del.textContent = '✕';
+                del.title = 'Delete level';
+                del.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteLevel(idx);
+                });
+                tab.appendChild(del);
+
+                tab.addEventListener('click', () => {
+                    currentLevelIndex = idx;
+                    loadLevelDims();
+                    renderTabs();
+                    renderBoard();
+                });
+
+                tab.addEventListener('dragstart', (e) => {
+                    dragLevelIndex = idx;
+                    tab.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                tab.addEventListener('dragend', () => {
+                    tab.classList.remove('dragging');
+                    dragLevelIndex = null;
+                    renderTabs();
+                });
+
+                tab.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    if (dragLevelIndex === null || dragLevelIndex === idx) return;
+                    tab.classList.add('drag-over');
+                });
+
+                tab.addEventListener('dragleave', () => {
+                    tab.classList.remove('drag-over');
+                });
+
+                tab.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    tab.classList.remove('drag-over');
+                    if (dragLevelIndex === null || dragLevelIndex === idx) return;
+                    moveLevel(dragLevelIndex, idx);
+                });
+
+                levelTabs.appendChild(tab);
+            });
+
+            const addBtn = document.createElement('button');
+            addBtn.className = 'add-level-btn';
+            addBtn.textContent = '+ Add Level';
+            addBtn.addEventListener('click', addLevel);
+            levelTabs.appendChild(addBtn);
+        }
+
+        function moveLevel(fromIdx, toIdx) {
+            const wasCurrentLevel = config.levels[currentLevelIndex];
+            const [moved] = config.levels.splice(fromIdx, 1);
+            config.levels.splice(toIdx, 0, moved);
+
+            // renumber sequentially: level1, level2, ...
+            config.levels.forEach((lvl, i) => {
+                lvl.name = 'level' + (i + 1);
+            });
+
+            currentLevelIndex = config.levels.indexOf(wasCurrentLevel);
+            loadLevelDims();
+            renderTabs();
+            renderBoard();
+        }
+
+        function addLevel() {
+            const nextNum = config.levels.length + 1;
+            config.levels.push({ name: 'level' + nextNum, gridCols: COLS, gridRows: ROWS, tiles: [] });
+            currentLevelIndex = config.levels.length - 1;
+            loadLevelDims();
+            renderTabs();
+            renderBoard();
+        }
+
+        function deleteLevel(idx) {
+            if (!confirm(`Delete ${config.levels[idx].name}? This cannot be undone.`)) return;
+            config.levels.splice(idx, 1);
+            // renumber remaining levels sequentially: level1, level2, ...
+            config.levels.forEach((lvl, i) => {
+                lvl.name = 'level' + (i + 1);
+            });
+            if (currentLevelIndex >= config.levels.length) {
+                currentLevelIndex = Math.max(0, config.levels.length - 1);
+            }
+            if (!config.levels.length) {
+                config.levels.push({ name: 'level1', gridCols: 6, gridRows: 6, tiles: [] });
+                currentLevelIndex = 0;
+            }
+            loadLevelDims();
+            renderTabs();
+            renderBoard();
+        }
+
+        function currentTiles() {
+            return config.levels[currentLevelIndex].tiles;
+        }
+
+        function sprites() {
+            return config.sprites || [];
+        }
+
+        // scale = pixels-per-sheet-unit for a thumbnail/tile of a given target CSS width
+        function applySpriteStyle(el, spriteIndex, targetWidthPx, targetHeightPx) {
+            const s = sprites()[spriteIndex];
+            if (!s) return;
+            const rect = spriteRect(s);
+            const scaleX = targetWidthPx / rect.sheetW;
+            const scaleY = targetHeightPx / rect.sheetH;
+            el.style.backgroundImage = "url('images_to_use/tiles_texture.webp')";
+            el.style.backgroundRepeat = 'no-repeat';
+            el.style.backgroundSize = `${SHEET_W * scaleX}px ${SHEET_H * scaleY}px`;
+            el.style.backgroundPosition = `-${rect.sheetX * scaleX}px -${rect.sheetY * scaleY}px`;
+        }
+
+        function renderSpritePicker() {
+            const picker = document.getElementById('spritePicker');
+            picker.innerHTML = '';
+
+            const noneThumb = document.createElement('div');
+            noneThumb.className = 'sprite-thumb none-thumb' + (selectedSpriteIndex === null ? ' selected' : '');
+            noneThumb.textContent = 'None';
+            noneThumb.addEventListener('click', () => {
+                selectedSpriteIndex = null;
+                renderSpritePicker();
+            });
+            picker.appendChild(noneThumb);
+
+            sprites().forEach((s, idx) => {
+                const thumb = document.createElement('div');
+                thumb.className = 'sprite-thumb' + (selectedSpriteIndex === idx ? ' selected' : '');
+                const rect = spriteRect(s);
+                applySpriteStyle(thumb, idx, 48, 48 * (rect.sheetH / rect.sheetW));
+                thumb.title = s.name || `${s.cellsWide}x${s.cellsTall} (${s.direction})`;
+                thumb.addEventListener('click', () => {
+                    selectedSpriteIndex = idx;
+                    const fp = spriteFootprint(s);
+                    fWidth.value = fp.tileWidth;
+                    fHeight.value = fp.tileHeight;
+                    fDirection.value = s.direction;
+                    renderSpritePicker();
+                });
+                picker.appendChild(thumb);
+            });
+        }
+
+        function renderBoard() {
+            board.innerHTML = '';
+            const occupied = new Set();
+            currentTiles().forEach(t => {
+                for (let r = t.row; r < t.row + t.height; r++) {
+                    for (let c = t.col; c < t.col + t.width; c++) {
+                        occupied.add(r + ',' + c);
+                    }
+                }
+            });
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.style.gridRowStart = r + 1;
+                    cell.style.gridColumnStart = c + 1;
+                    if (!occupied.has(r + ',' + c)) {
+                        cell.addEventListener('click', () => openAddPopup(r, c));
+                    }
+                    board.appendChild(cell);
+                }
+            }
+
+            currentTiles().forEach((t, idx) => {
+                const el = document.createElement('div');
+                el.className = 'tile';
+                const w = t.width * CELL_W;
+                const h = t.height * CELL_H;
+                el.style.left = (t.col * CELL_W) + 'px';
+                el.style.top = (t.row * CELL_H) + 'px';
+                el.style.width = w + 'px';
+                el.style.height = h + 'px';
+
+                if (typeof t.spriteIndex === 'number' && sprites()[t.spriteIndex]) {
+                    const spriteDef = sprites()[t.spriteIndex];
+                    const rotated = t.direction !== spriteDef.direction;
+                    if (rotated) {
+                        applySpriteStyle(el, t.spriteIndex, h, w);
+                        el.style.transform = 'rotate(90deg)';
+                        el.style.transformOrigin = 'top left';
+                        el.style.left = (t.col * CELL_W) + 'px';
+                        el.style.top = (t.row * CELL_H + h) + 'px';
+                        el.style.width = h + 'px';
+                        el.style.height = w + 'px';
+                    } else {
+                        applySpriteStyle(el, t.spriteIndex, w, h);
+                    }
+                } else {
+                    el.style.background = t.color;
+                }
+
+                el.textContent = t.isWinTile ? 'WIN' : '';
+                el.addEventListener('click', () => openEditPopup(idx));
+                board.appendChild(el);
+            });
+        }
+
+        // ---- popup logic ----
+        const fWidth = document.getElementById('fWidth');
+        const fHeight = document.getElementById('fHeight');
+        const fColor = document.getElementById('fColor');
+        const fDirection = document.getElementById('fDirection');
+        const fIsWin = document.getElementById('fIsWin');
+        const popupTitle = document.getElementById('popupTitle');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const deleteTileBtn = document.getElementById('deleteTileBtn');
+        const copyTileBtn = document.getElementById('copyTileBtn');
+        const clipboardHint = document.getElementById('clipboardHint');
+
+        function openAddPopup(row, col) {
+            editingTileIndex = null;
+            pendingCell = { row, col };
+            copyTileBtn.style.display = 'none';
+            deleteTileBtn.style.display = 'none';
+
+            if (clipboardTile) {
+                const t = clipboardTile;
+                if (row + t.height <= ROWS && col + t.width <= COLS && !collides(row, col, t.width, t.height, null)) {
+                    popupTitle.textContent = 'Paste Tile';
+                    confirmBtn.textContent = 'Paste Here';
+                    fWidth.value = t.width;
+                    fHeight.value = t.height;
+                    fColor.value = /^#/.test(t.color) ? t.color : '#4caf50';
+                    fDirection.value = t.direction || 'horizontal';
+                    fIsWin.checked = !!t.isWinTile;
+                    selectedSpriteIndex = typeof t.spriteIndex === 'number' ? t.spriteIndex : null;
+                    renderSpritePicker();
+                    overlay.classList.add('open');
+                    return;
+                }
+            }
+
+            popupTitle.textContent = 'Add Tile';
+            confirmBtn.textContent = 'Add';
+            fWidth.value = 1;
+            fHeight.value = 1;
+            fColor.value = '#4caf50';
+            fDirection.value = 'horizontal';
+            fIsWin.checked = false;
+            selectedSpriteIndex = null;
+            renderSpritePicker();
+            overlay.classList.add('open');
+        }
+
+        function openEditPopup(idx) {
+            editingTileIndex = idx;
+            pendingCell = null;
+            const t = currentTiles()[idx];
+            popupTitle.textContent = 'Edit Tile';
+            confirmBtn.textContent = 'Save';
+            deleteTileBtn.style.display = 'inline-block';
+            copyTileBtn.style.display = 'inline-block';
+            fWidth.value = t.width;
+            fHeight.value = t.height;
+            fColor.value = /^#/.test(t.color) ? t.color : '#4caf50';
+            fDirection.value = t.direction || 'horizontal';
+            fIsWin.checked = !!t.isWinTile;
+            selectedSpriteIndex = typeof t.spriteIndex === 'number' ? t.spriteIndex : null;
+            renderSpritePicker();
+            overlay.classList.add('open');
+        }
+
+        document.getElementById('clearClipboardBtn').addEventListener('click', () => {
+            clipboardTile = null;
+            clipboardHint.style.display = 'none';
+        });
+
+        copyTileBtn.addEventListener('click', () => {
+            if (editingTileIndex === null) return;
+            const t = currentTiles()[editingTileIndex];
+            clipboardTile = {
+                color: t.color,
+                width: t.width,
+                height: t.height,
+                direction: t.direction,
+                isWinTile: !!t.isWinTile,
+                winDirection: t.winDirection,
+                spriteIndex: t.spriteIndex
+            };
+            clipboardHint.style.display = 'block';
+            closePopup();
+        });
+
+        function closePopup() {
+            overlay.classList.remove('open');
+            editingTileIndex = null;
+            pendingCell = null;
+        }
+
+        function rangesOverlap(aStart, aLen, bStart, bLen) {
+            return aStart < bStart + bLen && bStart < aStart + aLen;
+        }
+
+        function collides(row, col, width, height, skipIdx) {
+            return currentTiles().some((t, i) => {
+                if (i === skipIdx) return false;
+                return rangesOverlap(row, height, t.row, t.height) &&
+                    rangesOverlap(col, width, t.col, t.width);
+            });
+        }
+
+        cancelBtn.addEventListener('click', closePopup);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) closePopup(); });
+
+        confirmBtn.addEventListener('click', () => {
+            const width = Math.max(1, Math.min(COLS, parseInt(fWidth.value) || 1));
+            const height = Math.max(1, Math.min(ROWS, parseInt(fHeight.value) || 1));
+            const color = fColor.value;
+            const direction = fDirection.value;
+            const isWinTile = fIsWin.checked;
+
+            if (editingTileIndex === null) {
+                const { row, col } = pendingCell;
+                if (row + height > ROWS || col + width > COLS) {
+                    alert('Tile does not fit within the grid at this position.');
+                    return;
+                }
+                if (collides(row, col, width, height, null)) {
+                    alert('Tile overlaps an existing tile.');
+                    return;
+                }
+                const tile = {
+                    id: 'tile' + Date.now(),
+                    color, row, col, width, height, direction
+                };
+                if (isWinTile) {
+                    tile.isWinTile = true;
+                    tile.winDirection = 'right';
+                }
+                if (selectedSpriteIndex !== null) {
+                    tile.spriteIndex = selectedSpriteIndex;
+                }
+                currentTiles().push(tile);
+            } else {
+                const t = currentTiles()[editingTileIndex];
+                if (t.row + height > ROWS || t.col + width > COLS) {
+                    alert('Tile does not fit within the grid at this size.');
+                    return;
+                }
+                if (collides(t.row, t.col, width, height, editingTileIndex)) {
+                    alert('Tile overlaps an existing tile.');
+                    return;
+                }
+                t.width = width;
+                t.height = height;
+                t.color = color;
+                t.direction = direction;
+                if (isWinTile) {
+                    t.isWinTile = true;
+                    t.winDirection = 'right';
+                } else {
+                    delete t.isWinTile;
+                    delete t.winDirection;
+                }
+                if (selectedSpriteIndex !== null) {
+                    t.spriteIndex = selectedSpriteIndex;
+                } else {
+                    delete t.spriteIndex;
+                }
+            }
+
+            closePopup();
+            renderBoard();
+        });
+
+        deleteTileBtn.addEventListener('click', () => {
+            if (editingTileIndex === null) return;
+            currentTiles().splice(editingTileIndex, 1);
+            closePopup();
+            renderBoard();
+        });
+
+        // ---- save (download) ----
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            const blob = new Blob([JSON.stringify(config, null, 4)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'tiles.json';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('playBtn').addEventListener('click', () => {
+            window.location.href = 'page2.html';
+        });
+
+        // ---- sprite editor ----
+        const spriteEditorOverlay = document.getElementById('spriteEditorOverlay');
+        const spriteSheetImg = document.getElementById('spriteSheetImg');
+        const spriteSheetGrid = document.getElementById('spriteSheetGrid');
+        const selectionInfo = document.getElementById('selectionInfo');
+        const spriteDirectionSelect = document.getElementById('spriteDirectionSelect');
+        const spriteList = document.getElementById('spriteList');
+
+        let sheetCols = 0, sheetRows = 0;
+        let selAnchor = null; // {col, row} - the first cell clicked, extended via shift/ctrl+click
+        let selCursor = null; // {col, row} - the most recently clicked cell
+
+        function sheetReady() {
+            return spriteSheetImg.complete && spriteSheetImg.naturalWidth > 0;
+        }
+
+        function setupSheetGrid() {
+            SHEET_W = spriteSheetImg.naturalWidth;
+            SHEET_H = spriteSheetImg.naturalHeight;
+            sheetCols = Math.round(SHEET_W / SHEET_CELL);
+            sheetRows = Math.round(SHEET_H / SHEET_CELL);
+            spriteSheetGrid.style.width = SHEET_W + 'px';
+            spriteSheetGrid.style.height = SHEET_H + 'px';
+            renderSheetOverlayCells();
+        }
+
+        if (sheetReady()) {
+            setupSheetGrid();
+        } else {
+            spriteSheetImg.addEventListener('load', setupSheetGrid);
+        }
+
+        function normalizedSelection() {
+            if (!selAnchor) return null;
+            const end = selCursor || selAnchor;
+            const col0 = Math.min(selAnchor.col, end.col);
+            const col1 = Math.max(selAnchor.col, end.col);
+            const row0 = Math.min(selAnchor.row, end.row);
+            const row1 = Math.max(selAnchor.row, end.row);
+            return { col0, col1, row0, row1, cellsWide: col1 - col0 + 1, cellsTall: row1 - row0 + 1 };
+        }
+
+        function cellIsDefined(col, row) {
+            return sprites().some(s => col >= s.sheetCol && col < s.sheetCol + s.cellsWide &&
+                row >= s.sheetRow && row < s.sheetRow + s.cellsTall);
+        }
+
+        function renderSheetOverlayCells() {
+            spriteSheetGrid.querySelectorAll('.sheet-cell-overlay').forEach(el => el.remove());
+            const sel = normalizedSelection();
+
+            for (let r = 0; r < sheetRows; r++) {
+                for (let c = 0; c < sheetCols; c++) {
+                    const cellEl = document.createElement('div');
+                    cellEl.className = 'sheet-cell-overlay';
+                    cellEl.style.left = (c * SHEET_CELL) + 'px';
+                    cellEl.style.top = (r * SHEET_CELL) + 'px';
+                    cellEl.style.width = SHEET_CELL + 'px';
+                    cellEl.style.height = SHEET_CELL + 'px';
+
+                    if (sel && c >= sel.col0 && c <= sel.col1 && r >= sel.row0 && r <= sel.row1) {
+                        cellEl.classList.add('in-selection');
+                    } else if (cellIsDefined(c, r)) {
+                        cellEl.classList.add('defined');
+                    }
+
+                    cellEl.addEventListener('click', (e) => onSheetCellClick(c, r, e.shiftKey || e.ctrlKey || e.metaKey));
+                    spriteSheetGrid.appendChild(cellEl);
+                }
+            }
+
+            if (sel) {
+                selectionInfo.textContent = `${sel.cellsWide} x ${sel.cellsTall} cells (cols ${sel.col0}-${sel.col1}, rows ${sel.row0}-${sel.row1})`;
+            } else {
+                selectionInfo.textContent = 'No cells selected';
+            }
+        }
+
+        function onSheetCellClick(col, row, extend) {
+            if (extend && selAnchor) {
+                selCursor = { col, row };
+            } else {
+                selAnchor = { col, row };
+                selCursor = null;
+            }
+            renderSheetOverlayCells();
+        }
+
+        document.getElementById('clearSelectionBtn').addEventListener('click', () => {
+            selAnchor = null;
+            selCursor = null;
+            renderSheetOverlayCells();
+        });
+
+        document.getElementById('saveSpriteBtn').addEventListener('click', () => {
+            const sel = normalizedSelection();
+            if (!sel) {
+                alert('Select one or more cells on the sheet first.');
+                return;
+            }
+            if (!config.sprites) config.sprites = [];
+            config.sprites.push({
+                sheetCol: sel.col0,
+                sheetRow: sel.row0,
+                cellsWide: sel.cellsWide,
+                cellsTall: sel.cellsTall,
+                direction: spriteDirectionSelect.value
+            });
+            selAnchor = null;
+            selCursor = null;
+            renderSheetOverlayCells();
+            renderSpriteList();
+        });
+
+        function renderSpriteList() {
+            spriteList.innerHTML = '';
+            sprites().forEach((s, idx) => {
+                const item = document.createElement('div');
+                item.className = 'sprite-list-item';
+
+                const thumb = document.createElement('div');
+                thumb.className = 'sprite-list-thumb';
+                const rect = spriteRect(s);
+                const scaleX = 48 / rect.sheetW;
+                const scaleY = (48 * (rect.sheetH / rect.sheetW)) / rect.sheetH;
+                thumb.style.backgroundSize = `${SHEET_W * scaleX}px ${SHEET_H * scaleY}px`;
+                thumb.style.backgroundPosition = `-${rect.sheetX * scaleX}px -${rect.sheetY * scaleY}px`;
+                thumb.style.height = (48 * (rect.sheetH / rect.sheetW)) + 'px';
+                item.appendChild(thumb);
+
+                const label = document.createElement('div');
+                label.className = 'sprite-list-label';
+                label.textContent = `#${idx}: ${s.cellsWide}x${s.cellsTall} (${s.direction})`;
+                item.appendChild(label);
+
+                const delBtn = document.createElement('button');
+                delBtn.textContent = '✕';
+                delBtn.title = 'Delete sprite (tiles using it will fall back to color)';
+                delBtn.addEventListener('click', () => {
+                    if (!confirm('Delete this sprite definition? Tiles referencing it will show as plain color.')) return;
+                    config.sprites.splice(idx, 1);
+                    renderSheetOverlayCells();
+                    renderSpriteList();
+                    renderBoard();
+                });
+                item.appendChild(delBtn);
+
+                spriteList.appendChild(item);
+            });
+        }
+
+        document.getElementById('manageSpritesBtn').addEventListener('click', () => {
+            spriteEditorOverlay.classList.add('open');
+            if (sheetReady() && sheetCols === 0) setupSheetGrid();
+            renderSheetOverlayCells();
+            renderSpriteList();
+        });
+
+        document.getElementById('closeSpriteEditorBtn').addEventListener('click', () => {
+            spriteEditorOverlay.classList.remove('open');
+            renderBoard();
+        });
+
+        // ---- copy/paste whole level ----
+        let levelClipboard = null;
+        const copyLevelBtn = document.getElementById('copyLevelBtn');
+        const pasteLevelBtn = document.getElementById('pasteLevelBtn');
+        const pasteAsNewLevelBtn = document.getElementById('pasteAsNewLevelBtn');
+
+        function updatePasteLevelButtons() {
+            const has = !!levelClipboard;
+            pasteLevelBtn.style.display = has ? 'inline-block' : 'none';
+            pasteAsNewLevelBtn.style.display = has ? 'inline-block' : 'none';
+        }
+
+        copyLevelBtn.addEventListener('click', () => {
+            levelClipboard = JSON.parse(JSON.stringify({
+                gridCols: currentLevel().gridCols,
+                gridRows: currentLevel().gridRows,
+                tiles: currentLevel().tiles
+            }));
+            updatePasteLevelButtons();
+        });
+
+        pasteLevelBtn.addEventListener('click', () => {
+            if (!levelClipboard) return;
+            if (!confirm(`Overwrite ${currentLevel().name} with the copied level's grid size and tiles?`)) return;
+            const name = currentLevel().name;
+            const pasted = JSON.parse(JSON.stringify(levelClipboard));
+            config.levels[currentLevelIndex] = { name, gridCols: pasted.gridCols, gridRows: pasted.gridRows, tiles: pasted.tiles };
+            loadLevelDims();
+            renderTabs();
+            renderBoard();
+        });
+
+        pasteAsNewLevelBtn.addEventListener('click', () => {
+            if (!levelClipboard) return;
+            const pasted = JSON.parse(JSON.stringify(levelClipboard));
+            const nextNum = config.levels.length + 1;
+            config.levels.push({ name: 'level' + nextNum, gridCols: pasted.gridCols, gridRows: pasted.gridRows, tiles: pasted.tiles });
+            currentLevelIndex = config.levels.length - 1;
+            loadLevelDims();
+            renderTabs();
+            renderBoard();
+        });
+
+        init();
+    </script>
+</body>
+
+</html>
