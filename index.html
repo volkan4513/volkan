@@ -185,16 +185,16 @@
         const popupImg = document.getElementById('popup-img');
 
         // --- animated background image sequences (left + right) ---
-        // Frames live in a folder named _a_frm{N},40.jpg
-        // START/END set the first/last frame number (inclusive) to use.
-        // Give left/right different DIR values to use different sequences.
+        // Frame filenames are listed in frames.json inside each folder
+        // (directory listing doesn't work on GitHub Pages, so we can't
+        // guess filenames or fetch the folder itself).
+        // START/END set the first/last index (inclusive) into that list to use.
         const BG_LEFT = {
             el: document.getElementById('bg-sequence-left'),
             dir: 'images_to_use/bg_sequence_01/',
             start: 0,
             end: 9,
             fps: 5,
-            pattern: n => '_a_frm' + n + ',170.jpg',
         };
 
         const BG_RIGHT = {
@@ -203,14 +203,12 @@
             start: 1,
             end: 6,
             fps: 12,
-            pattern: n => '_a_frm' + n + ',100.jpg',
         };
 
-        function initBgSequence({ el, dir, start, end, fps, pattern }) {
-            const frames = [];
-            for (let n = start; n <= end; n++) {
-                frames.push(dir + pattern(n));
-            }
+        async function initBgSequence({ el, dir, start, end, fps }) {
+            const res = await fetch(dir + 'frames.json');
+            const filenames = await res.json();
+            const frames = filenames.slice(start, end + 1).map(name => dir + name);
 
             if (!frames.length) return;
 
