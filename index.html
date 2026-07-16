@@ -32,7 +32,6 @@
             /* Reduce width from 50% so they only occupy the side margins */
             width: 30vw;
             height: 100%;
-            object-fit: cover;
             z-index: 0;
             pointer-events: none;
         }
@@ -164,8 +163,8 @@
 
 <body>
 
-    <img id="bg-sequence-left" class="bg-sequence" alt="">
-    <img id="bg-sequence-right" class="bg-sequence" alt="">
+    <canvas id="bg-sequence-left" class="bg-sequence"></canvas>
+    <canvas id="bg-sequence-right" class="bg-sequence"></canvas>
 
     <button id="page2-btn" onclick="window.location.href='page2.html'"></button>
 
@@ -185,38 +184,85 @@
         const popupImg = document.getElementById('popup-img');
 
         // --- animated background image sequences (left + right) ---
-        // Frame filenames are listed in frames.json inside each folder
-        // (directory listing doesn't work on GitHub Pages, so we can't
-        // guess filenames or fetch the folder itself).
-        // START/END set the first/last index (inclusive) into that list to use.
+        // Each sequence is a single horizontal sprite-sheet atlas (one row
+        // of same-size frames) so the browser decodes one image instead of
+        // decoding a new file on every tick — that repeated decoding was
+        // the memory leak that crashed the tab after a few minutes.
+        // START/END set the first/last frame index (inclusive) to play.
         const BG_LEFT = {
-            el: document.getElementById('bg-sequence-left'),
-            dir: 'images_to_use/bg_sequence_01/',
+            canvas: document.getElementById('bg-sequence-left'),
+            src: 'images_to_use/bg_sequence_01/bg_sequence_01_merged.webp',
+            frameW: 393,
+            frameH: 600,
+            frameCount: 35,
             start: 0,
             end: 9,
             fps: 5,
         };
 
         const BG_RIGHT = {
-            el: document.getElementById('bg-sequence-right'),
-            dir: 'images_to_use/bg_sequence_02/',
+            canvas: document.getElementById('bg-sequence-right'),
+            src: 'images_to_use/bg_sequence_02/bg_sequence_02_merged.webp',
+            frameW: 450,
+            frameH: 800,
+            frameCount: 36,
             start: 1,
             end: 6,
             fps: 12,
         };
 
-        async function initBgSequence({ el, dir, start, end, fps }) {
-            const res = await fetch(dir + 'frames.json');
-            const filenames = await res.json();
-            const frames = filenames.slice(start, end + 1).map(name => dir + name);
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
 
+        async function initBgSequence({ canvas, src, frameW, frameH, frameCount, start, end, fps }) {
+            const atlas = await loadImage(src);
+            const ctx = canvas.getContext('2d');
+
+            const resize = () => {
+                canvas.width = canvas.clientWidth;
+                canvas.height = canvas.clientHeight;
+            };
+            resize();
+            window.addEventListener('resize', resize);
+
+            const frames = [];
+            for (let n = start; n <= end && n < frameCount; n++) frames.push(n);
             if (!frames.length) return;
 
+            function draw(frameIndex) {
+                const cw = canvas.width, ch = canvas.height;
+                if (!cw || !ch) return;
+                // emulate CSS object-fit: cover — crop the source frame to the canvas aspect ratio
+                const srcAspect = frameW / frameH;
+                const dstAspect = cw / ch;
+                let sx, sy, sw, sh;
+                if (srcAspect > dstAspect) {
+                    sh = frameH;
+                    sw = frameH * dstAspect;
+                    sy = 0;
+                    sx = frameIndex * frameW + (frameW - sw) / 2;
+                } else {
+                    sw = frameW;
+                    sh = frameW / dstAspect;
+                    sx = frameIndex * frameW;
+                    sy = (frameH - sh) / 2;
+                }
+                ctx.clearRect(0, 0, cw, ch);
+                ctx.drawImage(atlas, sx, sy, sw, sh, 0, 0, cw, ch);
+            }
+
             let i = 0;
-            el.src = frames[0];
+            draw(frames[0]);
             setInterval(() => {
+                if (document.hidden) return;
                 i = (i + 1) % frames.length;
-                el.src = frames[i];
+                draw(frames[i]);
             }, 1000 / fps);
         }
 
