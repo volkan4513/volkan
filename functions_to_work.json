@@ -39,9 +39,9 @@
       "base_background_backup"
     ],
     "names_to_link": {
-      "bmw_name_image": "/projects/01",
-      "just_jump_name_image": "/projects/02",
-      "reto_image_effects_studio_image": "/projects/03"
+      "bmw_name_image": "projects/01",
+      "just_jump_name_image": "projects/02",
+      "reto_image_effects_studio_image": "projects/03"
     },
     "open_random_popup": {
       "just_cat_front": "",
