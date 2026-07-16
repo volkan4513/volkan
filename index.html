@@ -231,12 +231,8 @@
 
         async function getPopupImages() {
             if (cachedPopupImages) return cachedPopupImages;
-            const res = await fetch('popup_random_images/');
-            const html = await res.text();
-            const doc = new DOMParser().parseFromString(html, 'text/html');
-            cachedPopupImages = [...doc.querySelectorAll('a[href]')]
-                .map(a => a.getAttribute('href'))
-                .filter(href => /\.(png|jpg|jpeg|webp|gif)$/i.test(href));
+            const res = await fetch('popup_random_images/images.json');
+            cachedPopupImages = await res.json();
             return cachedPopupImages;
         }
 
