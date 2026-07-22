@@ -71,16 +71,6 @@
             transition: transform 0.15s ease, filter 0.15s ease;
         }
 
-        .layer.positioned {
-            width: auto;
-            height: auto;
-            transition: filter 0.15s ease;
-        }
-
-        .layer.positioned.dragging {
-            transition: none;
-        }
-
         .layer.active {
             transform: scale(1.025);
             z-index: 10;
@@ -317,20 +307,6 @@
             ctx.drawImage(img, (tw - w) / 2, (th - h) / 2, w, h);
         }
 
-        // Positioned images are drawn at their actual rendered rect (relative
-        // to the wrapper) instead of stretched to fill the whole canvas, so
-        // hit-testing matches where they actually render, including on resize.
-        function paintAtRect(ctx, img, rectScale, targetW, targetH, wrapperEl) {
-            ctx.clearRect(0, 0, targetW, targetH);
-            const wr = wrapperEl.getBoundingClientRect();
-            const ir = img.getBoundingClientRect();
-            const x = (ir.left - wr.left) * rectScale;
-            const y = (ir.top - wr.top) * rectScale;
-            const w = ir.width * rectScale;
-            const h = ir.height * rectScale;
-            ctx.drawImage(img, x, y, w, h);
-        }
-
         function alpha(ctx, x, y) {
             try { return ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data[3]; }
             catch { return 0; }
@@ -340,50 +316,6 @@
             return el.getAttribute('src').split('/').pop().replace(/\.[^.]+$/, '');
         }
 
-        // Lets draggable positioned images be repositioned by pointer drag.
-        // left/top are kept as %-of-wrapper (not px) so position stays
-        // anchored to the canvas, not the viewport, across resizes. Drag
-        // deltas are measured in canvas-relative px then converted to %.
-        // Logs the new position in the original design-space (W,H) coords
-        // so it can be copied back into functions_to_work.json.
-        function makeDraggable(layers, onMove, wrapperEl, designW, designH) {
-            layers.forEach(img => {
-                let startX, startY, origLeftPct, origTopPct;
-
-                img.style.pointerEvents = 'auto';
-                img.style.cursor = 'grab';
-
-                img.addEventListener('pointerdown', e => {
-                    e.preventDefault();
-                    startX = e.clientX;
-                    startY = e.clientY;
-                    origLeftPct = parseFloat(img.style.left) || 0;
-                    origTopPct = parseFloat(img.style.top) || 0;
-                    img.classList.add('dragging');
-                    img.setPointerCapture(e.pointerId);
-                });
-
-                img.addEventListener('pointermove', e => {
-                    if (!img.classList.contains('dragging')) return;
-                    const wr = wrapperEl.getBoundingClientRect();
-                    const dxPct = (e.clientX - startX) / wr.width * 100;
-                    const dyPct = (e.clientY - startY) / wr.height * 100;
-                    img.style.left = (origLeftPct + dxPct) + '%';
-                    img.style.top = (origTopPct + dyPct) + '%';
-                    onMove?.(img);
-                });
-
-                img.addEventListener('pointerup', e => {
-                    if (!img.classList.contains('dragging')) return;
-                    img.classList.remove('dragging');
-                    img.releasePointerCapture(e.pointerId);
-                    const x = Math.round(parseFloat(img.style.left) / 100 * designW);
-                    const y = Math.round(parseFloat(img.style.top) / 100 * designH);
-                    console.log(imgName(img) + ' position: ' + x + ',' + y + ',draggable');
-                });
-            });
-        }
-
         async function init() {
             const config = await fetch('functions_to_work.json').then(r => r.json());
             const filenames = [...(config[0]?.image_filenames ?? [])].reverse();
@@ -391,19 +323,6 @@
             const namesToLink = config[0]?.names_to_link ?? {};
             const openRandomPopup = config[0]?.open_random_popup ?? {};
             const scrollDown = config[0]?.scroll_down ?? {};
-            const randomImageClick = config[0]?.random_image_click ?? {};
-
-            const imagesToPos = {};
-            for (const [name, spec] of Object.entries(config[0]?.images_to_pos ?? {})) {
-                const parts = spec.split(',');
-                const scaleToken = parts[2] !== undefined && parts[2] !== 'draggable' ? parseFloat(parts[2]) : NaN;
-                imagesToPos[name] = {
-                    x: parseFloat(parts[0]),
-                    y: parseFloat(parts[1]),
-                    scale: Number.isFinite(scaleToken) ? scaleToken : 1,
-                    draggable: parts.includes('draggable'),
-                };
-            }
 
             const EXTENSIONS = ['webp', 'png', 'jpg', 'jpeg'];
 
@@ -417,63 +336,9 @@
                 const img = document.createElement('img');
                 img.className = 'layer';
                 img.alt = decodeURIComponent(name);
-
-                const pos = imagesToPos[name];
-                if (pos) {
-                    img.classList.add('positioned');
-                    img.style.left = (pos.x / W * 100) + '%';
-                    img.style.top = (pos.y / H * 100) + '%';
-                    if (pos.draggable) {
-                        img.classList.add('draggable-layer');
-                        img.dataset.draggable = 'true';
-                    }
-                    img.addEventListener('load', () => {
-                        img.style.width = (img.naturalWidth * pos.scale / W * 100) + '%';
-                        img.style.height = (img.naturalHeight * pos.scale / H * 100) + '%';
-                    });
-                }
-
                 wrapper.appendChild(img);
                 loadWithFallback(img, name, 0);
             });
-
-            const randomImageNodes = {};
-            function applyRandomImagePos(img, name) {
-                const pos = imagesToPos[name];
-                if (!pos) return;
-                img.style.left = (pos.x / W * 100) + '%';
-                img.style.top = (pos.y / H * 100) + '%';
-                img.onload = () => {
-                    img.style.width = (img.naturalWidth * pos.scale / W * 100) + '%';
-                    img.style.height = (img.naturalHeight * pos.scale / H * 100) + '%';
-                };
-            }
-            for (const [triggerName, options] of Object.entries(randomImageClick)) {
-                const img = document.createElement('img');
-                img.className = 'layer positioned';
-                const initialName = options[0];
-                img.alt = decodeURIComponent(initialName);
-                applyRandomImagePos(img, initialName);
-                img.style.display = 'none';
-                wrapper.appendChild(img);
-                loadWithFallback(img, initialName, 0);
-                randomImageNodes[triggerName] = { img, options };
-            }
-
-            function showRandomImage(triggerName) {
-                const entry = randomImageNodes[triggerName];
-                if (!entry) return;
-                const { img, options } = entry;
-                const name = options[Math.floor(Math.random() * options.length)];
-                img.alt = decodeURIComponent(name);
-                applyRandomImagePos(img, name);
-                const onFirstLoad = img.onload;
-                img.onload = () => {
-                    onFirstLoad();
-                    img.style.display = '';
-                };
-                loadWithFallback(img, name, 0);
-            }
 
             const noHighlight = name => name.startsWith('base') || name.includes('text') || name.includes('noselect');
 
@@ -498,23 +363,9 @@
 
             await Promise.all(entries.map(entry => new Promise(resolve => {
                 const img = entry.el;
-                const paint = () => {
-                    if (img.classList.contains('positioned')) {
-                        paintAtRect(entry.ctx, img, hitScale, hitW, hitH, wrapper);
-                    } else {
-                        paintContained(entry.ctx, img, hitW, hitH);
-                    }
-                    entry.ready = true;
-                    resolve();
-                };
+                const paint = () => { paintContained(entry.ctx, img, hitW, hitH); entry.ready = true; resolve(); };
                 img.complete && img.naturalWidth ? paint() : img.addEventListener('load', paint);
             })));
-
-            const repaintHit = el => {
-                const entry = entries.find(e => e.el === el);
-                if (entry && entry.ready) paintAtRect(entry.ctx, el, hitScale, hitW, hitH, wrapper);
-            };
-            makeDraggable(wrapper.querySelectorAll('.draggable-layer'), repaintHit, wrapper, W, H);
 
             function hitAt(mx, my) {
                 const sx = mx * hitScale, sy = my * hitScale;
@@ -588,8 +439,6 @@
                     window.location.href = namesToLink[name];
                 } else if (name in openRandomPopup) {
                     showRandomPopup();
-                } else if (name in randomImageClick) {
-                    showRandomImage(name);
                 } else if (name in scrollDown) {
                     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                 }
