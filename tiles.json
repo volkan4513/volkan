@@ -574,6 +574,631 @@
                     "spriteIndex": 0
                 }
             ]
+        },
+        {
+            "name": "level6",
+            "gridCols": 7,
+            "gridRows": 7,
+            "tiles": [
+                {
+                    "id": "tile1784720481154",
+                    "color": "#4caf50",
+                    "row": 2,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "tile1784720490305",
+                    "color": "#4caf50",
+                    "row": 1,
+                    "col": 1,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1784720497313",
+                    "color": "#4caf50",
+                    "row": 3,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1784720509170",
+                    "color": "#4caf50",
+                    "row": 3,
+                    "col": 0,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "tile1784720542363",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 4,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "tile1784720546236",
+                    "color": "#4caf50",
+                    "row": 5,
+                    "col": 3,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "tile1784720549364",
+                    "color": "#4caf50",
+                    "row": 4,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "tile1784720559164",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 0,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 22
+                },
+                {
+                    "id": "tile1784720567483",
+                    "color": "#4caf50",
+                    "row": 4,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 5
+                },
+                {
+                    "id": "tile1784720573613",
+                    "color": "#4caf50",
+                    "row": 6,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 2
+                },
+                {
+                    "id": "tile1784720581741",
+                    "color": "#4caf50",
+                    "row": 1,
+                    "col": 5,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 20
+                }
+            ]
+        },
+        {
+            "name": "level7",
+            "gridCols": 6,
+            "gridRows": 6,
+            "tiles": [
+                {
+                    "id": "tile1784720615301",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 1,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1784720621069",
+                    "color": "#4caf50",
+                    "row": 2,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "tile1784720640518",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 3
+                },
+                {
+                    "id": "tile1784720643701",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 2
+                },
+                {
+                    "id": "tile1784720648550",
+                    "color": "#4caf50",
+                    "row": 1,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "tile1784720652478",
+                    "color": "#4caf50",
+                    "row": 3,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 8
+                },
+                {
+                    "id": "tile1784720657174",
+                    "color": "#4caf50",
+                    "row": 4,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 11
+                },
+                {
+                    "id": "tile1784720660878",
+                    "color": "#4caf50",
+                    "row": 2,
+                    "col": 4,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 22
+                }
+            ]
+        },
+        {
+            "name": "level8",
+            "gridCols": 6,
+            "gridRows": 7,
+            "tiles": [
+                {
+                    "id": "tile1784720700528",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 1,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "tile1784720705327",
+                    "color": "#4caf50",
+                    "row": 2,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "tile1784720710543",
+                    "color": "#4caf50",
+                    "row": 1,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1784720712543",
+                    "color": "#4caf50",
+                    "row": 3,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "tile1784720716751",
+                    "color": "#4caf50",
+                    "row": 4,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 6
+                },
+                {
+                    "id": "tile1784720720855",
+                    "color": "#4caf50",
+                    "row": 5,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 3
+                },
+                {
+                    "id": "tile1784720723144",
+                    "color": "#4caf50",
+                    "row": 3,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 4
+                },
+                {
+                    "id": "tile1784720727063",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "tile1784720732176",
+                    "color": "#4caf50",
+                    "row": 3,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 11
+                },
+                {
+                    "id": "tile1784720733175",
+                    "color": "#4caf50",
+                    "row": 4,
+                    "col": 3,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "tile1784720734464",
+                    "color": "#4caf50",
+                    "row": 5,
+                    "col": 0,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 10
+                },
+                {
+                    "id": "tile1784720738152",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 5,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 22
+                }
+            ]
+        },
+        {
+            "name": "level9",
+            "gridCols": 6,
+            "gridRows": 6,
+            "tiles": [
+                {
+                    "id": "tile1784720810840",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 2
+                },
+                {
+                    "id": "tile1784720815354",
+                    "color": "#4caf50",
+                    "row": 1,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 1
+                },
+                {
+                    "id": "tile1784721494218",
+                    "color": "#4caf50",
+                    "row": 3,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 8
+                },
+                {
+                    "id": "tile1784721502498",
+                    "color": "#4caf50",
+                    "row": 5,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 3
+                },
+                {
+                    "id": "tile1784721505347",
+                    "color": "#4caf50",
+                    "row": 3,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 5
+                },
+                {
+                    "id": "tile1784721508138",
+                    "color": "#4caf50",
+                    "row": 4,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 6
+                },
+                {
+                    "id": "tile1784721514546",
+                    "color": "#4caf50",
+                    "row": 2,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "tile1784721519474",
+                    "color": "#4caf50",
+                    "row": 1,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1784721524058",
+                    "color": "#4caf50",
+                    "row": 2,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "tile1784721525738",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "tile1784721527770",
+                    "color": "#4caf50",
+                    "row": 1,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1784721532282",
+                    "color": "#4caf50",
+                    "row": 4,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                }
+            ]
+        },
+        {
+            "name": "level10",
+            "gridCols": 6,
+            "gridRows": 7,
+            "tiles": [
+                {
+                    "id": "tile1784721606387",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 6
+                },
+                {
+                    "id": "tile1784721613739",
+                    "color": "#4caf50",
+                    "row": 3,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 2
+                },
+                {
+                    "id": "tile1784721617555",
+                    "color": "#4caf50",
+                    "row": 4,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 5
+                },
+                {
+                    "id": "tile1784721636315",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "tile1784721646491",
+                    "color": "#4caf50",
+                    "row": 1,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "tile1784721653524",
+                    "color": "#4caf50",
+                    "row": 2,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "tile1784721656699",
+                    "color": "#4caf50",
+                    "row": 1,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1784721661227",
+                    "color": "#4caf50",
+                    "row": 0,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "tile1784721662564",
+                    "color": "#4caf50",
+                    "row": 1,
+                    "col": 4,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "tile1784721663707",
+                    "color": "#4caf50",
+                    "row": 2,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "tile1784721681299",
+                    "color": "#4caf50",
+                    "row": 4,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "tile1784721698116",
+                    "color": "#4caf50",
+                    "row": 5,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "tile1784721699539",
+                    "color": "#4caf50",
+                    "row": 6,
+                    "col": 0,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 10
+                },
+                {
+                    "id": "tile1784721706124",
+                    "color": "#4caf50",
+                    "row": 6,
+                    "col": 3,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 11
+                },
+                {
+                    "id": "tile1784721752452",
+                    "color": "#4caf50",
+                    "row": 3,
+                    "col": 0,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 20
+                }
+            ]
         }
     ],
     "sprites": [

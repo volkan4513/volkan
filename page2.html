@@ -152,11 +152,18 @@
         }
 
 
-        .level-bar {
+        .top-bar {
             position: fixed;
             top: 24px;
             left: 50%;
             transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            z-index: 6;
+        }
+
+        .level-bar {
             display: flex;
             gap: 10px;
             align-items: center;
@@ -166,17 +173,15 @@
             text-transform: uppercase;
             color: #4caf50;
             text-shadow: 0 0 12px rgba(76, 175, 80, 0.6);
+            white-space: nowrap;
         }
 
         .timer {
-            position: fixed;
-            top: calc(50% - var(--board-half-h, 200px) - 90px);
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 48px;
+            font-size: 32px;
             font-weight: bold;
             font-variant-numeric: tabular-nums;
             text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            white-space: nowrap;
         }
 
         .timer.warning {
@@ -185,7 +190,7 @@
 
         .skip-btn {
             position: fixed;
-            top: calc(50% - var(--board-half-h, 200px) - 90px);
+            top: max(150px, calc(50% - var(--board-half-h, 200px) - 30px));
             left: 50%;
             transform: translateX(-50%);
             background: #555;
@@ -196,6 +201,7 @@
             border-radius: 6px;
             cursor: pointer;
             display: none;
+            z-index: 6;
         }
 
         .skip-btn.show {
@@ -204,15 +210,16 @@
 
         .struggling-message {
             position: fixed;
-            top: calc(50% - var(--board-half-h, 200px) - 130px);
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 20px;
+            top: 50%;
+            left: 24px;
+            transform: translateY(-50%);
+            max-width: min(260px, 30vw);
+            font-size: 18px;
             color: #ffcc66;
             opacity: 0;
             transition: opacity 0.3s ease;
             pointer-events: none;
-            text-align: center;
+            text-align: left;
         }
 
         .struggling-message.show {
@@ -259,8 +266,10 @@
 <body>
     <button class="side-button" onclick="window.location.href='index.html'"></button>
 
-    <div class="level-bar" id="levelBar"></div>
-    <div class="timer" id="timer">5:00</div>
+    <div class="top-bar">
+        <div class="level-bar" id="levelBar"></div>
+        <div class="timer" id="timer">5:00</div>
+    </div>
 
     <div class="score-panel" id="scorePanel">
         <div class="score-panel-title">Scores</div>
@@ -278,7 +287,32 @@
 
     <script>
         const CELL_PX = 110;
-        const LEVEL_TIME_MS = 3 * 60 * 1000;
+        const LEVEL_TIME_MS = 90 * 1000;
+        const QUOTES_START_DELAY_MS = 20 * 1000;
+        const QUOTE_INTERVAL_MS = 8 * 1000;
+        const STRUGGLING_QUOTES = [
+            'Wow. Still stuck. Riveting.',
+            'The timer isn\'t just decoration, you know.',
+            'Have you tried using your brain? Worth a shot.',
+            'A toddler would\'ve solved this by now.',
+            'The exit is RIGHT THERE. It\'s not subtle.',
+            'Maybe puzzles just aren\'t your thing. At all. Ever.',
+            'This is genuinely embarrassing to watch.',
+            'Keep going, failure builds character. You must be very strong by now.',
+            'At this rate the tiles will retire before you finish.',
+            'Not to be rude, but... too late.',
+            'Skip it. Save yourself the humiliation.',
+            'I\'ve seen rocks solve puzzles faster.'
+        ];
+
+        function shuffledQuotes() {
+            const arr = STRUGGLING_QUOTES.slice();
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
         const SHEET_CELL = 80; // sprite sheet is authored on an 80px grid, same as game tiles
 
         function spriteRect(s) {
@@ -326,6 +360,9 @@
             let levelEndTime = 0;
             let timerStarted = false;
             let autoAdvanceTimeout = null;
+            let quotesStartTimeout = null;
+            let quoteInterval = null;
+            let quoteDeck = [];
             const scores = [];
 
             function renderScorePanel() {
@@ -362,8 +399,39 @@
                 }
             }
 
+            function stopQuotes() {
+                if (quotesStartTimeout) {
+                    clearTimeout(quotesStartTimeout);
+                    quotesStartTimeout = null;
+                }
+                if (quoteInterval) {
+                    clearInterval(quoteInterval);
+                    quoteInterval = null;
+                }
+            }
+
+            function nextQuote() {
+                if (!quoteDeck.length) quoteDeck = shuffledQuotes();
+                return quoteDeck.pop();
+            }
+
+            function showNextQuote() {
+                strugglingMessage.textContent = nextQuote();
+            }
+
+            function startQuotes() {
+                stopQuotes();
+                quoteDeck = shuffledQuotes();
+                quotesStartTimeout = setTimeout(() => {
+                    strugglingMessage.textContent = nextQuote();
+                    strugglingMessage.classList.add('show');
+                    quoteInterval = setInterval(showNextQuote, QUOTE_INTERVAL_MS);
+                }, QUOTES_START_DELAY_MS);
+            }
+
             function resetTimerState() {
                 stopTimer();
+                stopQuotes();
                 timerStarted = false;
                 timerEl.classList.remove('warning');
                 skipBtn.classList.remove('show');
@@ -381,6 +449,7 @@
                 strugglingMessage.classList.remove('show');
                 updateTimerDisplay();
                 timerInterval = setInterval(updateTimerDisplay, 250);
+                startQuotes();
             }
 
             function updateTimerDisplay() {
@@ -392,6 +461,7 @@
                     skipBtn.classList.add('show');
                     strugglingMessage.classList.add('show');
                     stopTimer();
+                    stopQuotes();
                 }
             }
 
@@ -617,6 +687,7 @@
 
             function showSuccess() {
                 stopTimer();
+                stopQuotes();
                 skipBtn.classList.remove('show');
                 strugglingMessage.classList.remove('show');
 
