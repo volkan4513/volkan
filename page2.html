@@ -3,112 +3,237 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Escape Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="preload" href="images_to_use/tiles_texture_pixel.png" as="image">
     <style>
+        :root {
+            --ink: #0d0d0d;
+            --panel: #1b1d22;
+            --panel-hi: #2a2d35;
+            --line: #000;
+            --text: #f4f1e8;
+            --muted: #8d93a0;
+            --go: #4caf50;
+            --hi: #ffd23f;
+            --red: #ff4d4d;
+            --px: 3px;               /* chunky border / shadow unit */
+            --cell: 80px;            /* set from JS to fit the screen */
+            --font: 'Press Start 2P', ui-monospace, monospace;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             background:
-                radial-gradient(circle at 50% 30%, #1c2b22 0%, #0d0d0d 60%),
-                repeating-linear-gradient(45deg, #111 0px, #111 2px, #0d0d0d 2px, #0d0d0d 40px);
-            min-height: 100vh;
-            color: #fff;
-            font-family: sans-serif;
-            font-size: 24px;
+                radial-gradient(circle at 50% 35%, #1c2b22 0%, var(--ink) 65%),
+                var(--ink);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 12px;
+            line-height: 1.5;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
-        .side-button {
+        /* CRT scanlines over everything, as in the effect studio */
+        body::after {
+            content: '';
             position: fixed;
-            top: 20px;
-            right: 20px;
-            width: 180px;
-            height: 320px;
-            border: none;
-            background: url('images_to_use/page1_btn_image.webp') no-repeat center / contain;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9000;
+            background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 4px);
+        }
+
+        .app {
+            height: 100vh;
+            height: 100dvh;
+            display: grid;
+            grid-template-rows: auto auto 1fr auto;
+            padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+            gap: 10px;
+        }
+
+        /* ---------- pixel UI primitives ---------- */
+        .px-btn {
+            font: inherit;
+            font-size: 11px;
+            color: var(--text);
+            background: var(--panel-hi);
+            border: var(--px) solid var(--line);
+            box-shadow:
+                inset calc(var(--px) * -1) calc(var(--px) * -1) 0 rgba(0, 0, 0, 0.45),
+                inset var(--px) var(--px) 0 rgba(255, 255, 255, 0.18),
+                var(--px) var(--px) 0 var(--line);
+            padding: 10px 12px;
+            min-height: 40px;
             cursor: pointer;
+            touch-action: manipulation;
+            white-space: nowrap;
         }
 
-        .board-wrapper {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        .px-btn:hover {
+            background: #3a3f4a;
+        }
+
+        .px-btn:active,
+        .px-btn.pressed {
+            transform: translate(var(--px), var(--px));
+            box-shadow:
+                inset var(--px) var(--px) 0 rgba(0, 0, 0, 0.45);
+        }
+
+        .px-btn:disabled {
+            opacity: 0.35;
+            cursor: default;
+            transform: none;
+        }
+
+        .px-btn:focus-visible {
+            outline: var(--px) solid var(--hi);
+            outline-offset: 2px;
+        }
+
+        .px-btn.go {
+            background: var(--go);
+            color: var(--ink);
+        }
+
+        .px-btn.warn {
+            background: var(--hi);
+            color: var(--ink);
+        }
+
+        .px-panel {
+            background: var(--panel);
+            border: var(--px) solid var(--line);
+            box-shadow:
+                inset var(--px) var(--px) 0 rgba(255, 255, 255, 0.08),
+                var(--px) var(--px) 0 var(--line);
+        }
+
+        /* ---------- header ---------- */
+        .hud {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .level-title {
+            font-size: clamp(12px, 3.2vw, 18px);
+            color: var(--go);
+            text-shadow: var(--px) var(--px) 0 var(--line);
+            letter-spacing: 1px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .stat {
+            padding: 6px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 84px;
+        }
+
+        .stat-label {
+            font-size: 8px;
+            color: var(--muted);
+        }
+
+        .stat-value {
+            font-size: 14px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-value.warning {
+            color: var(--red);
+            animation: blink 0.5s steps(2) infinite;
+        }
+
+        /* ---------- board ---------- */
+        .stage {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+        }
+
+        .board-frame {
+            position: relative;
+            border: calc(var(--px) + 1px) solid var(--line);
+            box-shadow: 0 0 0 var(--px) #4a4f5a, calc(var(--px) * 3) calc(var(--px) * 3) 0 var(--line);
+            /* reserve room for the exit sign on the right */
+            margin-right: calc(var(--cell) * 0.7);
         }
 
         .board {
             position: relative;
-            display: grid;
-            border: 2px solid #fff;
-            border-right: none;
-            opacity: 1;
-            transform: scale(1);
-            transition: opacity 1.1s ease, transform 1.1s ease;
+            overflow: hidden;
+            background-color: #3b3e44;
+            image-rendering: pixelated;
+            background-size: var(--cell) var(--cell);
+            touch-action: none;
         }
 
-        .board.transitioning {
-            opacity: 0;
-            transform: scale(0.9);
+        .board.enter {
+            animation: board-in 0.35s steps(5) both;
         }
 
-        .flash-overlay {
+        @keyframes board-in {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+        }
+
+        .gate {
             position: absolute;
-            inset: 0;
-            background: #fff;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 50;
+            right: calc((var(--px) + 1px) * -1);
+            width: calc(var(--px) + 1px);
+            background: #3b3e44;
         }
 
-        .flash-overlay.flash {
-            animation: flash-white 1.4s ease-out;
-        }
-
-        @keyframes flash-white {
-            0% { opacity: 0; }
-            25% { opacity: 0.85; }
-            100% { opacity: 0; }
-        }
-
-        .flash-success-text {
+        .exit-sign {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.7);
-            font-size: 42px;
-            font-weight: bold;
-            color: #2e7d32;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 51;
-            text-shadow: 0 0 20px rgba(76, 175, 80, 0.8);
+            left: calc(100% + var(--px) + 4px);
+            width: calc(var(--cell) * 0.62);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--hi);
+            font-size: calc(var(--cell) * 0.26);
+            text-shadow: 2px 2px 0 var(--line);
+            animation: nudge 0.8s steps(2) infinite;
         }
 
-        .flash-success-text.show {
-            animation: flash-success-pop 1.6s ease-out;
-        }
-
-        @keyframes flash-success-pop {
-            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-            25% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
-            70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
-        }
-
-        .board .gate {
-            position: absolute;
-            right: -2px;
-            width: 2px;
-            background: #0d0d0d;
-            z-index: 5;
-        }
-
-        .cell {
-            border: 1px solid #333;
+        @keyframes nudge {
+            50% {
+                transform: translateX(4px);
+            }
         }
 
         .tile {
@@ -116,180 +241,420 @@
             top: 0;
             left: 0;
             cursor: grab;
-            transition: transform 0.15s ease-out;
+            touch-action: none;
+            will-change: transform;
         }
 
         .tile.dragging {
             cursor: grabbing;
-            transition: none;
             z-index: 10;
         }
 
-        .tile.win-tile {
-            z-index: 2;
-            filter: drop-shadow(0 0 6px rgba(255, 60, 60, 0.9)) drop-shadow(0 0 16px rgba(255, 60, 60, 0.6));
-            animation: win-tile-pulse 1.6s ease-in-out infinite;
-        }
-
-        @keyframes win-tile-pulse {
-            0%, 100% {
-                filter: drop-shadow(0 0 6px rgba(255, 60, 60, 0.9)) drop-shadow(0 0 16px rgba(255, 60, 60, 0.5));
-            }
-            50% {
-                filter: drop-shadow(0 0 10px rgba(255, 90, 90, 1)) drop-shadow(0 0 26px rgba(255, 60, 60, 0.85));
-            }
+        .tile.snap {
+            transition: transform 0.12s steps(3);
         }
 
         .tile-sprite {
-            width: 100%;
-            height: 100%;
+            position: absolute;
+            inset: 0;
+            background-image: url('images_to_use/tiles_texture_pixel.png');
             background-repeat: no-repeat;
+            image-rendering: pixelated;
+            pointer-events: none;
         }
 
         .tile-sprite.rotated {
+            inset: auto;
             transform: rotate(90deg);
-            transform-origin: center;
         }
 
-
-        .top-bar {
-            position: fixed;
-            top: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            z-index: 6;
+        .tile-flat {
+            position: absolute;
+            inset: 8%;
+            border: var(--px) solid var(--line);
+            box-shadow: inset calc(var(--px) * -1) calc(var(--px) * -1) 0 rgba(0, 0, 0, 0.35);
         }
 
-        .level-bar {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            font-size: 26px;
-            font-weight: bold;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: #4caf50;
-            text-shadow: 0 0 12px rgba(76, 175, 80, 0.6);
-            white-space: nowrap;
-        }
-
-        .timer {
-            font-size: 32px;
-            font-weight: bold;
-            font-variant-numeric: tabular-nums;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-            white-space: nowrap;
-        }
-
-        .timer.warning {
-            color: #ff6b6b;
-        }
-
-        .skip-btn {
-            position: fixed;
-            top: max(150px, calc(50% - var(--board-half-h, 200px) - 30px));
-            left: 50%;
-            transform: translateX(-50%);
-            background: #555;
-            color: #fff;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            display: none;
-            z-index: 6;
-        }
-
-        .skip-btn.show {
-            display: block;
-        }
-
-        .struggling-message {
-            position: fixed;
-            top: 50%;
-            left: 24px;
-            transform: translateY(-50%);
-            max-width: min(260px, 30vw);
-            font-size: 18px;
-            color: #ffcc66;
-            opacity: 0;
-            transition: opacity 0.3s ease;
+        /* blinking pixel brackets — on the hero car always, on the selected car */
+        .tile::after {
+            content: '';
+            position: absolute;
+            inset: 2px;
             pointer-events: none;
-            text-align: left;
+            opacity: 0;
+            --c: var(--hi);
+            --s: max(6px, calc(var(--cell) * 0.12));
+            background:
+                linear-gradient(var(--c), var(--c)) top left / var(--s) var(--px),
+                linear-gradient(var(--c), var(--c)) top left / var(--px) var(--s),
+                linear-gradient(var(--c), var(--c)) top right / var(--s) var(--px),
+                linear-gradient(var(--c), var(--c)) top right / var(--px) var(--s),
+                linear-gradient(var(--c), var(--c)) bottom left / var(--s) var(--px),
+                linear-gradient(var(--c), var(--c)) bottom left / var(--px) var(--s),
+                linear-gradient(var(--c), var(--c)) bottom right / var(--s) var(--px),
+                linear-gradient(var(--c), var(--c)) bottom right / var(--px) var(--s);
+            background-repeat: no-repeat;
         }
 
-        .struggling-message.show {
+        .tile.win-tile::after {
+            --c: var(--red);
             opacity: 1;
+            animation: blink 0.8s steps(2) infinite;
         }
 
+        .tile.selected::after {
+            --c: var(--hi);
+            opacity: 1;
+            animation: none;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0.25;
+            }
+        }
+
+        /* ---------- toast (struggling quotes) ---------- */
+        .toast {
+            position: absolute;
+            left: 50%;
+            bottom: 4px;
+            transform: translate(-50%, 8px);
+            max-width: min(520px, 92%);
+            padding: 10px 12px;
+            font-size: 10px;
+            color: var(--hi);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.2s steps(3), transform 0.2s steps(3);
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        /* ---------- controls ---------- */
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 48px);
+            grid-template-rows: repeat(2, 44px);
+            gap: 4px;
+        }
+
+        .dpad .px-btn {
+            padding: 0;
+            font-size: 14px;
+            min-height: 0;
+        }
+
+        .dpad [data-dir="up"] {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .dpad [data-dir="left"] {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .dpad [data-dir="down"] {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .dpad [data-dir="right"] {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .hint {
+            font-size: 8px;
+            color: var(--muted);
+            text-align: center;
+            max-width: 200px;
+        }
+
+        #skipBtn {
+            display: none;
+        }
+
+        #skipBtn.show {
+            display: inline-block;
+        }
+
+        /* ---------- session scores (wide screens only) ---------- */
         .score-panel {
             position: fixed;
-            top: 24px;
-            left: 24px;
-            display: flex;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            width: 210px;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 12px;
+            display: none;
             flex-direction: column;
             gap: 6px;
-            font-size: 14px;
-            max-height: 80vh;
-            overflow-y: auto;
+            font-size: 9px;
         }
 
         .score-panel-title {
-            font-size: 16px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #4caf50;
+            color: var(--go);
             margin-bottom: 4px;
         }
 
         .score-entry {
             display: flex;
             justify-content: space-between;
-            gap: 16px;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 4px 10px;
-            border-radius: 4px;
+            gap: 8px;
         }
 
-        .score-entry .score-time {
-            color: #4caf50;
-            font-variant-numeric: tabular-nums;
+        .score-entry .stars {
+            color: var(--hi);
+            font-size: 12px;
+        }
+
+        @media (min-width: 1100px) {
+            .score-panel.has-scores {
+                display: flex;
+            }
+        }
+
+        /* ---------- modals ---------- */
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 16px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-card {
+            width: min(520px, 100%);
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 18px;
+            animation: pop 0.25s steps(4) both;
+        }
+
+        @keyframes pop {
+            from {
+                transform: scale(0.6);
+                opacity: 0;
+            }
+        }
+
+        .modal-title {
+            font-size: 16px;
+            color: var(--go);
+            text-shadow: var(--px) var(--px) 0 var(--line);
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+            gap: 10px;
+        }
+
+        .level-grid .px-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 4px;
+            font-size: 13px;
+        }
+
+        .level-grid .px-btn.current {
+            outline: var(--px) solid var(--hi);
+        }
+
+        /* the pixel font has no star glyph — use a system font at a size
+           where the fallback glyph reads clearly */
+        .stars {
+            font-family: system-ui, sans-serif;
+            line-height: 1;
+        }
+
+        .level-grid .stars {
+            font-size: 15px;
+            color: var(--hi);
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 0 var(--line);
+        }
+
+        .level-grid .px-btn.go .stars {
+            color: var(--ink);
+            text-shadow: none;
+        }
+
+        .level-grid .stars.none {
+            color: var(--muted);
+        }
+
+        .clear-card {
+            text-align: center;
+        }
+
+        .clear-stars {
+            font-family: system-ui, sans-serif;
+            font-size: 34px;
+            color: var(--hi);
+            letter-spacing: 6px;
+            margin: 6px 0 14px;
+            text-shadow: var(--px) var(--px) 0 var(--line);
+        }
+
+        .clear-stars .off {
+            color: #444;
+        }
+
+        .clear-lines {
+            font-size: 10px;
+            line-height: 2.2;
+            margin-bottom: 16px;
+        }
+
+        .clear-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 520px) {
+            body {
+                font-size: 10px;
+            }
+
+            .px-btn {
+                font-size: 9px;
+                padding: 8px 9px;
+            }
+
+            .stat {
+                min-width: 70px;
+                padding: 5px 6px;
+            }
+
+            .stat-value {
+                font-size: 12px;
+            }
+
+            .hint {
+                display: none;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
         }
     </style>
 </head>
 
 <body>
-    <button class="side-button" onclick="window.location.href='index.html'"></button>
+    <script src="pixel-transition.js"></script>
+    <script>PixelTransition.reveal();</script>
 
-    <div class="top-bar">
-        <div class="level-bar" id="levelBar"></div>
-        <div class="timer" id="timer">5:00</div>
+    <div class="app">
+        <header class="hud">
+            <button class="px-btn" id="backBtn" aria-label="Back to portfolio">&#9664; HOME</button>
+            <div class="level-title" id="levelBar">LEVEL 1</div>
+            <button class="px-btn" id="levelsBtn">LEVELS</button>
+        </header>
+
+        <div class="stats">
+            <div class="stat px-panel"><span class="stat-label">TIME</span><span class="stat-value" id="timer">1:30</span></div>
+            <div class="stat px-panel"><span class="stat-label">MOVES</span><span class="stat-value" id="moves">0</span></div>
+            <div class="stat px-panel"><span class="stat-label">PAR</span><span class="stat-value" id="par">-</span></div>
+        </div>
+
+        <main class="stage" id="stage">
+            <div class="board-frame" id="boardFrame">
+                <div class="board" id="board"></div>
+            </div>
+            <div class="toast px-panel" id="strugglingMessage" role="status"></div>
+        </main>
+
+        <footer class="controls">
+            <div class="control-group">
+                <button class="px-btn" id="undoBtn" title="Undo (Z)">UNDO</button>
+                <button class="px-btn" id="resetBtn" title="Restart (R)">RESET</button>
+                <button class="px-btn warn" id="skipBtn">SKIP &#9654;</button>
+            </div>
+            <div class="dpad" id="dpad" aria-label="Move selected vehicle">
+                <button class="px-btn" data-dir="up" aria-label="Move up">&#9650;</button>
+                <button class="px-btn" data-dir="left" aria-label="Move left">&#9664;</button>
+                <button class="px-btn" data-dir="down" aria-label="Move down">&#9660;</button>
+                <button class="px-btn" data-dir="right" aria-label="Move right">&#9654;</button>
+            </div>
+            <div class="hint">Drag a car, or tap it and use the arrows. Get the red car to the EXIT.</div>
+        </footer>
     </div>
 
-    <div class="score-panel" id="scorePanel">
-        <div class="score-panel-title">Scores</div>
+    <aside class="score-panel px-panel" id="scorePanel">
+        <div class="score-panel-title">SCORES</div>
+    </aside>
+
+    <div class="modal" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelModalTitle">
+        <div class="modal-card px-panel">
+            <div class="modal-title" id="levelModalTitle">SELECT LEVEL</div>
+            <div class="level-grid" id="levelGrid"></div>
+        </div>
     </div>
 
-    <button class="skip-btn" id="skipBtn">Skip</button>
-    <div class="struggling-message" id="strugglingMessage">You are struggling, wanna try another one?</div>
-
-    <div class="board-wrapper">
-        <div class="board" id="board">
-            <div class="flash-overlay" id="flashOverlay"></div>
-            <div class="flash-success-text" id="flashSuccessText">Success!</div>
+    <div class="modal" id="clearModal" role="dialog" aria-modal="true" aria-labelledby="clearTitle">
+        <div class="modal-card px-panel clear-card">
+            <div class="modal-title" id="clearTitle">LEVEL CLEAR!</div>
+            <div class="clear-stars" id="clearStars"></div>
+            <div class="clear-lines" id="clearLines"></div>
+            <div class="clear-actions">
+                <button class="px-btn" id="replayBtn">REPLAY</button>
+                <button class="px-btn go" id="nextBtn">NEXT &#9654;</button>
+            </div>
         </div>
     </div>
 
     <script>
-        const CELL_PX = 110;
         const LEVEL_TIME_MS = 90 * 1000;
         const QUOTES_START_DELAY_MS = 20 * 1000;
         const QUOTE_INTERVAL_MS = 8 * 1000;
+        const MAX_CELL = 104;
+        const SHEET_COLS = 6, SHEET_ROWS = 12;   // tiles_texture is a 6x12 grid of cells
+        const ART_PX_PER_CELL = 16;              // pixel-art sheet resolution per cell
+        const STORE_KEY = 'parking-puzzle-progress';
         const STRUGGLING_QUOTES = [
             'Wow. Still stuck. Riveting.',
             'The timer isn\'t just decoration, you know.',
@@ -305,6 +670,17 @@
             'I\'ve seen rocks solve puzzles faster.'
         ];
 
+        const $ = id => document.getElementById(id);
+        const board = $('board'), boardFrame = $('boardFrame'), stage = $('stage');
+        const timerEl = $('timer'), movesEl = $('moves'), parEl = $('par');
+        const levelBar = $('levelBar'), skipBtn = $('skipBtn'), toast = $('strugglingMessage');
+        const scorePanel = $('scorePanel');
+        const dpadButtons = [...document.querySelectorAll('#dpad [data-dir]')];
+
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+        const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
         function shuffledQuotes() {
             const arr = STRUGGLING_QUOTES.slice();
             for (let i = arr.length - 1; i > 0; i--) {
@@ -313,404 +689,625 @@
             }
             return arr;
         }
-        const SHEET_CELL = 80; // sprite sheet is authored on an 80px grid, same as game tiles
 
-        function spriteRect(s) {
-            return { sheetX: s.sheetCol * SHEET_CELL, sheetY: s.sheetRow * SHEET_CELL, sheetW: s.cellsWide * SHEET_CELL, sheetH: s.cellsTall * SHEET_CELL };
+        function formatTime(ms) {
+            const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+            return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
         }
 
-        async function init() {
-            const config = await fetch('tiles.json').then(r => r.json());
-            const spriteList = config.sprites || [];
-            const sheetImg = new Image();
-            const sheetLoaded = new Promise(resolve => {
-                sheetImg.onload = resolve;
-                sheetImg.onerror = resolve;
+        // ---------- saved progress (per-browser convenience only) ----------
+        function loadProgress() {
+            try { return JSON.parse(localStorage.getItem(STORE_KEY)) || { best: {}, last: 0 }; }
+            catch { return { best: {}, last: 0 }; }
+        }
+        function saveProgress() {
+            try { localStorage.setItem(STORE_KEY, JSON.stringify(progress)); } catch { }
+        }
+        const progress = loadProgress();
+
+        function starsFor(moves, par) {
+            if (!par) return 3;
+            if (moves <= par) return 3;
+            if (moves <= par + Math.ceil(par * 0.5)) return 2;
+            return 1;
+        }
+        const starText = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+
+        // ---------- asphalt texture: one 16x16 pixel-art cell ----------
+        function makeAsphalt() {
+            const c = document.createElement('canvas');
+            c.width = c.height = ART_PX_PER_CELL;
+            const g = c.getContext('2d');
+            let seed = 7;
+            const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+            for (let y = 0; y < 16; y++)
+                for (let x = 0; x < 16; x++) {
+                    const v = 54 + Math.floor(rnd() * 3) * 5;
+                    g.fillStyle = `rgb(${v},${v + 2},${v + 6})`;
+                    g.fillRect(x, y, 1, 1);
+                }
+            // parking-bay lines on the cell edges
+            g.fillStyle = '#2b2d32';
+            g.fillRect(0, 0, 16, 1);
+            g.fillRect(0, 0, 1, 16);
+            g.fillStyle = 'rgba(255,255,255,0.10)';
+            for (let i = 2; i < 16; i += 4) g.fillRect(i, 1, 2, 1);
+            return c.toDataURL();
+        }
+        board.style.backgroundImage = `url(${makeAsphalt()})`;
+
+        // ---------- game state ----------
+        let config, levels, sprites;
+        let level = null, COLS = 6, ROWS = 6, CELL = 80;
+        let tiles = [], history = [], selected = null;
+        let currentLevelIndex = 0;
+        let busy = false;
+        let timerInterval = null, levelStartTime = 0, timerStarted = false;
+        let quotesStartTimeout = null, quoteInterval = null, quoteDeck = [];
+        let clearAdvanceTimeout = null;
+        const sessionScores = [];
+
+        // ---------- sizing ----------
+        function computeCell() {
+            const availW = stage.clientWidth - 24;
+            const availH = stage.clientHeight - 24;
+            let cell = Math.min(MAX_CELL, availW / (COLS + 0.85), availH / ROWS);
+            // prefer a size where each art pixel maps to whole device pixels
+            const dpr = window.devicePixelRatio || 1;
+            const snapped = Math.floor(cell * dpr / ART_PX_PER_CELL) * ART_PX_PER_CELL / dpr;
+            cell = snapped >= cell * 0.8 ? snapped : Math.floor(cell);
+            return Math.max(28, cell);
+        }
+
+        function applySize() {
+            CELL = computeCell();
+            document.documentElement.style.setProperty('--cell', CELL + 'px');
+            board.style.width = (COLS * CELL) + 'px';
+            board.style.height = (ROWS * CELL) + 'px';
+            const win = tiles.find(t => t.isWinTile);
+            const gate = boardFrame.querySelector('.gate');
+            const sign = boardFrame.querySelector('.exit-sign');
+            if (win && gate) {
+                gate.style.top = (win.row * CELL) + 'px';
+                gate.style.height = (win.height * CELL) + 'px';
+                sign.style.top = (win.row * CELL) + 'px';
+                sign.style.height = (win.height * CELL) + 'px';
+            }
+            tiles.forEach(t => {
+                t.el.style.width = (t.width * CELL) + 'px';
+                t.el.style.height = (t.height * CELL) + 'px';
+                render(t);
             });
-            sheetImg.src = 'images_to_use/tiles_texture.webp';
-            await sheetLoaded;
-            const SHEET_W = sheetImg.naturalWidth || 480;
-            const SHEET_H = sheetImg.naturalHeight || 640;
-
-            function applySpriteStyle(el, spriteIndex, targetWidthPx, targetHeightPx) {
-                const s = spriteList[spriteIndex];
-                if (!s) return;
-                const rect = spriteRect(s);
-                const scaleX = targetWidthPx / rect.sheetW;
-                const scaleY = targetHeightPx / rect.sheetH;
-                el.style.backgroundImage = "url('images_to_use/tiles_texture.webp')";
-                el.style.backgroundSize = `${SHEET_W * scaleX}px ${SHEET_H * scaleY}px`;
-                el.style.backgroundPosition = `-${rect.sheetX * scaleX}px -${rect.sheetY * scaleY}px`;
-            }
-
-            const board = document.getElementById('board');
-            const levels = config.levels || [];
-            const levelBar = document.getElementById('levelBar');
-            const timerEl = document.getElementById('timer');
-            const skipBtn = document.getElementById('skipBtn');
-            const strugglingMessage = document.getElementById('strugglingMessage');
-            const scorePanel = document.getElementById('scorePanel');
-            const flashOverlay = document.getElementById('flashOverlay');
-            const flashSuccessText = document.getElementById('flashSuccessText');
-
-            let currentLevelIndex = 0;
-            let COLS = 6, ROWS = 6;
-            const CELL_W = CELL_PX, CELL_H = CELL_PX;
-            let timerInterval = null;
-            let levelEndTime = 0;
-            let timerStarted = false;
-            let autoAdvanceTimeout = null;
-            let quotesStartTimeout = null;
-            let quoteInterval = null;
-            let quoteDeck = [];
-            const scores = [];
-
-            function renderScorePanel() {
-                scorePanel.querySelectorAll('.score-entry').forEach(el => el.remove());
-                scores.forEach(entry => {
-                    const row = document.createElement('div');
-                    row.className = 'score-entry';
-                    const name = document.createElement('span');
-                    name.textContent = entry.name;
-                    const time = document.createElement('span');
-                    time.className = 'score-time';
-                    time.textContent = entry.time;
-                    row.appendChild(name);
-                    row.appendChild(time);
-                    scorePanel.appendChild(row);
-                });
-            }
-
-            function renderLevelBar() {
-                levelBar.textContent = levels[currentLevelIndex] ? levels[currentLevelIndex].name : '';
-            }
-
-            function formatTime(ms) {
-                const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
-                const m = Math.floor(totalSeconds / 60);
-                const s = totalSeconds % 60;
-                return `${m}:${String(s).padStart(2, '0')}`;
-            }
-
-            function stopTimer() {
-                if (timerInterval) {
-                    clearInterval(timerInterval);
-                    timerInterval = null;
-                }
-            }
-
-            function stopQuotes() {
-                if (quotesStartTimeout) {
-                    clearTimeout(quotesStartTimeout);
-                    quotesStartTimeout = null;
-                }
-                if (quoteInterval) {
-                    clearInterval(quoteInterval);
-                    quoteInterval = null;
-                }
-            }
-
-            function nextQuote() {
-                if (!quoteDeck.length) quoteDeck = shuffledQuotes();
-                return quoteDeck.pop();
-            }
-
-            function showNextQuote() {
-                strugglingMessage.textContent = nextQuote();
-            }
-
-            function startQuotes() {
-                stopQuotes();
-                quoteDeck = shuffledQuotes();
-                quotesStartTimeout = setTimeout(() => {
-                    strugglingMessage.textContent = nextQuote();
-                    strugglingMessage.classList.add('show');
-                    quoteInterval = setInterval(showNextQuote, QUOTE_INTERVAL_MS);
-                }, QUOTES_START_DELAY_MS);
-            }
-
-            function resetTimerState() {
-                stopTimer();
-                stopQuotes();
-                timerStarted = false;
-                timerEl.classList.remove('warning');
-                skipBtn.classList.remove('show');
-                strugglingMessage.classList.remove('show');
-                timerEl.textContent = formatTime(LEVEL_TIME_MS);
-            }
-
-            function startTimer() {
-                if (timerStarted) return;
-                timerStarted = true;
-                stopTimer();
-                levelEndTime = Date.now() + LEVEL_TIME_MS;
-                timerEl.classList.remove('warning');
-                skipBtn.classList.remove('show');
-                strugglingMessage.classList.remove('show');
-                updateTimerDisplay();
-                timerInterval = setInterval(updateTimerDisplay, 250);
-                startQuotes();
-            }
-
-            function updateTimerDisplay() {
-                const remaining = levelEndTime - Date.now();
-                timerEl.textContent = formatTime(remaining);
-                if (remaining <= 0) {
-                    timerEl.textContent = '0:00';
-                    timerEl.classList.add('warning');
-                    skipBtn.classList.add('show');
-                    strugglingMessage.classList.add('show');
-                    stopTimer();
-                    stopQuotes();
-                }
-            }
-
-            function loadLevel(idx) {
-                if (autoAdvanceTimeout) {
-                    clearTimeout(autoAdvanceTimeout);
-                    autoAdvanceTimeout = null;
-                }
-                currentLevelIndex = idx;
-                renderLevelBar();
-                const lvl = levels[idx];
-                COLS = lvl.gridCols || lvl.gridSize || config.gridSize || 6;
-                ROWS = lvl.gridRows || lvl.gridSize || config.gridSize || 6;
-                board.style.width = (COLS * CELL_W) + 'px';
-                board.style.height = (ROWS * CELL_H) + 'px';
-                board.style.gridTemplateColumns = `repeat(${COLS}, ${CELL_W}px)`;
-                board.style.gridTemplateRows = `repeat(${ROWS}, ${CELL_H}px)`;
-                document.documentElement.style.setProperty('--board-half-h', ((ROWS * CELL_H) / 2) + 'px');
-                buildBoard(lvl.tiles);
-                resetTimerState();
-            }
-
-            skipBtn.addEventListener('click', goToNextLevel);
-
-            function buildBoard(tileConfigs) {
-                board.innerHTML = '';
-                board.appendChild(flashOverlay);
-                board.appendChild(flashSuccessText);
-                for (let i = 0; i < COLS * ROWS; i++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'cell';
-                    board.appendChild(cell);
-                }
-
-                const winTileCfg = tileConfigs.find(c => c.isWinTile && c.winDirection === 'right');
-                if (winTileCfg) {
-                    const gate = document.createElement('div');
-                    gate.className = 'gate';
-                    gate.style.top = (winTileCfg.row * CELL_H) + 'px';
-                    gate.style.height = (winTileCfg.height * CELL_H) + 'px';
-                    board.appendChild(gate);
-                }
-
-                const tiles = tileConfigs.map(cfg => {
-                    const el = document.createElement('div');
-                    el.className = 'tile' + (cfg.isWinTile ? ' win-tile' : '');
-                    const w = cfg.width * CELL_W;
-                    const h = cfg.height * CELL_H;
-                    el.style.width = `${w}px`;
-                    el.style.height = `${h}px`;
-
-                    if (typeof cfg.spriteIndex === 'number' && spriteList[cfg.spriteIndex]) {
-                        const spriteDef = spriteList[cfg.spriteIndex];
-                        const rotated = cfg.direction !== spriteDef.direction;
-                        const inner = document.createElement('div');
-                        inner.className = 'tile-sprite' + (rotated ? ' rotated' : '');
-                        if (rotated) {
-                            applySpriteStyle(inner, cfg.spriteIndex, h, w);
-                            inner.style.width = `${h}px`;
-                            inner.style.height = `${w}px`;
-                            inner.style.position = 'absolute';
-                            inner.style.left = `${(w - h) / 2}px`;
-                            inner.style.top = `${(h - w) / 2}px`;
-                        } else {
-                            applySpriteStyle(inner, cfg.spriteIndex, w, h);
-                        }
-                        el.appendChild(inner);
-                    } else {
-                        el.style.background = cfg.color;
-                    }
-
-                    board.appendChild(el);
-
-                    const tile = {
-                        ...cfg,
-                        el,
-                        dragging: false,
-                        startPos: 0,
-                        startCoord: 0,
-                        escaped: false
-                    };
-
-                    render(tile);
-                    attachHandlers(tile);
-                    return tile;
-                });
-
-                function occupancyExcept(skip) {
-                    return tiles.filter(t => t !== skip);
-                }
-
-                function render(tile) {
-                    tile.el.style.transform = `translate(${tile.col * CELL_W}px, ${tile.row * CELL_H}px)`;
-                }
-
-                function clamp(v, min, max) {
-                    return Math.max(min, Math.min(max, v));
-                }
-
-                function rangesOverlap(aStart, aLen, bStart, bLen) {
-                    return aStart < bStart + bLen && bStart < aStart + aLen;
-                }
-
-                function collidesAt(row, col, width, height, others) {
-                    return others.some(other =>
-                        rangesOverlap(row, height, other.row, other.height) &&
-                        rangesOverlap(col, width, other.col, other.width)
-                    );
-                }
-
-                function computeBounds(tile, others) {
-                    const horizontal = tile.direction === 'horizontal';
-                    const mainStart = horizontal ? tile.col : tile.row;
-
-                    const hardMax = horizontal ? (COLS - tile.width) : (ROWS - tile.height);
-                    let allowExitMax = hardMax;
-                    if (tile.isWinTile && tile.winDirection === 'right' && horizontal) {
-                        allowExitMax = COLS;
-                    }
-
-                    function fits(pos) {
-                        const row = horizontal ? tile.row : pos;
-                        const col = horizontal ? pos : tile.col;
-                        return !collidesAt(row, col, tile.width, tile.height, others);
-                    }
-
-                    let min = mainStart;
-                    while (min - 1 >= 0 && fits(min - 1)) min -= 1;
-
-                    let max = mainStart;
-                    while (max + 1 <= hardMax && fits(max + 1)) max += 1;
-
-                    if (allowExitMax > hardMax && max === hardMax) {
-                        max = allowExitMax;
-                    }
-
-                    return { min, max, allowExitMax };
-                }
-
-                function attachHandlers(tile) {
-                    const horizontal = tile.direction === 'horizontal';
-
-                    function onDown(e) {
-                        startTimer();
-                        tile.dragging = true;
-                        tile.el.classList.add('dragging');
-                        tile.startCoord = horizontal ? e.clientX : e.clientY;
-                        tile.startPos = horizontal ? tile.col : tile.row;
-                        tile.el.setPointerCapture(e.pointerId);
-                    }
-
-                    function onMove(e) {
-                        if (!tile.dragging) return;
-                        const others = occupancyExcept(tile);
-                        const { min, max, allowExitMax } = computeBounds(tile, others);
-
-                        const hardMax = horizontal ? (COLS - tile.width) : (ROWS - tile.height);
-                        const dragLimit = (max === hardMax && allowExitMax > hardMax) ? allowExitMax : max;
-
-                        const current = horizontal ? e.clientX : e.clientY;
-                        const delta = (current - tile.startCoord) / (horizontal ? CELL_W : CELL_H);
-                        let rawPos = tile.startPos + delta;
-
-                        rawPos = clamp(rawPos, min, dragLimit);
-
-                        if (horizontal) {
-                            tile.el.style.transform = `translate(${rawPos * CELL_W}px, ${tile.row * CELL_H}px)`;
-                        } else {
-                            tile.el.style.transform = `translate(${tile.col * CELL_W}px, ${rawPos * CELL_H}px)`;
-                        }
-                        tile._rawPos = rawPos;
-                        tile._bounds = { min, max, allowExitMax };
-                    }
-
-                    function onUp(e) {
-                        if (!tile.dragging) return;
-                        tile.dragging = false;
-                        tile.el.classList.remove('dragging');
-
-                        const { min, max, allowExitMax } = tile._bounds || computeBounds(tile, occupancyExcept(tile));
-                        let rawPos = tile._rawPos !== undefined ? tile._rawPos : (horizontal ? tile.col : tile.row);
-
-                        let snapped;
-                        if (tile.isWinTile && horizontal && tile.winDirection === 'right' && rawPos > max) {
-                            const exitThreshold = max + (allowExitMax - max) * 0.5;
-                            if (rawPos >= exitThreshold) {
-                                snapped = allowExitMax;
-                            } else {
-                                snapped = max;
-                            }
-                        } else {
-                            snapped = clamp(Math.round(rawPos), min, max);
-                        }
-
-                        if (horizontal) {
-                            tile.col = snapped;
-                        } else {
-                            tile.row = snapped;
-                        }
-                        render(tile);
-
-                        if (tile.isWinTile && horizontal && tile.winDirection === 'right' && snapped >= allowExitMax) {
-                            tile.escaped = true;
-                            showSuccess();
-                        }
-                    }
-
-                    tile.el.addEventListener('pointerdown', onDown);
-                    tile.el.addEventListener('pointermove', onMove);
-                    tile.el.addEventListener('pointerup', onUp);
-                    tile.el.addEventListener('pointercancel', onUp);
-                }
-            }
-
-            function goToNextLevel() {
-                const nextIdx = currentLevelIndex < levels.length - 1 ? currentLevelIndex + 1 : 0;
-                board.classList.add('transitioning');
-                setTimeout(() => {
-                    loadLevel(nextIdx);
-                    requestAnimationFrame(() => board.classList.remove('transitioning'));
-                }, 1100);
-            }
-
-            function showSuccess() {
-                stopTimer();
-                stopQuotes();
-                skipBtn.classList.remove('show');
-                strugglingMessage.classList.remove('show');
-
-                flashOverlay.classList.remove('flash');
-                void flashOverlay.offsetWidth;
-                flashOverlay.classList.add('flash');
-
-                flashSuccessText.classList.remove('show');
-                void flashSuccessText.offsetWidth;
-                flashSuccessText.classList.add('show');
-
-                const elapsed = Math.min(LEVEL_TIME_MS, Date.now() - (levelEndTime - LEVEL_TIME_MS));
-                const lvl = levels[currentLevelIndex];
-                scores.push({ name: lvl ? lvl.name : `Level ${currentLevelIndex + 1}`, time: formatTime(elapsed) });
-                renderScorePanel();
-
-                autoAdvanceTimeout = setTimeout(goToNextLevel, 1500);
-            }
-
-            if (levels.length) loadLevel(0);
         }
 
-        init();
+        let resizeRaf = 0;
+        window.addEventListener('resize', () => {
+            cancelAnimationFrame(resizeRaf);
+            resizeRaf = requestAnimationFrame(applySize);
+        });
+
+        // ---------- sprites ----------
+        // Sprite rects are expressed as percentages of the sheet so they stay
+        // correct at any cell size without recomputing pixel offsets.
+        function spriteStyle(el, s) {
+            const sizeX = SHEET_COLS / s.cellsWide * 100;
+            const sizeY = SHEET_ROWS / s.cellsTall * 100;
+            const posX = SHEET_COLS === s.cellsWide ? 0 : s.sheetCol / (SHEET_COLS - s.cellsWide) * 100;
+            const posY = SHEET_ROWS === s.cellsTall ? 0 : s.sheetRow / (SHEET_ROWS - s.cellsTall) * 100;
+            el.style.backgroundSize = `${sizeX}% ${sizeY}%`;
+            el.style.backgroundPosition = `${posX}% ${posY}%`;
+        }
+
+        function buildTileEl(cfg) {
+            const el = document.createElement('div');
+            el.className = 'tile' + (cfg.isWinTile ? ' win-tile' : '');
+            const s = typeof cfg.spriteIndex === 'number' ? sprites[cfg.spriteIndex] : null;
+            if (s) {
+                const inner = document.createElement('div');
+                inner.className = 'tile-sprite';
+                spriteStyle(inner, s);
+                if (cfg.direction !== s.direction) {
+                    // sprite drawn for the other orientation — rotate it into place
+                    const w = cfg.width, h = cfg.height;
+                    inner.classList.add('rotated');
+                    inner.style.width = (h / w * 100) + '%';
+                    inner.style.height = (w / h * 100) + '%';
+                    inner.style.left = ((1 - h / w) / 2 * 100) + '%';
+                    inner.style.top = ((1 - w / h) / 2 * 100) + '%';
+                }
+                el.appendChild(inner);
+            } else {
+                const flat = document.createElement('div');
+                flat.className = 'tile-flat';
+                flat.style.background = cfg.color || '#888';
+                el.appendChild(flat);
+            }
+            return el;
+        }
+
+        // ---------- geometry ----------
+        const isH = t => t.direction === 'horizontal';
+        const posOf = t => isH(t) ? t.col : t.row;
+        const xy = (t, pos = posOf(t)) => isH(t) ? [pos * CELL, t.row * CELL] : [t.col * CELL, pos * CELL];
+
+        function render(t, pos) {
+            const [x, y] = xy(t, pos);
+            t.el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        }
+
+        function overlaps(a0, aLen, b0, bLen) {
+            return a0 < b0 + bLen && b0 < a0 + aLen;
+        }
+
+        // how far a tile can slide along its axis (others don't move meanwhile)
+        function bounds(t) {
+            const others = tiles.filter(o => o !== t);
+            const h = isH(t);
+            const hardMax = h ? COLS - t.width : ROWS - t.height;
+            const fits = p => !others.some(o =>
+                overlaps(h ? t.row : p, t.height, o.row, o.height) &&
+                overlaps(h ? p : t.col, t.width, o.col, o.width));
+            let min = posOf(t), max = posOf(t);
+            while (min - 1 >= 0 && fits(min - 1)) min--;
+            while (max + 1 <= hardMax && fits(max + 1)) max++;
+            return { min, max };
+        }
+
+        // ---------- moves / history ----------
+        // Consecutive moves of the same vehicle count as one move — the same
+        // rule the par was computed with (tools/gen_levels.py).
+        function moveCount() {
+            let n = 0, prev = -1;
+            for (const h of history) {
+                if (h.i !== prev) n++;
+                prev = h.i;
+            }
+            return n;
+        }
+
+        function updateHud() {
+            movesEl.textContent = moveCount();
+            parEl.textContent = level.par ?? '-';
+            $('undoBtn').disabled = !history.length || busy;
+            updateDpad();
+        }
+
+        function setPos(t, pos) {
+            if (isH(t)) t.col = pos; else t.row = pos;
+        }
+
+        function commitMove(t, from, to) {
+            if (from === to) return;
+            history.push({ i: tiles.indexOf(t), from, to });
+            setPos(t, to);
+            render(t);
+            updateHud();
+            checkWin();
+        }
+
+        function undo() {
+            if (busy || !history.length) return;
+            const h = history.pop();
+            const t = tiles[h.i];
+            setPos(t, h.from);
+            t.el.classList.add('snap');
+            render(t);
+            select(t);
+            updateHud();
+        }
+
+        // ---------- selection + d-pad ----------
+        function select(t) {
+            if (selected) selected.el.classList.remove('selected');
+            selected = t;
+            if (t) t.el.classList.add('selected');
+            updateDpad();
+        }
+
+        function updateDpad() {
+            const t = selected;
+            const b = t && !busy ? bounds(t) : null;
+            dpadButtons.forEach(btn => {
+                const dir = btn.dataset.dir;
+                let ok = false;
+                if (b) {
+                    const p = posOf(t);
+                    if (isH(t)) ok = (dir === 'left' && b.min < p) || (dir === 'right' && b.max > p);
+                    else ok = (dir === 'up' && b.min < p) || (dir === 'down' && b.max > p);
+                }
+                btn.disabled = !ok;
+            });
+        }
+
+        function nudge(dir) {
+            if (busy) return;
+            if (!selected) select(tiles.find(t => t.isWinTile));
+            const t = selected;
+            const step = { left: -1, up: -1, right: 1, down: 1 }[dir];
+            if (isH(t) !== (dir === 'left' || dir === 'right')) return;
+            const b = bounds(t);
+            const from = posOf(t);
+            const to = clamp(from + step, b.min, b.max);
+            if (to === from) return;
+            startTimer();
+            t.el.classList.add('snap');
+            commitMove(t, from, to);
+        }
+
+        dpadButtons.forEach(btn => btn.addEventListener('click', () => nudge(btn.dataset.dir)));
+
+        // ---------- dragging (mouse + touch via pointer events) ----------
+        let drag = null, dragRaf = 0;
+
+        function onPointerDown(e, t) {
+            if (busy || (e.pointerType === 'mouse' && e.button !== 0)) return;
+            e.preventDefault();
+            const h = isH(t);
+            drag = {
+                t, id: e.pointerId,
+                start: h ? e.clientX : e.clientY,
+                startX: e.clientX, startY: e.clientY,
+                from: posOf(t), raw: posOf(t),
+                b: bounds(t), moved: false,
+            };
+            t.el.classList.remove('snap');
+            t.el.classList.add('dragging');
+            t.el.setPointerCapture(e.pointerId);
+            select(t);
+        }
+
+        function onPointerMove(e) {
+            if (!drag || e.pointerId !== drag.id) return;
+            const { t, b } = drag;
+            const cur = isH(t) ? e.clientX : e.clientY;
+            if (!drag.moved && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > 6) {
+                drag.moved = true;
+                startTimer();
+            }
+            drag.raw = clamp(drag.from + (cur - drag.start) / CELL, b.min, b.max);
+            if (!dragRaf) dragRaf = requestAnimationFrame(() => {
+                dragRaf = 0;
+                if (drag) render(drag.t, drag.raw);
+            });
+        }
+
+        function onPointerUp(e) {
+            if (!drag || e.pointerId !== drag.id) return;
+            const { t, from, raw, b } = drag;
+            drag = null;
+            cancelAnimationFrame(dragRaf);
+            dragRaf = 0;
+            t.el.classList.remove('dragging');
+            t.el.classList.add('snap');
+            const to = clamp(Math.round(raw), b.min, b.max);
+            if (to !== from) commitMove(t, from, to);
+            else render(t);
+        }
+
+        // ---------- keyboard ----------
+        window.addEventListener('keydown', e => {
+            if ($('levelModal').classList.contains('open')) {
+                if (e.key === 'Escape') closeLevelSelect();
+                return;
+            }
+            if ($('clearModal').classList.contains('open')) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('nextBtn').click(); }
+                return;
+            }
+            const dirs = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', a: 'left', d: 'right', w: 'up', s: 'down' };
+            if (dirs[e.key]) {
+                e.preventDefault();
+                nudge(dirs[e.key]);
+            } else if (e.key === 'Tab' && !e.shiftKey && document.activeElement === document.body) {
+                // cycle the selected vehicle
+                e.preventDefault();
+                const i = selected ? tiles.indexOf(selected) : -1;
+                select(tiles[(i + 1) % tiles.length]);
+            } else if (e.key === 'z' || e.key === 'Backspace') {
+                undo();
+            } else if (e.key === 'r') {
+                restartLevel();
+            }
+        });
+
+        // ---------- timer + quotes ----------
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        function stopQuotes() {
+            clearTimeout(quotesStartTimeout);
+            clearInterval(quoteInterval);
+            quotesStartTimeout = quoteInterval = null;
+            toast.classList.remove('show');
+        }
+
+        function nextQuote() {
+            if (!quoteDeck.length) quoteDeck = shuffledQuotes();
+            return quoteDeck.pop();
+        }
+
+        function showQuote() {
+            toast.textContent = nextQuote();
+            toast.classList.add('show');
+        }
+
+        function startQuotes() {
+            stopQuotes();
+            quoteDeck = shuffledQuotes();
+            quotesStartTimeout = setTimeout(() => {
+                showQuote();
+                quoteInterval = setInterval(showQuote, QUOTE_INTERVAL_MS);
+            }, QUOTES_START_DELAY_MS);
+        }
+
+        function resetTimerState() {
+            stopTimer();
+            stopQuotes();
+            timerStarted = false;
+            timerEl.classList.remove('warning');
+            skipBtn.classList.remove('show');
+            timerEl.textContent = formatTime(LEVEL_TIME_MS);
+        }
+
+        function startTimer() {
+            if (timerStarted || busy) return;
+            timerStarted = true;
+            levelStartTime = Date.now();
+            updateTimerDisplay();
+            timerInterval = setInterval(updateTimerDisplay, 250);
+            startQuotes();
+        }
+
+        function updateTimerDisplay() {
+            const remaining = LEVEL_TIME_MS - (Date.now() - levelStartTime);
+            timerEl.textContent = formatTime(remaining);
+            if (remaining <= 0) {
+                timerEl.textContent = '0:00';
+                timerEl.classList.add('warning');
+                skipBtn.classList.add('show');
+                showQuote();
+                stopTimer();
+            }
+        }
+
+        // ---------- level lifecycle ----------
+        function buildLevel(idx) {
+            currentLevelIndex = idx;
+            level = levels[idx];
+            progress.last = idx;
+            saveProgress();
+            levelBar.textContent = `LEVEL ${idx + 1}/${levels.length}`;
+            COLS = level.gridCols || level.gridSize || config.gridSize || 6;
+            ROWS = level.gridRows || level.gridSize || config.gridSize || 6;
+
+            board.innerHTML = '';
+            boardFrame.querySelectorAll('.gate, .exit-sign').forEach(el => el.remove());
+            history = [];
+            selected = null;
+            tiles = level.tiles.map(cfg => {
+                const t = { ...cfg, el: buildTileEl(cfg) };
+                t.el.addEventListener('pointerdown', e => onPointerDown(e, t));
+                t.el.addEventListener('pointermove', onPointerMove);
+                t.el.addEventListener('pointerup', onPointerUp);
+                t.el.addEventListener('pointercancel', onPointerUp);
+                board.appendChild(t.el);
+                return t;
+            });
+
+            if (tiles.some(t => t.isWinTile)) {
+                const gate = document.createElement('div');
+                gate.className = 'gate';
+                const sign = document.createElement('div');
+                sign.className = 'exit-sign';
+                sign.innerHTML = '&#9654;&#9654;';
+                sign.setAttribute('aria-label', 'Exit');
+                boardFrame.append(gate, sign);
+            }
+
+            applySize();
+            resetTimerState();
+            updateHud();
+        }
+
+        // Entry: the board pops in, then every vehicle drives onto the lot
+        // from the nearest edge along its own axis.
+        async function enterLevel(idx) {
+            busy = true;
+            buildLevel(idx);
+            updateHud();
+            board.classList.remove('enter');
+            void board.offsetWidth;
+            board.classList.add('enter');
+            if (!reducedMotion) {
+                const anims = tiles.map((t, i) => {
+                    const h = isH(t);
+                    const len = h ? t.width : t.height;
+                    const span = h ? COLS : ROWS;
+                    const p = posOf(t);
+                    const fromStart = p + len / 2 < span / 2;
+                    const off = fromStart ? -(p + len + 1) : span - p + 1;
+                    const [x, y] = xy(t);
+                    const [ox, oy] = h ? [x + off * CELL, y] : [x, y + off * CELL];
+                    return t.el.animate([
+                        { transform: `translate3d(${ox}px, ${oy}px, 0)` },
+                        { transform: `translate3d(${x}px, ${y}px, 0)` },
+                    ], { duration: 420, delay: 120 + i * 45, easing: 'cubic-bezier(.2,.9,.25,1)', fill: 'backwards' }).finished;
+                });
+                await Promise.all(anims).catch(() => { });
+            }
+            busy = false;
+            updateHud();
+        }
+
+        // Exit: the hero car (if it escaped) speeds out through the gate,
+        // then the rest of the lot clears out to the nearest edge.
+        async function exitLevel(escaped) {
+            busy = true;
+            updateHud();
+            select(null);
+            if (reducedMotion) return;
+            const win = tiles.find(t => t.isWinTile);
+            if (escaped && win) {
+                const [x, y] = xy(win);
+                await win.el.animate([
+                    { transform: `translate3d(${x}px, ${y}px, 0)` },
+                    { transform: `translate3d(${x - CELL * 0.15}px, ${y}px, 0)`, offset: 0.2 },
+                    { transform: `translate3d(${(COLS + 1) * CELL}px, ${y}px, 0)` },
+                ], { duration: 520, easing: 'cubic-bezier(.5,0,.9,.4)', fill: 'forwards' }).finished.catch(() => { });
+            }
+            const rest = tiles.filter(t => !(escaped && t.isWinTile));
+            await Promise.all(rest.map((t, i) => {
+                const h = isH(t);
+                const len = h ? t.width : t.height;
+                const span = h ? COLS : ROWS;
+                const p = posOf(t);
+                const toEnd = p + len / 2 >= span / 2;
+                const off = toEnd ? span - p + 1 : -(p + len + 1);
+                const [x, y] = xy(t);
+                const [tx, ty] = h ? [x + off * CELL, y] : [x, y + off * CELL];
+                return t.el.animate([
+                    { transform: `translate3d(${x}px, ${y}px, 0)` },
+                    { transform: `translate3d(${tx}px, ${ty}px, 0)` },
+                ], { duration: 360, delay: i * 30, easing: 'cubic-bezier(.6,0,.9,.5)', fill: 'forwards' }).finished;
+            })).catch(() => { });
+        }
+
+        async function goToLevel(idx, { escaped = false } = {}) {
+            clearTimeout(clearAdvanceTimeout);
+            closeClear();
+            stopTimer();
+            stopQuotes();
+            await exitLevel(escaped);
+            await enterLevel(idx);
+        }
+
+        function nextIndex() {
+            return currentLevelIndex < levels.length - 1 ? currentLevelIndex + 1 : 0;
+        }
+
+        function restartLevel() {
+            if (busy) return;
+            goToLevel(currentLevelIndex);
+        }
+
+        function checkWin() {
+            const win = tiles.find(t => t.isWinTile);
+            if (win && isH(win) && win.col + win.width >= COLS) onWin();
+        }
+
+        async function onWin() {
+            const elapsed = timerStarted ? Math.min(LEVEL_TIME_MS, Date.now() - levelStartTime) : 0;
+            stopTimer();
+            stopQuotes();
+            skipBtn.classList.remove('show');
+            const moves = moveCount();
+            const stars = starsFor(moves, level.par);
+
+            const prev = progress.best[level.name];
+            if (!prev || stars > prev.stars || (stars === prev.stars && moves < prev.moves)) {
+                progress.best[level.name] = { stars, moves, time: formatTime(elapsed) };
+                saveProgress();
+            }
+            sessionScores.push({ name: `LVL ${currentLevelIndex + 1}`, time: formatTime(elapsed), stars });
+            renderScorePanel();
+            if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
+
+            // drive the hero car out before showing the result card
+            await exitLevel(true);
+            showClear(stars, moves, elapsed);
+        }
+
+        // ---------- result card ----------
+        function showClear(stars, moves, elapsed) {
+            $('clearStars').innerHTML = '★'.repeat(stars) + `<span class="off">${'★'.repeat(3 - stars)}</span>`;
+            $('clearLines').innerHTML =
+                `MOVES ${moves}${level.par ? ` / PAR ${level.par}` : ''}<br>TIME ${formatTime(elapsed)}`;
+            $('clearModal').classList.add('open');
+            $('nextBtn').focus({ preventScroll: true });
+            clearAdvanceTimeout = setTimeout(() => $('nextBtn').click(), 4500);
+        }
+
+        function closeClear() {
+            clearTimeout(clearAdvanceTimeout);
+            $('clearModal').classList.remove('open');
+        }
+
+        $('nextBtn').addEventListener('click', () => {
+            closeClear();
+            enterLevel(nextIndex());
+        });
+        $('replayBtn').addEventListener('click', () => {
+            closeClear();
+            enterLevel(currentLevelIndex);
+        });
+
+        function renderScorePanel() {
+            scorePanel.querySelectorAll('.score-entry').forEach(el => el.remove());
+            sessionScores.forEach(s => {
+                const row = document.createElement('div');
+                row.className = 'score-entry';
+                row.innerHTML = `<span>${s.name}</span><span class="stars">${starText(s.stars)}</span><span>${s.time}</span>`;
+                scorePanel.appendChild(row);
+            });
+            scorePanel.classList.toggle('has-scores', sessionScores.length > 0);
+        }
+
+        // ---------- level select ----------
+        function openLevelSelect() {
+            const grid = $('levelGrid');
+            grid.innerHTML = '';
+            levels.forEach((lv, i) => {
+                const best = progress.best[lv.name];
+                const btn = document.createElement('button');
+                btn.className = 'px-btn' + (i === currentLevelIndex ? ' current' : '') + (best ? ' go' : '');
+                btn.innerHTML = `<span>${String(i + 1).padStart(2, '0')}</span>` +
+                    `<span class="stars${best ? '' : ' none'}">${best ? starText(best.stars) : '☆☆☆'}</span>`;
+                btn.setAttribute('aria-label', `Level ${i + 1}${best ? `, ${best.stars} stars` : ''}`);
+                btn.addEventListener('click', () => {
+                    closeLevelSelect();
+                    if (!busy) goToLevel(i);
+                });
+                grid.appendChild(btn);
+            });
+            $('levelModal').classList.add('open');
+            grid.querySelector('.current')?.focus({ preventScroll: true });
+        }
+
+        function closeLevelSelect() {
+            $('levelModal').classList.remove('open');
+        }
+
+        $('levelsBtn').addEventListener('click', openLevelSelect);
+        $('levelModal').addEventListener('click', e => { if (e.target.id === 'levelModal') closeLevelSelect(); });
+        $('undoBtn').addEventListener('click', undo);
+        $('resetBtn').addEventListener('click', restartLevel);
+        skipBtn.addEventListener('click', () => { if (!busy) goToLevel(nextIndex()); });
+        $('backBtn').addEventListener('click', () => PixelTransition.go('index.html'));
+
+        // tapping empty asphalt clears the selection
+        board.addEventListener('pointerdown', e => { if (e.target === board) select(null); });
+
+        // pause the clock while the tab is hidden
+        let hiddenAt = 0;
+        document.addEventListener('visibilitychange', () => {
+            if (!timerInterval) return;
+            if (document.hidden) hiddenAt = Date.now();
+            else if (hiddenAt) { levelStartTime += Date.now() - hiddenAt; hiddenAt = 0; }
+        });
+
+        // ---------- boot ----------
+        async function init() {
+            config = await fetch('tiles.json').then(r => r.json());
+            levels = config.levels || [];
+            sprites = config.sprites || [];
+            if (!levels.length) return;
+            const start = clamp(progress.last | 0, 0, levels.length - 1);
+            await enterLevel(start);
+        }
+
+        init().catch(err => console.error('Failed to load puzzle:', err));
     </script>
 </body>
 

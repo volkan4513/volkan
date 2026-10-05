@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PORTFOLIO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -21,9 +24,415 @@
             background: #0d0d0d;
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             position: relative;
+        }
+
+        /* ================= "more stuff" section under the collage ================= */
+        .more {
+            --y: #ffdf00;
+            --b: #00a5ff;
+            --r: #ff6050;
+            --g: #323834;
+            --ink: #111;
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            color: var(--ink);
+            background:
+                radial-gradient(circle, rgba(0, 0, 0, 0.07) 1.2px, transparent 1.6px) 0 0 / 9px 9px,
+                #f6f1e4;
+            padding: 64px 16px 40px;
+            /* torn-paper top edge */
+            clip-path: polygon(0 18px, 4% 6px, 9% 16px, 15% 2px, 22% 14px, 30% 4px, 37% 15px, 45% 3px, 52% 13px, 60% 1px, 67% 15px, 74% 5px, 81% 16px, 88% 3px, 94% 13px, 100% 4px, 100% 100%, 0 100%);
+            margin-top: -18px;
+        }
+
+        .more-inner {
+            max-width: 1120px;
+            margin: 0 auto;
+        }
+
+        .more-head {
+            display: flex;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 10px 22px;
+            margin-bottom: 30px;
+        }
+
+        .more-head h2 {
+            display: flex;
+            gap: 8px;
+            font: 700 clamp(40px, 8vw, 76px)/0.95 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .chip {
+            display: inline-block;
+            padding: 4px 14px 6px;
+            box-shadow: 5px 5px 0 var(--ink);
+        }
+
+        .chip.y {
+            background: var(--y);
+            transform: rotate(-3deg);
+        }
+
+        .chip.b {
+            background: var(--b);
+            color: #fff;
+            transform: rotate(2deg);
+        }
+
+        .hand {
+            font: 400 clamp(17px, 2.4vw, 22px)/1.35 'Kalam', 'Comic Sans MS', cursive;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+            gap: 34px 26px;
+        }
+
+        .card {
+            --c: var(--y);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding: 16px 16px 18px;
+            background: var(--c);
+            color: var(--ink);
+            text-decoration: none;
+            box-shadow: 6px 6px 0 var(--ink);
+            transform: rotate(var(--tilt, -1deg));
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .card:nth-child(3n+2) {
+            --tilt: 1.2deg;
+        }
+
+        .card:nth-child(3n) {
+            --tilt: -0.4deg;
+        }
+
+        .card.red {
+            --c: var(--r);
+        }
+
+        .card.blue {
+            --c: var(--b);
+        }
+
+        .card:hover,
+        .card:focus-visible {
+            transform: rotate(0deg) translate(-3px, -4px);
+            box-shadow: 10px 10px 0 var(--ink);
+        }
+
+        .card:focus-visible {
+            outline: 3px solid var(--ink);
+            outline-offset: 4px;
+        }
+
+        .card:active {
+            transform: rotate(0deg) translate(2px, 2px);
+            box-shadow: 3px 3px 0 var(--ink);
+        }
+
+        /* photo glued on with a strip of tape */
+        .card-thumb {
+            position: relative;
+            aspect-ratio: 16 / 9;
+            background: #222;
+            border: 5px solid #fff;
+            box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.35);
+            margin-bottom: 14px;
+            transform: rotate(calc(var(--tilt, -1deg) * -1.5));
+        }
+
+        .card-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .card-thumb::before {
+            content: '';
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            width: 84px;
+            height: 24px;
+            transform: translateX(-50%) rotate(-4deg);
+            background: rgba(255, 250, 225, 0.72);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+            z-index: 1;
+        }
+
+        .card-title {
+            align-self: flex-start;
+            font: 700 clamp(24px, 3vw, 30px)/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            background: var(--g);
+            color: var(--c);
+            padding: 5px 10px 7px;
+            box-shadow: 4px 4px 0 var(--ink);
+        }
+
+        .card.yellow .card-title {
+            color: var(--y);
+        }
+
+        .card-sub {
+            font: 600 15px/1.2 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 10px 0 6px;
+        }
+
+        .card-desc {
+            font: 400 17px/1.35 'Kalam', 'Comic Sans MS', cursive;
+            flex: 1;
+        }
+
+        .card-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .tag {
+            font: bold 11px/1 ui-monospace, 'Courier New', monospace;
+            background: #fff;
+            border: 2px solid var(--ink);
+            padding: 4px 6px;
+            text-transform: uppercase;
+        }
+
+        .open-link {
+            font: 700 16px/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            white-space: nowrap;
+            background: var(--ink);
+            color: #fff;
+            padding: 8px 12px;
+        }
+
+        .heavy-note {
+            font: 12px/1.3 ui-monospace, monospace;
+            opacity: 0.75;
+            margin-top: 8px;
+        }
+
+        /* yellow "NEW" starburst sticker */
+        .new-badge {
+            position: absolute;
+            top: -18px;
+            right: -14px;
+            z-index: 2;
+            width: 64px;
+            height: 64px;
+            display: grid;
+            place-items: center;
+            font: 700 17px/1 'Oswald', Impact, sans-serif;
+            color: var(--ink);
+            background: var(--y);
+            clip-path: polygon(50% 0, 61% 18%, 82% 10%, 79% 32%, 100% 38%, 84% 54%, 96% 74%, 74% 76%, 70% 98%, 52% 85%, 33% 100%, 27% 78%, 5% 80%, 15% 60%, 0 42%, 20% 33%, 14% 12%, 36% 18%);
+            transform: rotate(12deg);
+        }
+
+        .card.yellow .new-badge {
+            background: var(--r);
+            color: #fff;
+        }
+
+        .extras {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+            gap: 30px 26px;
+            margin-top: 44px;
+        }
+
+        .about {
+            background: var(--g);
+            color: #f6f1e4;
+            padding: 22px;
+            box-shadow: 6px 6px 0 var(--ink);
+            transform: rotate(-0.6deg);
+        }
+
+        .about h3 {
+            display: inline-block;
+            font: 700 clamp(28px, 4vw, 40px)/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            color: var(--ink);
+            background: var(--y);
+            padding: 4px 12px 7px;
+            box-shadow: 4px 4px 0 #000;
+            margin-bottom: 14px;
+            transform: rotate(-2deg);
+        }
+
+        .about p {
+            font: 400 19px/1.4 'Kalam', 'Comic Sans MS', cursive;
+        }
+
+        .about-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .about-links a {
+            font: 700 16px/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            color: var(--ink);
+            background: #fff;
+            padding: 9px 12px;
+            text-decoration: none;
+            box-shadow: 3px 3px 0 #000;
+        }
+
+        .about-links a:hover {
+            background: var(--b);
+            color: #fff;
+        }
+
+        /* puzzle progress, in the game's pixel style */
+        .puzzle-badge {
+            background: #1b1d22;
+            color: #f4f1e8;
+            border: 3px solid #000;
+            box-shadow: inset 3px 3px 0 rgba(255, 255, 255, 0.08), 6px 6px 0 var(--ink);
+            padding: 18px;
+            font: bold 13px/1.5 ui-monospace, 'Courier New', monospace;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transform: rotate(0.8deg);
+            background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 2px, transparent 2px 4px);
+        }
+
+        .pb-head {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .pb-car {
+            width: 64px;
+            height: 32px;
+            flex: none;
+            background: url('images_to_use/tiles_texture_pixel.png') 0 0 / 192px 384px no-repeat;
+            image-rendering: pixelated;
+        }
+
+        .pb-title {
+            font-size: 16px;
+            letter-spacing: 1px;
+            color: #4caf50;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .pb-stats {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pb-stat {
+            background: #2a2d35;
+            border: 3px solid #000;
+            padding: 6px 10px;
+            min-width: 92px;
+        }
+
+        .pb-stat b {
+            display: block;
+            font-size: 18px;
+            color: #ffd23f;
+        }
+
+        .pb-bar {
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            gap: 3px;
+        }
+
+        .pb-bar i {
+            height: 10px;
+            background: #2a2d35;
+            border: 1px solid #000;
+        }
+
+        .pb-bar i.done {
+            background: #4caf50;
+        }
+
+        .pb-play {
+            align-self: flex-start;
+            font: bold 13px/1 ui-monospace, 'Courier New', monospace;
+            letter-spacing: 1px;
+            color: #0d0d0d;
+            background: #ffd23f;
+            border: 3px solid #000;
+            box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.3), inset 3px 3px 0 rgba(255, 255, 255, 0.45), 3px 3px 0 #000;
+            padding: 11px 14px;
+            min-height: 44px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .pb-play:active {
+            transform: translate(3px, 3px);
+            box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .more-foot {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 48px;
+            padding-top: 18px;
+            border-top: 3px dashed rgba(0, 0, 0, 0.35);
+        }
+
+        .to-top {
+            font: 700 16px/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            background: var(--r);
+            color: #fff;
+            border: none;
+            padding: 10px 14px;
+            box-shadow: 4px 4px 0 var(--ink);
+            cursor: pointer;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .card,
+            .card:hover {
+                transition: none;
+                transform: none;
+            }
         }
 
         .bg-sequence {
@@ -148,12 +557,99 @@
             background: url('images_to_use/page2_btn_image.webp') no-repeat center / contain;
             cursor: pointer;
             z-index: 5;
+            transition: opacity 0.2s ease;
+        }
+
+        /* the section below has its own puzzle card */
+        body.more-visible #page2-btn {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #puzzle-cta {
+            display: none;
         }
 
         @media (max-width: 768px) {
             body {
                 display: block;
+                /* keep the bottom of the artwork clear of the fixed button */
+                padding-bottom: calc(76px + env(safe-area-inset-bottom));
             }
+
+            .stack-wrapper {
+                touch-action: manipulation;
+            }
+
+            /* pixel-styled button, matching the puzzle game */
+            #puzzle-cta {
+                position: fixed;
+                left: 50%;
+                bottom: calc(14px + env(safe-area-inset-bottom));
+                transform: translateX(-50%);
+                z-index: 50;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 12px 16px;
+                min-height: 48px;
+                max-width: calc(100vw - 32px);
+                white-space: nowrap;
+                font: bold 13px/1 ui-monospace, 'Courier New', monospace;
+                letter-spacing: 1px;
+                color: #0d0d0d;
+                background: #ffd23f;
+                border: 3px solid #000;
+                box-shadow:
+                    inset -3px -3px 0 rgba(0, 0, 0, 0.3),
+                    inset 3px 3px 0 rgba(255, 255, 255, 0.45),
+                    4px 4px 0 #000;
+                cursor: pointer;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
+                animation: cta-bob 1.6s steps(2) infinite;
+            }
+
+            #puzzle-cta:active {
+                transform: translate(calc(-50% + 3px), 3px);
+                box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.3);
+                animation: none;
+            }
+
+            /* the red hero car from the puzzle's pixel sprite sheet */
+            .cta-car {
+                width: 32px;
+                height: 16px;
+                flex: none;
+                transform: scale(1.5);
+                margin: 0 8px;
+                background: url('images_to_use/tiles_texture_pixel.png') 0 0 / 96px 192px no-repeat;
+                image-rendering: pixelated;
+            }
+
+            body.popup-open #puzzle-cta,
+            body.more-visible #puzzle-cta {
+                display: none;
+            }
+
+            .more {
+                padding-top: 48px;
+            }
+        }
+
+        @keyframes cta-bob {
+            50% {
+                transform: translate(-50%, -3px);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #puzzle-cta {
+                animation: none;
+            }
+        }
+
+        @media (max-width: 768px) {
 
             .bg-sequence {
                 display: none;
@@ -172,13 +668,58 @@
 </head>
 
 <body>
+    <script src="pixel-transition.js"></script>
+    <script>PixelTransition.reveal();</script>
 
     <canvas id="bg-sequence-left" class="bg-sequence"></canvas>
     <canvas id="bg-sequence-right" class="bg-sequence"></canvas>
 
-    <button id="page2-btn" onclick="window.location.href='page2.html'"></button>
+    <button id="page2-btn" aria-label="Try the puzzle game" onclick="PixelTransition.go('page2.html')"></button>
+
+    <!-- mobile-only call to action (the image button above is desktop-only) -->
+    <button id="puzzle-cta" onclick="PixelTransition.go('page2.html')">
+        <span class="cta-car" aria-hidden="true"></span>
+        TRY THE PUZZLE GAME <span aria-hidden="true">&#9654;</span>
+    </button>
 
     <div class="stack-wrapper" id="wrapper"></div>
+
+    <!-- everything else: project cards, about, puzzle progress (content from site.json) -->
+    <section class="more" id="more" aria-labelledby="more-title">
+        <div class="more-inner">
+            <header class="more-head">
+                <h2 id="more-title"><span class="chip y">More</span><span class="chip b">Stuff</span></h2>
+                <p class="hand">Everything I've been building &mdash; pick one and have a go.</p>
+            </header>
+            <div class="cards" id="projectCards"></div>
+            <div class="extras">
+                <article class="about" id="aboutCard" aria-labelledby="aboutTitle">
+                    <h3 id="aboutTitle">Hi, I'm Volkan</h3>
+                    <p id="aboutText"></p>
+                    <div class="about-links" id="aboutLinks" hidden></div>
+                </article>
+                <article class="puzzle-badge" aria-labelledby="pbTitle">
+                    <div class="pb-head">
+                        <div class="pb-car" aria-hidden="true"></div>
+                        <div>
+                            <div class="pb-title" id="pbTitle">PARKING PUZZLE</div>
+                            <div id="pbStatus">Not played yet.</div>
+                        </div>
+                    </div>
+                    <div class="pb-stats">
+                        <div class="pb-stat">STARS<b id="pbStars">0</b></div>
+                        <div class="pb-stat">CLEARED<b id="pbCleared">0</b></div>
+                    </div>
+                    <div class="pb-bar" id="pbBar" aria-hidden="true"></div>
+                    <button class="pb-play" id="pbPlay" onclick="PixelTransition.go('page2.html')">PLAY &#9654;</button>
+                </article>
+            </div>
+            <footer class="more-foot">
+                <span class="hand">Made by Volkan &middot; runs entirely in your browser</span>
+                <button class="to-top" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">&#9650; Back to top</button>
+            </footer>
+        </div>
+    </section>
 
     <!-- random popup modal -->
     <div id="popup-overlay">
@@ -199,12 +740,16 @@
         // decoding a new file on every tick — that repeated decoding was
         // the memory leak that crashed the tab after a few minutes.
         // START/END set the first/last frame index (inclusive) to play.
+        // The *_used.webp atlases hold only the played frames (trimmed from
+        // *_merged.webp by tools/optimize_images.py) — the full atlases
+        // decoded to ~85 MB. To play other frames, edit BG_SEQUENCES in that
+        // script, re-run it, and update frameCount/end here.
         const BG_LEFT = {
             canvas: document.getElementById('bg-sequence-left'),
-            src: 'images_to_use/bg_sequence_01/bg_sequence_01_merged.webp',
+            src: 'images_to_use/bg_sequence_01/bg_sequence_01_used.webp',
             frameW: 393,
             frameH: 600,
-            frameCount: 35,
+            frameCount: 10,
             start: 0,
             end: 9,
             fps: 5,
@@ -212,12 +757,12 @@
 
         const BG_RIGHT = {
             canvas: document.getElementById('bg-sequence-right'),
-            src: 'images_to_use/bg_sequence_02/bg_sequence_02_merged.webp',
+            src: 'images_to_use/bg_sequence_02/bg_sequence_02_used.webp',
             frameW: 450,
             frameH: 800,
-            frameCount: 36,
-            start: 1,
-            end: 6,
+            frameCount: 6,
+            start: 0,
+            end: 5,
             fps: 12,
         };
 
@@ -276,8 +821,17 @@
             }, 1000 / fps);
         }
 
-        initBgSequence(BG_LEFT);
-        initBgSequence(BG_RIGHT);
+        // The side sequences are hidden on mobile — don't download/animate
+        // them until the viewport is wide enough to show them.
+        const bgMedia = window.matchMedia('(max-width: 768px)');
+        function startBgSequences() {
+            if (bgMedia.matches) return;
+            bgMedia.removeEventListener('change', startBgSequences);
+            initBgSequence(BG_LEFT);
+            initBgSequence(BG_RIGHT);
+        }
+        bgMedia.addEventListener('change', startBgSequences);
+        startBgSequences();
 
         const W = wrapper.offsetWidth;
         const H = wrapper.offsetHeight;
@@ -298,37 +852,49 @@
             const pick = imgs[Math.floor(Math.random() * imgs.length)];
             popupImg.src = 'popup_random_images/' + pick;
             popupOverlay.classList.add('open');
+            document.body.classList.add('popup-open');
         }
 
         function closePopup() {
             popupOverlay.classList.remove('open');
+            document.body.classList.remove('popup-open');
             popupImg.src = '';
         }
 
         document.getElementById('popup-close').addEventListener('click', closePopup);
         popupOverlay.addEventListener('click', e => { if (e.target === popupOverlay) closePopup(); });
 
-        function paintContained(ctx, img, targetW, targetH) {
-            const tw = targetW ?? W, th = targetH ?? H;
-            const scale = Math.min(tw / img.naturalWidth, th / img.naturalHeight);
-            const w = img.naturalWidth * scale;
-            const h = img.naturalHeight * scale;
-            ctx.clearRect(0, 0, tw, th);
-            ctx.drawImage(img, (tw - w) / 2, (th - h) / 2, w, h);
+        // Images are drawn into the hit canvas at their laid-out rect
+        // (relative to the wrapper; offset* ignores the hover scale) so
+        // hit-testing matches where they actually render.
+        function paintAtRect(ctx, img, rectScale, targetW, targetH) {
+            ctx.clearRect(0, 0, targetW, targetH);
+            if (!img.offsetWidth) return;
+            ctx.drawImage(img,
+                img.offsetLeft * rectScale, img.offsetTop * rectScale,
+                img.offsetWidth * rectScale, img.offsetHeight * rectScale);
         }
 
-        // Positioned images are drawn at their actual rendered rect (relative
-        // to the wrapper) instead of stretched to fill the whole canvas, so
-        // hit-testing matches where they actually render, including on resize.
-        function paintAtRect(ctx, img, rectScale, targetW, targetH, wrapperEl) {
-            ctx.clearRect(0, 0, targetW, targetH);
-            const wr = wrapperEl.getBoundingClientRect();
-            const ir = img.getBoundingClientRect();
-            const x = (ir.left - wr.left) * rectScale;
-            const y = (ir.top - wr.top) * rectScale;
-            const w = ir.width * rectScale;
-            const h = ir.height * rectScale;
-            ctx.drawImage(img, x, y, w, h);
+        // Layers come pre-cropped to their visible pixels (see
+        // tools/optimize_images.py) instead of as full 1096x2233 canvases,
+        // which cuts decoded image memory from ~300 MB to a few MB.
+        // Falls back to the full-size originals if the manifest is missing
+        // or was built from a different functions_to_work.json.
+        async function loadLayerManifest(filenames) {
+            try {
+                const res = await fetch('images_to_use/optimized/manifest.json');
+                if (res.ok) {
+                    const m = await res.json();
+                    if (JSON.stringify(m.source_filenames) === JSON.stringify(filenames)) return m;
+                    console.warn('images_to_use/optimized is stale — run: python tools/optimize_images.py');
+                }
+            } catch { }
+            const DW = 1096, DH = 2233;
+            return {
+                design_w: DW,
+                design_h: DH,
+                layers: [...filenames].reverse().map(name => ({ name, x: 0, y: 0, w: DW, h: DH })),
+            };
         }
 
         function alpha(ctx, x, y) {
@@ -386,7 +952,8 @@
 
         async function init() {
             const config = await fetch('functions_to_work.json').then(r => r.json());
-            const filenames = [...(config[0]?.image_filenames ?? [])].reverse();
+            const manifest = await loadLayerManifest(config[0]?.image_filenames ?? []);
+            const DW = manifest.design_w, DH = manifest.design_h;
 
             const namesToLink = config[0]?.names_to_link ?? {};
             const openRandomPopup = config[0]?.open_random_popup ?? {};
@@ -413,7 +980,24 @@
                 img.src = 'images_to_use/' + name + '.' + EXTENSIONS[extIndex];
             }
 
-            filenames.forEach(name => {
+            // Cropped layers are placed where they'd sit inside the full
+            // design canvas if it were object-fit: contain'ed in the wrapper.
+            const croppedLayers = [];
+            function layoutCropped() {
+                const cw = wrapper.clientWidth, ch = wrapper.clientHeight;
+                if (!cw || !ch) return;
+                const s = Math.min(cw / DW, ch / DH);
+                const ox = (cw - DW * s) / 2, oy = (ch - DH * s) / 2;
+                for (const { img, x, y, w, h } of croppedLayers) {
+                    img.style.left = ((ox + x * s) / cw * 100) + '%';
+                    img.style.top = ((oy + y * s) / ch * 100) + '%';
+                    img.style.width = (w * s / cw * 100) + '%';
+                    img.style.height = (h * s / ch * 100) + '%';
+                }
+            }
+
+            manifest.layers.forEach(layer => {
+                const name = layer.name;
                 const img = document.createElement('img');
                 img.className = 'layer';
                 img.alt = decodeURIComponent(name);
@@ -431,11 +1015,20 @@
                         img.style.width = (img.naturalWidth * pos.scale / W * 100) + '%';
                         img.style.height = (img.naturalHeight * pos.scale / H * 100) + '%';
                     });
+                } else {
+                    const { x, y, w, h } = layer;
+                    // scale (hover) about the design canvas centre, as the
+                    // full-size layers did
+                    img.style.transformOrigin =
+                        `${(DW / 2 - x) / w * 100}% ${(DH / 2 - y) / h * 100}%`;
+                    croppedLayers.push({ img, x, y, w, h });
                 }
 
                 wrapper.appendChild(img);
-                loadWithFallback(img, name, 0);
+                if (layer.src) img.src = layer.src;
+                else loadWithFallback(img, name, 0);
             });
+            layoutCropped();
 
             const randomImageNodes = {};
             function applyRandomImagePos(img, name) {
@@ -471,6 +1064,7 @@
                 img.onload = () => {
                     onFirstLoad();
                     img.style.display = '';
+                    repaintHit(img);
                 };
                 loadWithFallback(img, name, 0);
             }
@@ -482,9 +1076,14 @@
                 .reverse();
 
             const HIT_MAX_DIM = 300; // hit-test canvases are downscaled to this size for performance
-            const hitScale = Math.min(1, HIT_MAX_DIM / Math.max(W, H));
-            const hitW = Math.max(1, Math.round(W * hitScale));
-            const hitH = Math.max(1, Math.round(H * hitScale));
+            let hitScale, hitW, hitH;
+            function sizeHit() {
+                const cw = wrapper.clientWidth, ch = wrapper.clientHeight;
+                hitScale = Math.min(1, HIT_MAX_DIM / Math.max(cw, ch));
+                hitW = Math.max(1, Math.round(cw * hitScale));
+                hitH = Math.max(1, Math.round(ch * hitScale));
+            }
+            sizeHit();
 
             const entries = hitLayers.map(el => {
                 const canvas = document.createElement('canvas');
@@ -499,11 +1098,7 @@
             await Promise.all(entries.map(entry => new Promise(resolve => {
                 const img = entry.el;
                 const paint = () => {
-                    if (img.classList.contains('positioned')) {
-                        paintAtRect(entry.ctx, img, hitScale, hitW, hitH, wrapper);
-                    } else {
-                        paintContained(entry.ctx, img, hitW, hitH);
-                    }
+                    paintAtRect(entry.ctx, img, hitScale, hitW, hitH);
                     entry.ready = true;
                     resolve();
                 };
@@ -512,8 +1107,26 @@
 
             const repaintHit = el => {
                 const entry = entries.find(e => e.el === el);
-                if (entry && entry.ready) paintAtRect(entry.ctx, el, hitScale, hitW, hitH, wrapper);
+                if (entry && entry.ready) paintAtRect(entry.ctx, el, hitScale, hitW, hitH);
             };
+
+            // Re-lay out the cropped layers and rebuild the hit canvases when
+            // the wrapper changes size (e.g. crossing the mobile breakpoint).
+            let resizePending = false;
+            window.addEventListener('resize', () => {
+                if (resizePending) return;
+                resizePending = true;
+                requestAnimationFrame(() => {
+                    resizePending = false;
+                    layoutCropped();
+                    sizeHit();
+                    for (const e of entries) {
+                        e.ctx.canvas.width = hitW;
+                        e.ctx.canvas.height = hitH;
+                        if (e.ready) paintAtRect(e.ctx, e.el, hitScale, hitW, hitH);
+                    }
+                });
+            });
             makeDraggable(wrapper.querySelectorAll('.draggable-layer'), repaintHit, wrapper, W, H);
 
             function hitAt(mx, my) {
@@ -531,7 +1144,6 @@
                 `drop-shadow(${hh}px ${hh}px 0 white) drop-shadow(-${hh}px -${hh}px 0 white) ` +
                 `drop-shadow(${hh}px -${hh}px 0 white) drop-shadow(-${hh}px ${hh}px 0 white)`;
 
-            const allLayers = [...wrapper.querySelectorAll('.layer')];
             let active = null;
 
             function setActive(hit) {
@@ -547,14 +1159,19 @@
                 active = hit;
             }
 
-            let rafPending = false;
             let pendingHit = null;
             let pendingCount = 0;
             const SWITCH_DELAY_FRAMES = 3;
 
-            wrapper.addEventListener('mousemove', e => {
+            // Hit-test at most once per frame (high-rate mice can fire
+            // hundreds of mousemoves a second, each reading every hit canvas).
+            let lastMouse = null;
+            let hoverRaf = 0;
+
+            function updateHover() {
+                hoverRaf = 0;
                 const r = wrapper.getBoundingClientRect();
-                const hit = hitAt(e.clientX - r.left, e.clientY - r.top);
+                const hit = hitAt(lastMouse.clientX - r.left, lastMouse.clientY - r.top);
 
                 if (hit === active) {
                     pendingHit = null;
@@ -568,13 +1185,12 @@
                 }
                 pendingCount++;
 
-                if (pendingCount < SWITCH_DELAY_FRAMES) return;
-                if (rafPending) return;
-                rafPending = true;
-                requestAnimationFrame(() => {
-                    rafPending = false;
-                    setActive(pendingHit);
-                });
+                if (pendingCount >= SWITCH_DELAY_FRAMES) setActive(pendingHit);
+            }
+
+            wrapper.addEventListener('mousemove', e => {
+                lastMouse = e;
+                if (!hoverRaf) hoverRaf = requestAnimationFrame(updateHover);
             });
 
             function handleTap(clientX, clientY) {
@@ -585,13 +1201,13 @@
                 console.log(name);
 
                 if (namesToLink[name]) {
-                    window.location.href = namesToLink[name];
+                    PixelTransition.go(namesToLink[name]);
                 } else if (name in openRandomPopup) {
                     showRandomPopup();
                 } else if (name in randomImageClick) {
                     showRandomImage(name);
                 } else if (name in scrollDown) {
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                    document.getElementById('more').scrollIntoView({ behavior: 'smooth' });
                 }
             }
 
@@ -606,17 +1222,104 @@
                 setActive(hit);
             }, { passive: true });
 
-            wrapper.addEventListener('touchend', e => {
-                const t = e.changedTouches[0];
-                handleTap(t.clientX, t.clientY);
-            });
+            // Taps are handled by 'click' alone (the browser synthesizes it
+            // for touch). Handling touchend too fired every tap twice, and
+            // fired on scroll gestures. The highlight is only a preview, so
+            // drop it once the finger lifts or starts scrolling.
+            let touchClearTimer = 0;
+            wrapper.addEventListener('touchmove', () => setActive(null), { passive: true });
+            wrapper.addEventListener('touchend', () => {
+                clearTimeout(touchClearTimer);
+                touchClearTimer = setTimeout(() => setActive(null), 350);
+            }, { passive: true });
 
             wrapper.addEventListener('mouseleave', () => {
+                if (hoverRaf) cancelAnimationFrame(hoverRaf);
+                hoverRaf = 0;
                 setActive(null);
             });
         }
 
         init().catch(err => console.error('Failed to load images:', err));
+    </script>
+
+    <script>
+        // ---------- "more stuff" section ----------
+        (function () {
+            const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+            fetch('site.json').then(r => r.json()).then(site => {
+                const cards = document.getElementById('projectCards');
+                (site.projects || []).forEach(p => {
+                    const a = document.createElement('a');
+                    a.className = 'card ' + (p.color || 'yellow');
+                    a.href = p.href;
+                    a.innerHTML =
+                        (p.isNew ? '<span class="new-badge" aria-hidden="true">NEW!</span>' : '') +
+                        `<div class="card-thumb"><img src="${esc(p.thumb)}" alt="" loading="lazy" decoding="async"></div>` +
+                        `<span class="card-title">${esc(p.title)}</span>` +
+                        `<span class="card-sub">${esc(p.subtitle || '')}</span>` +
+                        `<span class="card-desc">${esc(p.desc || '')}</span>` +
+                        (p.heavy ? '<span class="heavy-note">Big download &mdash; best on Wi-Fi.</span>' : '') +
+                        `<span class="card-foot"><span class="tags">${(p.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</span>` +
+                        `<span class="open-link">Open &#9654;</span></span>`;
+                    a.addEventListener('click', e => {
+                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return;
+                        e.preventDefault();
+                        PixelTransition.go(p.href);
+                    });
+                    cards.appendChild(a);
+                });
+
+                const about = site.about || {};
+                if (about.title) document.getElementById('aboutTitle').textContent = about.title;
+                document.getElementById('aboutText').textContent = about.text || '';
+                const links = (about.links || []).filter(l => l && l.url && l.label);
+                if (links.length) {
+                    const box = document.getElementById('aboutLinks');
+                    links.forEach(l => {
+                        const a = document.createElement('a');
+                        a.href = l.url;
+                        a.textContent = l.label;
+                        if (/^https?:/.test(l.url)) { a.target = '_blank'; a.rel = 'noopener'; }
+                        box.appendChild(a);
+                    });
+                    box.hidden = false;
+                }
+            }).catch(err => console.error('Failed to load site.json:', err));
+
+            // puzzle progress saved by page2.html in this browser
+            function renderPuzzle(total) {
+                let progress = { best: {} };
+                try { progress = JSON.parse(localStorage.getItem('parking-puzzle-progress')) || progress; } catch { }
+                const best = Object.values(progress.best || {});
+                const stars = best.reduce((n, b) => n + (b.stars || 0), 0);
+                document.getElementById('pbStars').textContent = `${stars}/${total * 3}`;
+                document.getElementById('pbCleared').textContent = `${best.length}/${total}`;
+                document.getElementById('pbStatus').textContent = best.length
+                    ? (best.length >= total ? 'Every level cleared. Legend.' : 'Pick up where you left off.')
+                    : 'Not played yet. 20 levels waiting.';
+                document.getElementById('pbPlay').innerHTML = best.length ? 'CONTINUE &#9654;' : 'PLAY &#9654;';
+                const bar = document.getElementById('pbBar');
+                bar.style.gridTemplateColumns = `repeat(${total}, 1fr)`;
+                bar.innerHTML = '';
+                for (let i = 0; i < total; i++) {
+                    const cell = document.createElement('i');
+                    if (progress.best && progress.best['level' + (i + 1)]) cell.className = 'done';
+                    bar.appendChild(cell);
+                }
+            }
+            renderPuzzle(20);
+            // refresh when coming back from the game via the back button
+            window.addEventListener('pageshow', () => renderPuzzle(20));
+
+            // hide the floating mobile "try the puzzle" button while the
+            // section (which has its own puzzle card) is on screen
+            const more = document.getElementById('more');
+            if ('IntersectionObserver' in window) {
+                new IntersectionObserver(([e]) => document.body.classList.toggle('more-visible', e.isIntersecting), { threshold: 0.05 }).observe(more);
+            }
+        })();
     </script>
 
 </body>

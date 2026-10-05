@@ -1,0 +1,205 @@
+{
+  "source_filenames": [
+    "A",
+    "K",
+    "L",
+    "star_icon",
+    "N",
+    "O",
+    "V",
+    "s",
+    "glasses",
+    "thumb",
+    "ycat_on_computer_front",
+    "cat01_front",
+    "cow_front",
+    "just_cat_front",
+    "lets_go",
+    "portfolio_image",
+    "just_jump_name_image",
+    "reto_image_effects_studio_image",
+    "retro_image_image_noselect",
+    "retro_image_text",
+    "bmw_config_image_noselect",
+    "bmw_name_image",
+    "unity_text",
+    "unity_game_image_noselect",
+    "cutout_noselect",
+    "cutout_front_text",
+    "base_blue",
+    "base_grey",
+    "base_red",
+    "base_yellow",
+    "base",
+    "base_base"
+  ],
+  "design_w": 1096,
+  "design_h": 2233,
+  "layers": [
+    {
+      "name": "flat0_noselect",
+      "src": "images_to_use/optimized/flat0_noselect.webp",
+      "x": 0,
+      "y": 0,
+      "w": 1096,
+      "h": 2233
+    },
+    {
+      "name": "bmw_name_image",
+      "src": "images_to_use/optimized/bmw_name_image.webp",
+      "x": 76,
+      "y": 1838,
+      "w": 549,
+      "h": 141
+    },
+    {
+      "name": "flat2_noselect",
+      "src": "images_to_use/optimized/flat2_noselect.webp",
+      "x": 48,
+      "y": 1271,
+      "w": 945,
+      "h": 887
+    },
+    {
+      "name": "reto_image_effects_studio_image",
+      "src": "images_to_use/optimized/reto_image_effects_studio_image.webp",
+      "x": 496,
+      "y": 1292,
+      "w": 297,
+      "h": 102
+    },
+    {
+      "name": "just_jump_name_image",
+      "src": "images_to_use/optimized/just_jump_name_image.webp",
+      "x": 48,
+      "y": 1586,
+      "w": 402,
+      "h": 115
+    },
+    {
+      "name": "portfolio_image",
+      "src": "images_to_use/optimized/portfolio_image.webp",
+      "x": 508,
+      "y": 46,
+      "w": 269,
+      "h": 81
+    },
+    {
+      "name": "lets_go",
+      "src": "images_to_use/optimized/lets_go.webp",
+      "x": 579,
+      "y": 839,
+      "w": 246,
+      "h": 157
+    },
+    {
+      "name": "just_cat_front",
+      "src": "images_to_use/optimized/just_cat_front.webp",
+      "x": 61,
+      "y": 1027,
+      "w": 346,
+      "h": 279
+    },
+    {
+      "name": "cow_front",
+      "src": "images_to_use/optimized/cow_front.webp",
+      "x": 558,
+      "y": 1759,
+      "w": 507,
+      "h": 325
+    },
+    {
+      "name": "cat01_front",
+      "src": "images_to_use/optimized/cat01_front.webp",
+      "x": 743,
+      "y": 1503,
+      "w": 302,
+      "h": 344
+    },
+    {
+      "name": "ycat_on_computer_front",
+      "src": "images_to_use/optimized/ycat_on_computer_front.webp",
+      "x": 546,
+      "y": 1697,
+      "w": 151,
+      "h": 106
+    },
+    {
+      "name": "thumb",
+      "src": "images_to_use/optimized/thumb.webp",
+      "x": 534,
+      "y": 789,
+      "w": 80,
+      "h": 84
+    },
+    {
+      "name": "glasses",
+      "src": "images_to_use/glasses.webp",
+      "positioned": true
+    },
+    {
+      "name": "s",
+      "src": "images_to_use/optimized/s.webp",
+      "x": 945,
+      "y": 328,
+      "w": 84,
+      "h": 80
+    },
+    {
+      "name": "V",
+      "src": "images_to_use/optimized/V.webp",
+      "x": 134,
+      "y": 174,
+      "w": 199,
+      "h": 200
+    },
+    {
+      "name": "O",
+      "src": "images_to_use/optimized/O.webp",
+      "x": 305,
+      "y": 184,
+      "w": 123,
+      "h": 119
+    },
+    {
+      "name": "N",
+      "src": "images_to_use/optimized/N.webp",
+      "x": 795,
+      "y": 231,
+      "w": 162,
+      "h": 163
+    },
+    {
+      "name": "star_icon",
+      "src": "images_to_use/optimized/star_icon.webp",
+      "x": 284,
+      "y": 504,
+      "w": 169,
+      "h": 196
+    },
+    {
+      "name": "L",
+      "src": "images_to_use/optimized/L.webp",
+      "x": 430,
+      "y": 175,
+      "w": 113,
+      "h": 114
+    },
+    {
+      "name": "K",
+      "src": "images_to_use/optimized/K.webp",
+      "x": 526,
+      "y": 136,
+      "w": 185,
+      "h": 186
+    },
+    {
+      "name": "A",
+      "src": "images_to_use/optimized/A.webp",
+      "x": 665,
+      "y": 194,
+      "w": 157,
+      "h": 160
+    }
+  ]
+}

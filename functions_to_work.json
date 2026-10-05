@@ -32,8 +32,7 @@
       "base_red",
       "base_yellow",
       "base",
-      "base_base",
-      "base_background_backup"
+      "base_base"
     ],
     "names_to_link": {
       "bmw_name_image": "projects/01",

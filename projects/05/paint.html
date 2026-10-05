@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MS Paint Clone</title>
     <style>
         /* Global styles and the classic Windows background color */
@@ -77,9 +78,19 @@
             padding: 1px;
         }
 
-        .menu-item:hover .dropdown-content {
+        .menu-item:hover .dropdown-content,
+        .menu-item.open .dropdown-content {
             display: block;
-            /* Show on hover */
+        }
+
+        @media (hover: none) {
+            .menu-item:hover .dropdown-content {
+                display: none;
+            }
+
+            .menu-item.open .dropdown-content {
+                display: block;
+            }
         }
 
         .menu-button {
@@ -166,7 +177,8 @@
         /* --- Canvas Area (Takes all remaining space) --- */
         #canvasContainer {
             flex-grow: 1;
-            overflow: hidden;
+            overflow: auto;
+            background: #808080;
             border-top: 1px solid #808080;
             border-left: 1px solid #808080;
             border-right: 1px solid #fff;
@@ -186,6 +198,83 @@
             cursor: crosshair;
         }
 
+
+        .size-options {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-top: 6px;
+            padding: 3px;
+            border-top: 1px solid #808080;
+            border-left: 1px solid #808080;
+            border-right: 1px solid #fff;
+            border-bottom: 1px solid #fff;
+        }
+
+        .size-btn {
+            width: 24px;
+            height: 14px;
+            padding: 0;
+            border: none;
+            background: none;
+            display: grid;
+            place-items: center;
+        }
+
+        .size-btn span {
+            display: block;
+            width: 16px;
+            background: #000;
+        }
+
+        .size-btn.active {
+            background: #000080;
+        }
+
+        .size-btn.active span {
+            background: #fff;
+        }
+
+        #customColor {
+            width: 0;
+            height: 0;
+            opacity: 0;
+            position: absolute;
+            pointer-events: none;
+        }
+
+        @media (pointer: coarse) {
+            .tool-button {
+                width: 34px;
+                height: 34px;
+                line-height: 34px;
+                font-size: 18px;
+            }
+
+            .size-btn {
+                width: 34px;
+                height: 22px;
+            }
+
+            .color-swatch {
+                width: 22px;
+                height: 22px;
+            }
+
+            #color-boxes {
+                width: auto;
+                grid-template-columns: repeat(9, 24px);
+            }
+
+            .menu-bar>span,
+            .menu-item {
+                padding: 6px 10px;
+            }
+
+            .menu-button {
+                padding: 8px 12px;
+            }
+        }
 
         /* --- Color Palette Styles (FIXED FOR 9X2) --- */
         #color-palette-container {
@@ -285,7 +374,12 @@
             </div>
             <span><u>V</u>iew</span>
             <span><u>I</u>mage</span>
-            <span><u>C</u>olors</span>
+            <div class="menu-item">
+                <span><u>C</u>olors</span>
+                <div class="dropdown-content">
+                    <button id="edit-colors-item" class="menu-button">Edit Colors...</button>
+                </div>
+            </div>
             <span><u>H</u>elp</span>
         </div>
 
@@ -298,11 +392,18 @@
                 <button class="tool-button" id="fillBtn" title="Fill Tool" style="background: url(page_images/bucket.webp); background-size: contain;"> </button>
                 <button class="tool-button" id="rectBtn" title="Rectangle">◻️</button>
                 <button class="tool-button" id="circleBtn" title="Circle">⚫</button>
+                <button class="tool-button" id="sprayBtn" title="Airbrush">💨</button>
+                <div class="size-options" id="sizeOptions" aria-label="Brush size">
+                    <button class="size-btn active" data-size="1" title="1px"><span style="height:1px"></span></button>
+                    <button class="size-btn" data-size="3" title="3px"><span style="height:3px"></span></button>
+                    <button class="size-btn" data-size="6" title="6px"><span style="height:5px"></span></button>
+                    <button class="size-btn" data-size="10" title="10px"><span style="height:7px"></span></button>
+                </div>
 
             </div>
 
             <div id="canvasContainer">
-                <canvas id="canvas" width="800" height="600"></canvas>
+                <canvas id="canvas" width="200" height="150"></canvas>
             </div>
         </div>
 
@@ -311,6 +412,7 @@
                 <div id="background-color"></div>
                 <div id="foreground-color"></div>
             </div>
+            <input type="color" id="customColor" aria-label="Custom colour">
             <div id="color-boxes">
                 <div class="color-swatch" style="background-color: #ffffff;"></div>
                 <div class="color-swatch" style="background-color: #000000;"></div>
@@ -348,6 +450,10 @@
         const rectBtn = document.getElementById('rectBtn');
         const circleBtn = document.getElementById('circleBtn');
         const lineBtn = document.getElementById('lineBtn'); // NEW: Line tool button
+        const sprayBtn = document.getElementById('sprayBtn');
+        const customColor = document.getElementById('customColor');
+        let brushSize = 1;
+        let sprayTimer = 0, lastX = 0, lastY = 0;
 
         const foregroundColorIndicator = document.getElementById('foreground-color');
         const backgroundColorIndicator = document.getElementById('background-color');
@@ -435,7 +541,7 @@
             }
 
             // Set cursor logic
-            if (toolName === 'pencil' || toolName === 'eraser' || toolName === 'line') {
+            if (toolName === 'pencil' || toolName === 'eraser' || toolName === 'line' || toolName === 'spray') {
                 canvas.style.cursor = 'crosshair';
             } else {
                 canvas.style.cursor = 'default';
@@ -444,7 +550,7 @@
 
         // --- Drawing & Shape Helpers ---
         function setDrawSettings(isSecondary) {
-            ctx.lineWidth = isErasing ? 8 : 1;
+            ctx.lineWidth = isErasing ? Math.max(8, brushSize * 2) : brushSize;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.strokeStyle = isErasing ? bgColor : (isSecondary ? bgColor : fgColor);
@@ -595,14 +701,28 @@
 
         // --- Event Handlers ---
 
-        canvas.addEventListener('mousedown', (e) => {
+        // Pointer events: one code path for mouse, pen and touch.
+        function spray(isSecondary) {
+            setDrawSettings(isSecondary);
+            const r = Math.max(6, brushSize * 3);
+            for (let i = 0; i < 18; i++) {
+                const a = Math.random() * Math.PI * 2, d = Math.random() * r;
+                ctx.fillRect(Math.round(lastX + Math.cos(a) * d), Math.round(lastY + Math.sin(a) * d), 1, 1);
+            }
+        }
+
+        canvas.addEventListener('pointerdown', (e) => {
             const isLMB = e.button === 0;
             const isRMB = e.button === 2;
 
             if (!isLMB && !isRMB) return;
+            e.preventDefault();
+            canvas.setPointerCapture(e.pointerId);
 
             startX = e.offsetX;
             startY = e.offsetY;
+            lastX = startX;
+            lastY = startY;
 
             if (activeTool === 'fill') {
                 const fillColor = isRMB ? bgColor : fgColor;
@@ -618,19 +738,33 @@
                 getCanvasSnapshot(); // Snapshot for shapes
             }
 
+            if (activeTool === 'spray') {
+                spray(isRMB);
+                sprayTimer = setInterval(() => spray(isRMB), 30);
+                return;
+            }
+
             if (activeTool === 'pencil' || activeTool === 'eraser' || activeTool === 'line') {
                 setDrawSettings(isRMB);
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
+                if (activeTool !== 'line') {
+                    // a single tap still leaves a dot
+                    ctx.lineTo(startX + 0.01, startY);
+                    ctx.stroke();
+                }
             }
         });
 
-        canvas.addEventListener('mousemove', (e) => {
+        canvas.addEventListener('pointermove', (e) => {
             if (!drawing) return;
 
             const x = e.offsetX;
             const y = e.offsetY;
             const isRMB = e.buttons === 2;
+            lastX = x;
+            lastY = y;
+            if (activeTool === 'spray') return;
 
             if (activeTool === 'pencil' || activeTool === 'eraser') {
                 setDrawSettings(isRMB);
@@ -651,7 +785,8 @@
             }
         });
 
-        canvas.addEventListener('mouseup', (e) => {
+        function endStroke(e) {
+            clearInterval(sprayTimer);
             if (!drawing) return;
 
             const x = e.offsetX;
@@ -675,13 +810,9 @@
 
             ctx.closePath();
             snapshot = null;
-        });
-
-        canvas.addEventListener('mouseleave', () => {
-            drawing = false;
-            ctx.closePath();
-            snapshot = null;
-        });
+        }
+        canvas.addEventListener('pointerup', endStroke);
+        canvas.addEventListener('pointercancel', endStroke);
 
         canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -694,6 +825,50 @@
         rectBtn.addEventListener('click', () => activateTool('rectangle'));
         circleBtn.addEventListener('click', () => activateTool('circle'));
         lineBtn.addEventListener('click', () => activateTool('line')); // NEW: Line tool event
+        sprayBtn.addEventListener('click', () => activateTool('spray'));
+
+        document.querySelectorAll('.size-btn').forEach(btn => btn.addEventListener('click', () => {
+            brushSize = +btn.dataset.size;
+            document.querySelectorAll('.size-btn').forEach(b => b.classList.toggle('active', b === btn));
+        }));
+
+        // menus open on tap (hover doesn't exist on touch screens)
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', e => {
+                if (e.target.closest('.menu-button')) { item.classList.remove('open'); return; }
+                const open = !item.classList.contains('open');
+                document.querySelectorAll('.menu-item.open').forEach(m => m.classList.remove('open'));
+                item.classList.toggle('open', open);
+            });
+        });
+        document.addEventListener('pointerdown', e => {
+            if (!e.target.closest('.menu-item')) document.querySelectorAll('.menu-item.open').forEach(m => m.classList.remove('open'));
+        });
+
+        document.getElementById('edit-colors-item').addEventListener('click', () => customColor.click());
+        customColor.addEventListener('input', () => {
+            selectFgColor(customColor.value);
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+        });
+
+        // The canvas fills the visible area and grows (never shrinks, so no
+        // drawing is lost) when the window gets bigger.
+        const canvasContainer = document.getElementById('canvasContainer');
+        function fitCanvas() {
+            const w = Math.max(canvas.width, canvasContainer.clientWidth - 4);
+            const h = Math.max(canvas.height, canvasContainer.clientHeight - 4);
+            if (w === canvas.width && h === canvas.height) return;
+            const copy = document.createElement('canvas');
+            copy.width = canvas.width;
+            copy.height = canvas.height;
+            copy.getContext('2d').drawImage(canvas, 0, 0);
+            canvas.width = w;
+            canvas.height = h;
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(copy, 0, 0);
+        }
+        new ResizeObserver(fitCanvas).observe(canvasContainer);
 
         undoMenuItem.addEventListener('click', undo);
 

@@ -87,7 +87,8 @@
                     "direction": "horizontal",
                     "spriteIndex": 8
                 }
-            ]
+            ],
+            "par": 18
         },
         {
             "name": "level2",
@@ -236,7 +237,8 @@
                     "direction": "vertical",
                     "spriteIndex": 16
                 }
-            ]
+            ],
+            "par": 15
         },
         {
             "name": "level3",
@@ -325,7 +327,8 @@
                     "direction": "vertical",
                     "spriteIndex": 19
                 }
-            ]
+            ],
+            "par": 9
         },
         {
             "name": "level4",
@@ -474,7 +477,8 @@
                     "winDirection": "right",
                     "spriteIndex": 0
                 }
-            ]
+            ],
+            "par": 19
         },
         {
             "name": "level5",
@@ -573,7 +577,8 @@
                     "winDirection": "right",
                     "spriteIndex": 0
                 }
-            ]
+            ],
+            "par": 16
         },
         {
             "name": "level6",
@@ -692,7 +697,8 @@
                     "direction": "vertical",
                     "spriteIndex": 20
                 }
-            ]
+            ],
+            "par": 12
         },
         {
             "name": "level7",
@@ -781,7 +787,8 @@
                     "direction": "vertical",
                     "spriteIndex": 22
                 }
-            ]
+            ],
+            "par": 17
         },
         {
             "name": "level8",
@@ -910,7 +917,8 @@
                     "direction": "vertical",
                     "spriteIndex": 22
                 }
-            ]
+            ],
+            "par": 23
         },
         {
             "name": "level9",
@@ -1039,7 +1047,8 @@
                     "direction": "horizontal",
                     "spriteIndex": 12
                 }
-            ]
+            ],
+            "par": 13
         },
         {
             "name": "level10",
@@ -1197,6 +1206,1367 @@
                     "height": 3,
                     "direction": "vertical",
                     "spriteIndex": 20
+                }
+            ],
+            "par": 18
+        },
+        {
+            "name": "level11",
+            "gridCols": 6,
+            "gridRows": 6,
+            "par": 23,
+            "tiles": [
+                {
+                    "id": "gen0",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "gen1",
+                    "color": "#5577aa",
+                    "row": 0,
+                    "col": 1,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 20
+                },
+                {
+                    "id": "gen2",
+                    "color": "#8292e3",
+                    "row": 1,
+                    "col": 4,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 21
+                },
+                {
+                    "id": "gen3",
+                    "color": "#998c4d",
+                    "row": 5,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 6
+                },
+                {
+                    "id": "gen4",
+                    "color": "#ffffff",
+                    "row": 3,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "gen5",
+                    "color": "#808080",
+                    "row": 3,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 1
+                },
+                {
+                    "id": "gen6",
+                    "color": "#969dc0",
+                    "row": 0,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 8
+                },
+                {
+                    "id": "gen7",
+                    "color": "#969dc0",
+                    "row": 4,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 5
+                },
+                {
+                    "id": "gen8",
+                    "color": "#ffffff",
+                    "row": 5,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 7
+                },
+                {
+                    "id": "gen9",
+                    "color": "#808080",
+                    "row": 2,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen10",
+                    "color": "#8292e3",
+                    "row": 1,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 5
+                },
+                {
+                    "id": "gen11",
+                    "color": "#998c4d",
+                    "row": 4,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "gen12",
+                    "color": "#969dc0",
+                    "row": 2,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                }
+            ]
+        },
+        {
+            "name": "level12",
+            "gridCols": 6,
+            "gridRows": 7,
+            "par": 23,
+            "tiles": [
+                {
+                    "id": "gen0",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "gen1",
+                    "color": "#969dc0",
+                    "row": 0,
+                    "col": 1,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen2",
+                    "color": "#5577aa",
+                    "row": 1,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "gen3",
+                    "color": "#969dc0",
+                    "row": 3,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen4",
+                    "color": "#4d9999",
+                    "row": 4,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 7
+                },
+                {
+                    "id": "gen5",
+                    "color": "#c18c44",
+                    "row": 5,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 8
+                },
+                {
+                    "id": "gen6",
+                    "color": "#5577aa",
+                    "row": 3,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 6
+                },
+                {
+                    "id": "gen7",
+                    "color": "#969dc0",
+                    "row": 0,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "gen8",
+                    "color": "#969dc0",
+                    "row": 3,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "gen9",
+                    "color": "#c18c44",
+                    "row": 4,
+                    "col": 3,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "gen10",
+                    "color": "#969dc0",
+                    "row": 5,
+                    "col": 0,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "gen11",
+                    "color": "#998c4d",
+                    "row": 0,
+                    "col": 5,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 21
+                }
+            ]
+        },
+        {
+            "name": "level13",
+            "gridCols": 6,
+            "gridRows": 6,
+            "par": 26,
+            "tiles": [
+                {
+                    "id": "gen0",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "gen1",
+                    "color": "#8292e3",
+                    "row": 0,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 10
+                },
+                {
+                    "id": "gen2",
+                    "color": "#ffffff",
+                    "row": 3,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 10
+                },
+                {
+                    "id": "gen3",
+                    "color": "#ffffff",
+                    "row": 1,
+                    "col": 4,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 20
+                },
+                {
+                    "id": "gen4",
+                    "color": "#998c4d",
+                    "row": 2,
+                    "col": 0,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 21
+                },
+                {
+                    "id": "gen5",
+                    "color": "#8292e3",
+                    "row": 4,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "gen6",
+                    "color": "#5577aa",
+                    "row": 4,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "gen7",
+                    "color": "#5577aa",
+                    "row": 4,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 8
+                },
+                {
+                    "id": "gen8",
+                    "color": "#998c4d",
+                    "row": 2,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen9",
+                    "color": "#5577aa",
+                    "row": 0,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                }
+            ]
+        },
+        {
+            "name": "level14",
+            "gridCols": 7,
+            "gridRows": 7,
+            "par": 25,
+            "tiles": [
+                {
+                    "id": "gen0",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "gen1",
+                    "color": "#c18c44",
+                    "row": 1,
+                    "col": 1,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "gen2",
+                    "color": "#969dc0",
+                    "row": 3,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen3",
+                    "color": "#969dc0",
+                    "row": 3,
+                    "col": 0,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 10
+                },
+                {
+                    "id": "gen4",
+                    "color": "#5577aa",
+                    "row": 0,
+                    "col": 4,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 11
+                },
+                {
+                    "id": "gen5",
+                    "color": "#c18c44",
+                    "row": 5,
+                    "col": 3,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "gen6",
+                    "color": "#ffffff",
+                    "row": 4,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "gen7",
+                    "color": "#ffffff",
+                    "row": 0,
+                    "col": 0,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 20
+                },
+                {
+                    "id": "gen8",
+                    "color": "#ffffff",
+                    "row": 4,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 3
+                },
+                {
+                    "id": "gen9",
+                    "color": "#4d9999",
+                    "row": 6,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 7
+                },
+                {
+                    "id": "gen10",
+                    "color": "#5577aa",
+                    "row": 1,
+                    "col": 5,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 21
+                },
+                {
+                    "id": "gen11",
+                    "color": "#5577aa",
+                    "row": 1,
+                    "col": 4,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen12",
+                    "color": "#808080",
+                    "row": 0,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 6
+                },
+                {
+                    "id": "gen13",
+                    "color": "#c18c44",
+                    "row": 0,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                }
+            ]
+        },
+        {
+            "name": "level15",
+            "gridCols": 6,
+            "gridRows": 6,
+            "par": 29,
+            "tiles": [
+                {
+                    "id": "gen0",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "gen1",
+                    "color": "#c18c44",
+                    "row": 0,
+                    "col": 1,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 21
+                },
+                {
+                    "id": "gen2",
+                    "color": "#808080",
+                    "row": 1,
+                    "col": 4,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 22
+                },
+                {
+                    "id": "gen3",
+                    "color": "#969dc0",
+                    "row": 5,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 4
+                },
+                {
+                    "id": "gen4",
+                    "color": "#4d9999",
+                    "row": 3,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "gen5",
+                    "color": "#969dc0",
+                    "row": 3,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 2
+                },
+                {
+                    "id": "gen6",
+                    "color": "#5577aa",
+                    "row": 0,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 6
+                },
+                {
+                    "id": "gen7",
+                    "color": "#808080",
+                    "row": 4,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 6
+                },
+                {
+                    "id": "gen8",
+                    "color": "#8292e3",
+                    "row": 5,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 2
+                },
+                {
+                    "id": "gen9",
+                    "color": "#8292e3",
+                    "row": 2,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "gen10",
+                    "color": "#5577aa",
+                    "row": 1,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 1
+                },
+                {
+                    "id": "gen11",
+                    "color": "#5577aa",
+                    "row": 4,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen12",
+                    "color": "#808080",
+                    "row": 2,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "gen13",
+                    "color": "#5577aa",
+                    "row": 0,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 3
+                }
+            ]
+        },
+        {
+            "name": "level16",
+            "gridCols": 6,
+            "gridRows": 7,
+            "par": 23,
+            "tiles": [
+                {
+                    "id": "gen0",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "gen1",
+                    "color": "#998c4d",
+                    "row": 0,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 8
+                },
+                {
+                    "id": "gen2",
+                    "color": "#8292e3",
+                    "row": 0,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "gen3",
+                    "color": "#5577aa",
+                    "row": 1,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen4",
+                    "color": "#5577aa",
+                    "row": 2,
+                    "col": 4,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "gen5",
+                    "color": "#5577aa",
+                    "row": 1,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 4
+                },
+                {
+                    "id": "gen6",
+                    "color": "#5577aa",
+                    "row": 3,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "gen7",
+                    "color": "#8292e3",
+                    "row": 3,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 4
+                },
+                {
+                    "id": "gen8",
+                    "color": "#808080",
+                    "row": 4,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 2
+                },
+                {
+                    "id": "gen9",
+                    "color": "#5577aa",
+                    "row": 4,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "gen10",
+                    "color": "#808080",
+                    "row": 5,
+                    "col": 3,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 10
+                },
+                {
+                    "id": "gen11",
+                    "color": "#998c4d",
+                    "row": 5,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 4
+                },
+                {
+                    "id": "gen12",
+                    "color": "#808080",
+                    "row": 5,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen13",
+                    "color": "#8292e3",
+                    "row": 2,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                }
+            ]
+        },
+        {
+            "name": "level17",
+            "gridCols": 6,
+            "gridRows": 6,
+            "par": 32,
+            "tiles": [
+                {
+                    "id": "gen0",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "gen1",
+                    "color": "#998c4d",
+                    "row": 0,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 10
+                },
+                {
+                    "id": "gen2",
+                    "color": "#5577aa",
+                    "row": 3,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "gen3",
+                    "color": "#808080",
+                    "row": 1,
+                    "col": 4,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 22
+                },
+                {
+                    "id": "gen4",
+                    "color": "#4d9999",
+                    "row": 2,
+                    "col": 0,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 22
+                },
+                {
+                    "id": "gen5",
+                    "color": "#4d9999",
+                    "row": 4,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "gen6",
+                    "color": "#998c4d",
+                    "row": 4,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "gen7",
+                    "color": "#8292e3",
+                    "row": 4,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 8
+                },
+                {
+                    "id": "gen8",
+                    "color": "#969dc0",
+                    "row": 2,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "gen9",
+                    "color": "#998c4d",
+                    "row": 0,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "gen10",
+                    "color": "#ffffff",
+                    "row": 5,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 1
+                },
+                {
+                    "id": "gen11",
+                    "color": "#808080",
+                    "row": 5,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 5
+                }
+            ]
+        },
+        {
+            "name": "level18",
+            "gridCols": 7,
+            "gridRows": 7,
+            "par": 26,
+            "tiles": [
+                {
+                    "id": "gen0",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 2,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "gen1",
+                    "color": "#808080",
+                    "row": 1,
+                    "col": 1,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen2",
+                    "color": "#808080",
+                    "row": 3,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 16
+                },
+                {
+                    "id": "gen3",
+                    "color": "#ffffff",
+                    "row": 3,
+                    "col": 0,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "gen4",
+                    "color": "#808080",
+                    "row": 0,
+                    "col": 4,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "gen5",
+                    "color": "#808080",
+                    "row": 5,
+                    "col": 3,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 10
+                },
+                {
+                    "id": "gen6",
+                    "color": "#998c4d",
+                    "row": 4,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen7",
+                    "color": "#808080",
+                    "row": 0,
+                    "col": 0,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 22
+                },
+                {
+                    "id": "gen8",
+                    "color": "#c18c44",
+                    "row": 4,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 6
+                },
+                {
+                    "id": "gen9",
+                    "color": "#8292e3",
+                    "row": 6,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 4
+                },
+                {
+                    "id": "gen10",
+                    "color": "#4d9999",
+                    "row": 1,
+                    "col": 5,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 22
+                },
+                {
+                    "id": "gen11",
+                    "color": "#4d9999",
+                    "row": 1,
+                    "col": 4,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "gen12",
+                    "color": "#5577aa",
+                    "row": 4,
+                    "col": 5,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 5
+                },
+                {
+                    "id": "gen13",
+                    "color": "#8292e3",
+                    "row": 0,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                }
+            ]
+        },
+        {
+            "name": "level19",
+            "gridCols": 6,
+            "gridRows": 6,
+            "par": 32,
+            "tiles": [
+                {
+                    "id": "gen0",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "gen1",
+                    "color": "#4d9999",
+                    "row": 0,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 11
+                },
+                {
+                    "id": "gen2",
+                    "color": "#ffffff",
+                    "row": 3,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 12
+                },
+                {
+                    "id": "gen3",
+                    "color": "#969dc0",
+                    "row": 1,
+                    "col": 4,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 20
+                },
+                {
+                    "id": "gen4",
+                    "color": "#998c4d",
+                    "row": 2,
+                    "col": 0,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 20
+                },
+                {
+                    "id": "gen5",
+                    "color": "#ffffff",
+                    "row": 4,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "gen6",
+                    "color": "#8292e3",
+                    "row": 4,
+                    "col": 3,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 19
+                },
+                {
+                    "id": "gen7",
+                    "color": "#808080",
+                    "row": 5,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 2
+                },
+                {
+                    "id": "gen8",
+                    "color": "#998c4d",
+                    "row": 5,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 5
+                },
+                {
+                    "id": "gen9",
+                    "color": "#4d9999",
+                    "row": 2,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "gen10",
+                    "color": "#c18c44",
+                    "row": 0,
+                    "col": 5,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "gen11",
+                    "color": "#998c4d",
+                    "row": 4,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 4
+                }
+            ]
+        },
+        {
+            "name": "level20",
+            "gridCols": 6,
+            "gridRows": 7,
+            "par": 23,
+            "tiles": [
+                {
+                    "id": "gen0",
+                    "color": "#ff0000",
+                    "row": 2,
+                    "col": 0,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "isWinTile": true,
+                    "winDirection": "right",
+                    "spriteIndex": 0
+                },
+                {
+                    "id": "gen1",
+                    "color": "#4d9999",
+                    "row": 1,
+                    "col": 2,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 18
+                },
+                {
+                    "id": "gen2",
+                    "color": "#5577aa",
+                    "row": 3,
+                    "col": 0,
+                    "width": 1,
+                    "height": 2,
+                    "direction": "vertical",
+                    "spriteIndex": 17
+                },
+                {
+                    "id": "gen3",
+                    "color": "#8292e3",
+                    "row": 4,
+                    "col": 1,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 8
+                },
+                {
+                    "id": "gen4",
+                    "color": "#969dc0",
+                    "row": 5,
+                    "col": 3,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 3
+                },
+                {
+                    "id": "gen5",
+                    "color": "#808080",
+                    "row": 3,
+                    "col": 4,
+                    "width": 2,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 4
+                },
+                {
+                    "id": "gen6",
+                    "color": "#8292e3",
+                    "row": 0,
+                    "col": 2,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "gen7",
+                    "color": "#8292e3",
+                    "row": 3,
+                    "col": 1,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 11
+                },
+                {
+                    "id": "gen8",
+                    "color": "#969dc0",
+                    "row": 4,
+                    "col": 3,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "gen9",
+                    "color": "#ffffff",
+                    "row": 5,
+                    "col": 0,
+                    "width": 3,
+                    "height": 1,
+                    "direction": "horizontal",
+                    "spriteIndex": 9
+                },
+                {
+                    "id": "gen10",
+                    "color": "#808080",
+                    "row": 0,
+                    "col": 5,
+                    "width": 1,
+                    "height": 3,
+                    "direction": "vertical",
+                    "spriteIndex": 21
                 }
             ]
         }
