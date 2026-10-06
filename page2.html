@@ -587,6 +587,7 @@
 <body>
     <script src="pixel-transition.js"></script>
     <script src="offline.js"></script>
+    <script src="daily.js"></script>
     <script>PixelTransition.reveal();</script>
 
     <div class="app">
@@ -1079,7 +1080,7 @@
             level = levels[idx];
             progress.last = idx;
             saveProgress();
-            levelBar.textContent = `LEVEL ${idx + 1}/${levels.length}`;
+            levelBar.textContent = idx === dailyIndex ? `DAILY - LEVEL ${idx + 1}` : `LEVEL ${idx + 1}/${levels.length}`;
             COLS = level.gridCols || level.gridSize || config.gridSize || 6;
             ROWS = level.gridRows || level.gridSize || config.gridSize || 6;
 
@@ -1215,16 +1216,20 @@
             renderScorePanel();
             if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
 
+            const daily = isDailyLevel() && window.Daily ? Daily.record(moves, stars) : null;
+
             // drive the hero car out before showing the result card
             await exitLevel(true);
-            showClear(stars, moves, elapsed);
+            showClear(stars, moves, elapsed, daily);
         }
 
         // ---------- result card ----------
-        function showClear(stars, moves, elapsed) {
+        function showClear(stars, moves, elapsed, daily) {
+            $('clearTitle').textContent = daily ? 'DAILY CLEAR!' : 'LEVEL CLEAR!';
             $('clearStars').innerHTML = '★'.repeat(stars) + `<span class="off">${'★'.repeat(3 - stars)}</span>`;
             $('clearLines').innerHTML =
-                `MOVES ${moves}${level.par ? ` / PAR ${level.par}` : ''}<br>TIME ${formatTime(elapsed)}`;
+                `MOVES ${moves}${level.par ? ` / PAR ${level.par}` : ''}<br>TIME ${formatTime(elapsed)}` +
+                (daily ? `<br>STREAK ${daily.streak} DAY${daily.streak === 1 ? '' : 'S'}` : '');
             $('clearModal').classList.add('open');
             $('nextBtn').focus({ preventScroll: true });
             clearAdvanceTimeout = setTimeout(() => $('nextBtn').click(), 4500);
@@ -1299,12 +1304,23 @@
         });
 
         // ---------- boot ----------
+        // page2.html?daily opens today's challenge, page2.html?level=N a level
+        let dailyIndex = -1;
+        const isDailyLevel = () => dailyIndex >= 0 && currentLevelIndex === dailyIndex;
+
         async function init() {
             config = await fetch('tiles.json').then(r => r.json());
             levels = config.levels || [];
             sprites = config.sprites || [];
             if (!levels.length) return;
-            const start = clamp(progress.last | 0, 0, levels.length - 1);
+            const params = new URLSearchParams(location.search);
+            let start = clamp(progress.last | 0, 0, levels.length - 1);
+            if (params.has('daily') && window.Daily) {
+                dailyIndex = Daily.index(levels.length);
+                start = dailyIndex;
+            } else if (params.has('level')) {
+                start = clamp((parseInt(params.get('level'), 10) || 1) - 1, 0, levels.length - 1);
+            }
             await enterLevel(start);
         }
 

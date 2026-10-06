@@ -60,6 +60,18 @@
       "beard8": "878,427,0.85",
       "beard9": "840,407,0.85",
       "beard10": "879,424,0.85"
+    },
+    "click_fx": {
+      "V": "jump",
+      "O": "jump",
+      "L": "jump",
+      "K": "jump",
+      "A": "jump",
+      "N": "jump",
+      "s": "spin",
+      "portfolio_image": "peel",
+      "thumb": "hearts",
+      "glasses": "wobble"
     }
   }
 ]

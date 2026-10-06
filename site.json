@@ -2,7 +2,12 @@
     "about": {
         "title": "Hi, I'm Volkan",
         "text": "I make games, 3D scenes and odd little web toys. Everything on this page runs right in your browser, so go poke at it.",
-        "links": []
+        "links": [
+            {
+                "label": "bchalke4513@gmail.com",
+                "url": "mailto:bchalke4513@gmail.com"
+            }
+        ]
     },
     "featured": [
         {

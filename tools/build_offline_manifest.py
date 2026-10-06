@@ -21,7 +21,7 @@ OUT = os.path.join(ROOT, 'sw-manifest.js')
 
 CORE = [
     'index.html', 'page2.html', 'offline.html', 'site.json', 'functions_to_work.json', 'tiles.json',
-    'pixel-transition.js', 'site-nav.js', 'offline.js',
+    'pixel-transition.js', 'site-nav.js', 'offline.js', 'ambient.js', 'daily.js', 'miniplayer.js', 'collage-fun.js',
     'images_to_use/optimized/*',
     'images_to_use/bg_sequence_*/*_used.webp',
     'images_to_use/tiles_texture_pixel.png', 'images_to_use/puzzle_thumb.webp',

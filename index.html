@@ -353,6 +353,18 @@
             box-shadow: 3px 3px 0 #000;
         }
 
+        /* email address: keep its real case, allow wrapping on phones */
+        .about-links a[href^="mailto:"] {
+            text-transform: none;
+            font: bold 15px/1.2 ui-monospace, 'Courier New', monospace;
+            overflow-wrap: anywhere;
+        }
+
+        .about-links a[href^="mailto:"]::before {
+            content: '✉';
+            margin-right: 8px;
+        }
+
         .about-links a:hover {
             background: var(--b);
             color: #fff;
@@ -427,6 +439,87 @@
 
         .pb-bar i.done {
             background: #4caf50;
+        }
+
+        .pb-head-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .pb-date {
+            color: #8d93a0;
+            font-size: 12px;
+        }
+
+        .pb-streak {
+            flex: none;
+            padding: 5px 8px;
+            color: #0d0d0d;
+            background: #ff7ad9;
+            border: 3px solid #000;
+            font-size: 12px;
+        }
+
+        .pb-streak.zero {
+            background: #2a2d35;
+            color: #8d93a0;
+        }
+
+        .pb-daily {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .pb-board {
+            width: 132px;
+            height: auto;
+            flex: none;
+            image-rendering: pixelated;
+            border: 3px solid #000;
+            box-shadow: 3px 3px 0 #000;
+            background: #3b3e44;
+        }
+
+        .pb-daily-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .pb-level {
+            color: #ffd23f;
+            font-size: 15px;
+        }
+
+        .pb-today {
+            color: #8d93a0;
+            margin-bottom: 4px;
+        }
+
+        .pb-today.done {
+            color: #3ddc84;
+        }
+
+        .pb-overall {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding-top: 10px;
+            border-top: 3px dashed #2a2d35;
+        }
+
+        .pb-status {
+            color: #8d93a0;
+            font-size: 12px;
+        }
+
+        .pb-secondary {
+            background: #2a2d35 !important;
+            color: #f4f1e8 !important;
         }
 
         .pb-play {
@@ -810,6 +903,66 @@
             }
         }
 
+        /* --- collage loading screen --- */
+        #collageLoader {
+            position: fixed;
+            inset: 0;
+            z-index: 9800;
+            display: grid;
+            place-items: center;
+            background: #0d0d0d;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.35s steps(5), visibility 0s 0.35s;
+        }
+
+        #collageLoader.show {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.2s steps(3);
+        }
+
+        .cl-box {
+            width: min(320px, 80vw);
+            text-align: center;
+            font: bold 14px/1.4 ui-monospace, 'Courier New', monospace;
+            color: #f4f1e8;
+            letter-spacing: 2px;
+        }
+
+        .cl-title {
+            margin-bottom: 14px;
+            color: #ffd23f;
+            text-shadow: 3px 3px 0 #000;
+            animation: cl-blink 1s steps(2) infinite;
+        }
+
+        .cl-bar {
+            height: 22px;
+            border: 3px solid #f4f1e8;
+            padding: 3px;
+            box-shadow: 4px 4px 0 #000;
+        }
+
+        .cl-bar i {
+            display: block;
+            height: 100%;
+            width: 0;
+            background: repeating-linear-gradient(90deg, #3ddc84 0 10px, transparent 10px 13px);
+            transition: width 0.15s steps(4);
+        }
+
+        .cl-pct {
+            margin-top: 10px;
+            color: #8d93a0;
+        }
+
+        @keyframes cl-blink {
+            50% {
+                opacity: 0.45;
+            }
+        }
+
         /* --- popup modal --- */
         #popup-overlay {
             display: none;
@@ -983,8 +1136,20 @@
 </head>
 
 <body>
+    <!-- pixel loading screen: only appears if the collage takes a moment -->
+    <div id="collageLoader" aria-live="polite" aria-label="Loading">
+        <div class="cl-box">
+            <div class="cl-title">LOADING PORTFOLIO</div>
+            <div class="cl-bar"><i id="clFill"></i></div>
+            <div class="cl-pct" id="clPct">0%</div>
+        </div>
+    </div>
     <script src="pixel-transition.js"></script>
     <script src="offline.js"></script>
+    <script src="ambient.js"></script>
+    <script src="daily.js"></script>
+    <script src="miniplayer.js"></script>
+    <script src="collage-fun.js"></script>
     <script>PixelTransition.reveal();</script>
 
     <canvas id="bg-sequence-left" class="bg-sequence"></canvas>
@@ -1017,17 +1182,30 @@
                 <article class="puzzle-badge" aria-labelledby="pbTitle">
                     <div class="pb-head">
                         <div class="pb-car" aria-hidden="true"></div>
-                        <div>
-                            <div class="pb-title" id="pbTitle">PARKING PUZZLE</div>
-                            <div id="pbStatus">Not played yet.</div>
+                        <div class="pb-head-text">
+                            <div class="pb-title" id="pbTitle">DAILY PUZZLE</div>
+                            <div class="pb-date" id="pbDate"></div>
+                        </div>
+                        <div class="pb-streak" id="pbStreak" title="Days in a row">STREAK 0</div>
+                    </div>
+                    <div class="pb-daily">
+                        <canvas class="pb-board" id="pbBoard" width="104" height="96" role="img" aria-label="Today's puzzle board"></canvas>
+                        <div class="pb-daily-info">
+                            <div class="pb-level" id="pbLevel">LEVEL -</div>
+                            <div id="pbPar">PAR -</div>
+                            <div class="pb-today" id="pbToday">Not solved yet today.</div>
+                            <button class="pb-play" id="pbDailyBtn">PLAY TODAY'S &#9654;</button>
                         </div>
                     </div>
-                    <div class="pb-stats">
-                        <div class="pb-stat">STARS<b id="pbStars">0</b></div>
-                        <div class="pb-stat">CLEARED<b id="pbCleared">0</b></div>
+                    <div class="pb-overall">
+                        <div class="pb-stats">
+                            <div class="pb-stat">STARS<b id="pbStars">0</b></div>
+                            <div class="pb-stat">CLEARED<b id="pbCleared">0</b></div>
+                        </div>
+                        <button class="pb-play pb-secondary" id="pbPlay">ALL LEVELS &#9654;</button>
                     </div>
                     <div class="pb-bar" id="pbBar" aria-hidden="true"></div>
-                    <button class="pb-play" id="pbPlay" onclick="PixelTransition.go('page2.html')">PLAY &#9654;</button>
+                    <div class="pb-status" id="pbStatus"></div>
                 </article>
             </div>
             <footer class="more-foot">
@@ -1282,6 +1460,7 @@
             const openRandomPopup = config[0]?.open_random_popup ?? {};
             const scrollDown = config[0]?.scroll_down ?? {};
             const randomImageClick = config[0]?.random_image_click ?? {};
+            const clickFx = config[0]?.click_fx ?? {};
 
             const imagesToPos = {};
             for (const [name, spec] of Object.entries(config[0]?.images_to_pos ?? {})) {
@@ -1622,10 +1801,15 @@
                 const card = e.target.closest && e.target.closest('.c-card');
                 if (card && (hit || !(e.metaKey || e.ctrlKey || e.shiftKey))) e.preventDefault();
                 if (!hit) {
-                    if (card && !(e.metaKey || e.ctrlKey || e.shiftKey)) PixelTransition.go(card.getAttribute('href'));
+                    if (card && !(e.metaKey || e.ctrlKey || e.shiftKey)) {
+                        window.Ambient?.blip(520);
+                        PixelTransition.go(card.getAttribute('href'));
+                    }
                     return;
                 }
                 const name = imgName(hit);
+                // stickers with their own effect play their own sound
+                if (!(name in clickFx)) window.Ambient?.blip(700);
                 console.log(name);
 
                 if (namesToLink[name]) {
@@ -1636,6 +1820,8 @@
                     showRandomImage(name);
                 } else if (name in scrollDown) {
                     document.getElementById('more').scrollIntoView({ behavior: 'smooth' });
+                } else if (name in clickFx) {
+                    window.CollageFun?.run(name, hit, clickFx[name], e);
                 }
             }
 
@@ -1667,6 +1853,29 @@
         }
 
         init().catch(err => console.error('Failed to load images:', err));
+
+        // ---------- loading screen ----------
+        // Shown only if the collage isn't ready within 350ms (cached visits
+        // never see it); tracks the collage images as they arrive.
+        (function () {
+            const loader = document.getElementById('collageLoader');
+            const fill = document.getElementById('clFill'), pct = document.getElementById('clPct');
+            const started = performance.now();
+            const showTimer = setTimeout(() => loader.classList.add('show'), 350);
+            const poll = setInterval(() => {
+                const imgs = [...wrapper.querySelectorAll('img')].filter(i => i.style.display !== 'none');
+                const done = imgs.filter(i => i.complete).length;
+                const ratio = imgs.length ? done / imgs.length : 0;
+                fill.style.width = Math.round(ratio * 100) + '%';
+                pct.textContent = Math.round(ratio * 100) + '%';
+                const ready = imgs.length > 5 && done === imgs.length;
+                if (ready || performance.now() - started > 12000) {
+                    clearInterval(poll);
+                    clearTimeout(showTimer);
+                    setTimeout(() => loader.classList.remove('show'), ready ? 150 : 0);
+                }
+            }, 100);
+        })();
     </script>
 
     <script>
@@ -1692,6 +1901,7 @@
                     a.addEventListener('click', e => {
                         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return;
                         e.preventDefault();
+                        window.Ambient?.blip(520);
                         PixelTransition.go(p.href);
                     });
                     cards.appendChild(a);
@@ -1714,19 +1924,61 @@
                 }
             }).catch(err => console.error('Failed to load site.json:', err));
 
-            // puzzle progress saved by page2.html in this browser
-            function renderPuzzle(total) {
+            // ---------- daily puzzle + overall progress (saved by page2.html) ----------
+            let puzzleConfig = null, sheet = null;
+            const SHEET_CELL = 16;            // tiles_texture_pixel.png: 16px per board cell
+            const $id = id => document.getElementById(id);
+            $id('pbDailyBtn').addEventListener('click', () => { window.Ambient?.blip(520); PixelTransition.go('page2.html?daily'); });
+            $id('pbPlay').addEventListener('click', () => { window.Ambient?.blip(520); PixelTransition.go('page2.html'); });
+
+            // today's board, drawn from tiles.json with the pixel sprite sheet
+            function drawBoard(level, sprites) {
+                const cols = level.gridCols, rows = level.gridRows, C = SHEET_CELL;
+                const cv = $id('pbBoard'), g = cv.getContext('2d');
+                cv.width = cols * C + 8;
+                cv.height = rows * C;
+                g.imageSmoothingEnabled = false;
+                g.fillStyle = '#3b3e44';
+                g.fillRect(0, 0, cols * C, rows * C);
+                g.fillStyle = '#2b2d32';
+                for (let x = 0; x <= cols; x++) g.fillRect(x * C, 0, 1, rows * C);
+                for (let y = 0; y <= rows; y++) g.fillRect(0, y * C, cols * C, 1);
+                level.tiles.forEach(t => {
+                    const x = t.col * C, y = t.row * C, w = t.width * C, h = t.height * C;
+                    const sp = sprites[t.spriteIndex];
+                    if (!sp || !sheet) { g.fillStyle = t.color || '#888'; g.fillRect(x + 1, y + 1, w - 2, h - 2); return; }
+                    const sx = sp.sheetCol * C, sy = sp.sheetRow * C, sw = sp.cellsWide * C, sh = sp.cellsTall * C;
+                    if (t.direction === sp.direction) g.drawImage(sheet, sx, sy, sw, sh, x, y, w, h);
+                    else {
+                        g.save();
+                        g.translate(x + w / 2, y + h / 2);
+                        g.rotate(Math.PI / 2);
+                        g.drawImage(sheet, sx, sy, sw, sh, -h / 2, -w / 2, h, w);
+                        g.restore();
+                    }
+                });
+                // exit arrow
+                const win = level.tiles.find(t => t.isWinTile);
+                if (win) {
+                    g.fillStyle = '#ffd23f';
+                    const ey = win.row * C + C / 2;
+                    for (let i = 0; i < 4; i++) g.fillRect(cols * C + 2 + i, ey - 4 + i, 1, 8 - i * 2);
+                }
+            }
+
+            function renderPuzzle() {
+                const levels = puzzleConfig ? puzzleConfig.levels : [];
+                const total = levels.length || 20;
                 let progress = { best: {} };
                 try { progress = JSON.parse(localStorage.getItem('parking-puzzle-progress')) || progress; } catch { }
                 const best = Object.values(progress.best || {});
                 const stars = best.reduce((n, b) => n + (b.stars || 0), 0);
-                document.getElementById('pbStars').textContent = `${stars}/${total * 3}`;
-                document.getElementById('pbCleared').textContent = `${best.length}/${total}`;
-                document.getElementById('pbStatus').textContent = best.length
-                    ? (best.length >= total ? 'Every level cleared. Legend.' : 'Pick up where you left off.')
-                    : 'Not played yet. 20 levels waiting.';
-                document.getElementById('pbPlay').innerHTML = best.length ? 'CONTINUE &#9654;' : 'PLAY &#9654;';
-                const bar = document.getElementById('pbBar');
+                $id('pbStars').textContent = `${stars}/${total * 3}`;
+                $id('pbCleared').textContent = `${best.length}/${total}`;
+                $id('pbStatus').textContent = best.length
+                    ? (best.length >= total ? 'Every level cleared. Legend.' : 'Overall progress across all levels.')
+                    : `Not played yet. ${total} levels waiting.`;
+                const bar = $id('pbBar');
                 bar.style.gridTemplateColumns = `repeat(${total}, 1fr)`;
                 bar.innerHTML = '';
                 for (let i = 0; i < total; i++) {
@@ -1734,10 +1986,33 @@
                     if (progress.best && progress.best['level' + (i + 1)]) cell.className = 'done';
                     bar.appendChild(cell);
                 }
+
+                // daily
+                const d = new Date();
+                $id('pbDate').textContent = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).toUpperCase();
+                if (!window.Daily || !levels.length) return;
+                const idx = Daily.index(levels.length), lv = levels[idx], st = Daily.state();
+                $id('pbLevel').textContent = `LEVEL ${idx + 1}`;
+                $id('pbPar').textContent = lv.par ? `PAR ${lv.par} MOVES` : '';
+                const today = $id('pbToday');
+                today.textContent = st.done
+                    ? `Solved in ${st.done.moves} moves ${'\u2605'.repeat(st.done.stars)}${'\u2606'.repeat(3 - st.done.stars)}`
+                    : 'Not solved yet today.';
+                today.classList.toggle('done', !!st.done);
+                $id('pbDailyBtn').innerHTML = st.done ? 'PLAY AGAIN &#9654;' : 'PLAY TODAY\'S &#9654;';
+                const streak = $id('pbStreak');
+                streak.textContent = `STREAK ${st.streak}`;
+                streak.classList.toggle('zero', !st.streak);
+                drawBoard(lv, puzzleConfig.sprites || []);
             }
-            renderPuzzle(20);
+
+            renderPuzzle();
+            Promise.all([
+                fetch('tiles.json').then(r => r.json()),
+                new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = 'images_to_use/tiles_texture_pixel.png'; }),
+            ]).then(([cfg, img]) => { puzzleConfig = cfg; sheet = img; renderPuzzle(); }).catch(() => { });
             // refresh when coming back from the game via the back button
-            window.addEventListener('pageshow', () => renderPuzzle(20));
+            window.addEventListener('pageshow', () => renderPuzzle());
 
             // hide the floating mobile "try the puzzle" button while the
             // section (which has its own puzzle card) is on screen
