@@ -1,153 +1,879 @@
 <!doctype html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Glass Edge Cursor (Optimized)</title>
-<style>
-html, body {
-  height: 100%;
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  background: linear-gradient(180deg, #0f172a 0%, #071029 60%);
-  cursor: none;
-  overflow: hidden;
-}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Glass Cursor</title>
+    <style>
+        :root {
+            --ui: rgba(12, 16, 30, 0.86);
+            --line: rgba(255, 255, 255, 0.22);
+            --text: #eef2ff;
+            --muted: #9aa4c0;
+            --accent: #7cc4ff;
+            --mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+        }
 
-.cursor-trail {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-  z-index: 9999;
-}
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-.trail-dot {
-  position: absolute;
-  width: 86px;
-  height: 86px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 6px;
-  border: 1px solid rgba(255,255,255,0.05);
-  transform: translate(-50%,-50%);
-  will-change: transform, opacity;
-  overflow: hidden;
-}
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
 
-/* top & bottom edges (subtle chromatic bevel) */
-.trail-dot::before,
-.trail-dot::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0;
-  height: 4px;
-}
-.trail-dot::before {
-  top: 0;
-  background: linear-gradient(to bottom, rgba(255,0,0,0.15), transparent);
-}
-.trail-dot::after {
-  bottom: 0;
-  background: linear-gradient(to top, rgba(0,255,255,0.15), transparent);
-}
+        body {
+            font: 14px/1.45 system-ui, 'Segoe UI', sans-serif;
+            color: var(--text);
+            background: #071029;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
 
-/* left & right edges */
-.trail-dot span {
-  position: absolute;
-  top: 0; bottom: 0; width: 4px;
-}
-.trail-dot span.left {
-  left: 0;
-  background: linear-gradient(to right, rgba(255,0,255,0.08), transparent);
-}
-.trail-dot span.right {
-  right: 0;
-  background: linear-gradient(to left, rgba(0,255,0,0.08), transparent);
-}
+        body.hide-cursor {
+            cursor: none;
+        }
 
-main {
-  padding: 4rem 2rem;
-  max-width: 900px;
-  margin: 0 auto;
-  line-height: 1.6;
-  color: #fff;
-}
-</style>
+        button,
+        input,
+        select {
+            font: inherit;
+            color: inherit;
+        }
+
+        button {
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        /* backgrounds */
+        .bg {
+            position: fixed;
+            inset: 0;
+            transition: background 0.4s ease;
+        }
+
+        .bg.night {
+            background: radial-gradient(1200px 700px at 30% 20%, #1b2a55 0%, transparent 60%), linear-gradient(180deg, #0f172a 0%, #071029 70%);
+        }
+
+        .bg.sunset {
+            background: linear-gradient(180deg, #2b1055 0%, #7b2869 45%, #d1495b 75%, #f6a54b 100%);
+        }
+
+        .bg.paper {
+            background: radial-gradient(circle, rgba(0, 0, 0, 0.08) 1px, transparent 1.5px) 0 0 / 14px 14px, #efe9dc;
+        }
+
+        .bg.grid {
+            background:
+                linear-gradient(rgba(124, 196, 255, 0.12) 1px, transparent 1px) 0 0 / 40px 40px,
+                linear-gradient(90deg, rgba(124, 196, 255, 0.12) 1px, transparent 1px) 0 0 / 40px 40px,
+                #050914;
+        }
+
+        body.light {
+            --text: #1a1d26;
+            --muted: #5b6275;
+        }
+
+        canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        #paint {
+            pointer-events: none;
+        }
+
+        #fx {
+            pointer-events: none;
+        }
+
+        /* headline: letters get pushed away by the cursor */
+        .hero {
+            position: fixed;
+            left: 50%;
+            top: 42%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+            width: min(900px, 92vw);
+        }
+
+        .hero h1 {
+            font: 800 clamp(34px, 8vw, 92px)/1 system-ui, 'Segoe UI', sans-serif;
+            letter-spacing: -1px;
+            white-space: nowrap;
+        }
+
+        .hero h1 span {
+            display: inline-block;
+            will-change: transform;
+            transition: transform 0.25s cubic-bezier(.2, .9, .3, 1.3);
+        }
+
+        .hero p {
+            margin-top: 14px;
+            color: var(--muted);
+            font-size: clamp(13px, 2vw, 16px);
+        }
+
+        body.no-hero .hero {
+            display: none;
+        }
+
+        /* ---------- control panel ---------- */
+        .panel {
+            position: fixed;
+            left: max(14px, env(safe-area-inset-left));
+            top: max(14px, env(safe-area-inset-top));
+            z-index: 20;
+            width: 290px;
+            max-height: calc(100vh - 28px);
+            max-height: calc(100dvh - 28px);
+            overflow-y: auto;
+            background: var(--ui);
+            color: #eef2ff;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+            touch-action: pan-y;
+            overscroll-behavior: contain;
+        }
+
+        .panel.collapsed .p-body {
+            display: none;
+        }
+
+        .p-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            font: 700 12px/1 var(--mono);
+            letter-spacing: 1px;
+        }
+
+        .p-head span {
+            flex: 1;
+        }
+
+        .p-head button {
+            border: 0;
+            background: rgba(255, 255, 255, 0.08);
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
+        }
+
+        .p-body {
+            padding: 0 12px 12px;
+        }
+
+        .p-body h3 {
+            font: 700 11px/1 var(--mono);
+            letter-spacing: 1px;
+            color: #9aa4c0;
+            margin: 12px 0 7px;
+        }
+
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .chip {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 999px;
+            padding: 5px 10px;
+            min-height: 32px;
+        }
+
+        .chip.on {
+            background: var(--accent);
+            color: #071029;
+            border-color: var(--accent);
+            font-weight: 700;
+        }
+
+        .slider {
+            display: grid;
+            grid-template-columns: 70px 1fr 34px;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0;
+            font-size: 13px;
+        }
+
+        .slider output {
+            font: 12px var(--mono);
+            text-align: right;
+            color: #9aa4c0;
+        }
+
+        input[type=range] {
+            accent-color: var(--accent);
+            width: 100%;
+        }
+
+        .toggles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+
+        .toggle {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 6px;
+            padding: 7px 8px;
+            text-align: left;
+            min-height: 36px;
+        }
+
+        .toggle.on {
+            border-color: var(--accent);
+            background: rgba(124, 196, 255, 0.18);
+        }
+
+        .toggle::before {
+            content: '\25CB  ';
+        }
+
+        .toggle.on::before {
+            content: '\25CF  ';
+            color: var(--accent);
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-top: 12px;
+        }
+
+        .action {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 8px;
+            min-height: 38px;
+        }
+
+        .action:hover,
+        .chip:hover,
+        .toggle:hover {
+            background: rgba(255, 255, 255, 0.16);
+        }
+
+        .hint {
+            margin-top: 10px;
+            color: #9aa4c0;
+            font-size: 12px;
+        }
+
+        .hint kbd {
+            font: 11px var(--mono);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            padding: 0 4px;
+        }
+
+        .stats {
+            position: fixed;
+            right: max(14px, env(safe-area-inset-right));
+            bottom: max(14px, env(safe-area-inset-bottom));
+            z-index: 20;
+            font: 11px var(--mono);
+            color: #9aa4c0;
+            background: var(--ui);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 4px 8px;
+            pointer-events: none;
+        }
+
+        .stats[hidden] {
+            display: none;
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: max(18px, env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            z-index: 30;
+            background: var(--ui);
+            color: #eef2ff;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font: 12px var(--mono);
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        /* phones: the panel becomes a bottom sheet */
+        @media (max-width: 640px) {
+            .panel {
+                left: 8px;
+                right: 8px;
+                top: auto;
+                bottom: max(8px, env(safe-area-inset-bottom));
+                width: auto;
+                max-height: 58vh;
+                max-height: 58dvh;
+            }
+
+            .hero {
+                top: 32%;
+            }
+
+            .stats {
+                top: max(60px, env(safe-area-inset-top));
+                bottom: auto;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .hero h1 span {
+                transition: none;
+            }
+        }
+    </style>
 </head>
-<body>
 
-<div class="cursor-trail" id="cursorTrail"></div>
+<body class="hide-cursor">
+    <script src="../../pixel-transition.js"></script>
+    <script src="../../offline.js"></script>
+    <script>PixelTransition.reveal();</script>
+    <script src="../../site-nav.js" data-home="../../index.html" data-position="top-right"></script>
 
-<main>
-  <h1>Glass Cursor with Beveled Edges (Optimized)</h1>
-  <p>This version avoids heavy <code>backdrop-filter</code> and uses fewer trail dots for smoother performance on mobile.</p>
-  <section style="height:300vh;"></section>
-</main>
+    <div class="bg night" id="bg"></div>
+    <canvas id="paint" aria-hidden="true"></canvas>
+    <div class="hero" id="hero">
+        <h1 id="heroTitle">GLASS CURSOR</h1>
+        <p id="heroSub">Move your mouse or drag a finger. Use more fingers for more trails.</p>
+    </div>
+    <canvas id="fx" aria-label="Cursor trail canvas"></canvas>
 
-<script>
-(function(){
-  const trailContainer = document.getElementById('cursorTrail');
+    <aside class="panel" id="panel" aria-label="Trail settings">
+        <div class="p-head"><span>GLASS CURSOR</span><button id="collapse" aria-label="Collapse settings" aria-expanded="true">&#9662;</button></div>
+        <div class="p-body">
+            <h3>SHAPE</h3>
+            <div class="chips" id="shapes"></div>
+            <h3>COLOUR</h3>
+            <div class="chips" id="palettes"></div>
+            <h3>MOTION</h3>
+            <div class="chips" id="motions"></div>
+            <h3>TUNE</h3>
+            <label class="slider">Length<input type="range" id="len" min="6" max="60" step="1"><output id="lenOut"></output></label>
+            <label class="slider">Size<input type="range" id="size" min="16" max="140" step="2"><output id="sizeOut"></output></label>
+            <label class="slider">Follow<input type="range" id="ease" min="0.05" max="0.6" step="0.01"><output id="easeOut"></output></label>
+            <label class="slider">Mirror<input type="range" id="mirror" min="1" max="8" step="1"><output id="mirrorOut"></output></label>
+            <h3>EFFECTS</h3>
+            <div class="toggles" id="toggles"></div>
+            <h3>BACKGROUND</h3>
+            <div class="chips" id="bgs"></div>
+            <div class="actions">
+                <button class="action" id="random">&#127922; Randomize</button>
+                <button class="action" id="share">&#128279; Copy link</button>
+                <button class="action" id="clear">&#129529; Clear paint</button>
+                <button class="action" id="save">&#128190; Save PNG</button>
+                <button class="action" id="full">&#9974; Fullscreen</button>
+                <button class="action" id="reset">&#8634; Reset</button>
+            </div>
+            <p class="hint"><kbd>Space</kbd> randomize &middot; <kbd>P</kbd> paint &middot; <kbd>C</kbd> clear &middot; <kbd>G</kbd> gravity &middot; <kbd>H</kbd> hide panel &middot; click = burst</p>
+        </div>
+    </aside>
+    <div class="stats" id="stats" hidden></div>
+    <div class="toast" id="toast" role="status"></div>
 
-  const DOTS = 20;      // fewer = lighter
-  const HISTORY = 30;   // smaller buffer
-  const lerpAmt = 0.12; // faster follow, less calc
+    <script>
+        'use strict';
+        const $ = id => document.getElementById(id);
+        const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const posHistory = [];
-  let pointer = { x: window.innerWidth/2, y: window.innerHeight/2 };
+        // ------------------------------------------------------------------
+        // Settings (saved, and shareable through the URL hash)
+        // ------------------------------------------------------------------
+        const SHAPES = ['square', 'circle', 'triangle', 'star', 'heart', 'diamond'];
+        const PALETTES = {
+            glass: { label: 'Glass' },
+            rainbow: { label: 'Rainbow' },
+            neon: { label: 'Neon' },
+            fire: { label: 'Fire' },
+            ocean: { label: 'Ocean' },
+            mono: { label: 'Mono' },
+        };
+        const MOTIONS = { chain: 'Chain', spring: 'Spring', orbit: 'Orbit', wave: 'Wave' };
+        const TOGGLES = {
+            glow: 'Glow', gravity: 'Gravity', paint: 'Paint mode', bursts: 'Click bursts',
+            magnet: 'Magnet text', sound: 'Sound', autopilot: 'Autopilot', stats: 'FPS',
+        };
+        const BGS = { night: 'Night', sunset: 'Sunset', grid: 'Grid', paper: 'Paper' };
+        const DEFAULTS = {
+            shape: 'square', palette: 'glass', motion: 'chain', bg: 'night',
+            len: 22, size: 86, ease: 0.18, mirror: 1,
+            glow: false, gravity: false, paint: false, bursts: true, magnet: true, sound: false, autopilot: true, stats: false,
+        };
+        let S = { ...DEFAULTS };
+        try { Object.assign(S, JSON.parse(localStorage.getItem('glass-cursor') || '{}')); } catch { }
+        try { if (location.hash.length > 1) Object.assign(S, JSON.parse(decodeURIComponent(atob(location.hash.slice(1))))); } catch { }
+        const save = () => { try { localStorage.setItem('glass-cursor', JSON.stringify(S)); } catch { } };
 
-  const dots = [];
-  for(let i=0;i<DOTS;i++){
-    const el = document.createElement('div');
-    el.className='trail-dot';
+        // ------------------------------------------------------------------
+        // Canvas setup (device-pixel aware, capped at 2x for speed)
+        // ------------------------------------------------------------------
+        const fx = $('fx'), ctx = fx.getContext('2d');
+        const paint = $('paint'), pctx = paint.getContext('2d');
+        let W = 0, H = 0, DPR = 1;
+        function resize() {
+            DPR = Math.min(2, devicePixelRatio || 1);
+            W = innerWidth; H = innerHeight;
+            for (const [c, g] of [[fx, ctx], [paint, pctx]]) {
+                const keep = c === paint && c.width ? (() => { const t = document.createElement('canvas'); t.width = c.width; t.height = c.height; t.getContext('2d').drawImage(c, 0, 0); return t; })() : null;
+                c.width = Math.round(W * DPR); c.height = Math.round(H * DPR);
+                g.setTransform(DPR, 0, 0, DPR, 0, 0);
+                if (keep) g.drawImage(keep, 0, 0, keep.width / DPR, keep.height / DPR);
+            }
+            wake();
+        }
+        addEventListener('resize', resize);
 
-    // create left/right edges
-    const leftEdge = document.createElement('span');
-    leftEdge.className='left';
-    const rightEdge = document.createElement('span');
-    rightEdge.className='right';
-    el.appendChild(leftEdge);
-    el.appendChild(rightEdge);
+        // ------------------------------------------------------------------
+        // Pointers: one trail per active pointer (multi-touch)
+        // ------------------------------------------------------------------
+        const trails = new Map();   // pointerId -> trail
+        let lastInput = performance.now();
+        function makeTrail(x, y) {
+            const segs = [];
+            for (let i = 0; i < 60; i++) segs.push({ x, y, vx: 0, vy: 0 });
+            return { x, y, segs, hist: [{ x, y }], alive: true, born: performance.now(), hue: Math.random() * 360 };
+        }
+        function onDown(e) {
+            if (e.target.closest('.panel, .site-home-btn')) return;
+            lastInput = performance.now();
+            const t = trails.get(e.pointerId) || makeTrail(e.clientX, e.clientY);
+            t.alive = true; t.x = e.clientX; t.y = e.clientY;
+            trails.set(e.pointerId, t);
+            if (e.pointerType !== 'mouse') trails.delete('auto');
+            if (S.bursts) burst(e.clientX, e.clientY);
+            wake();
+        }
+        function onMove(e) {
+            if (e.target.closest && e.target.closest('.panel') && e.pointerType === 'mouse') { document.body.classList.remove('hide-cursor'); return; }
+            if (e.pointerType === 'mouse') document.body.classList.add('hide-cursor');
+            // touch trails only exist while the finger is down
+            if (e.pointerType !== 'mouse' && !trails.has(e.pointerId)) return;
+            lastInput = performance.now();
+            trails.delete('auto');
+            let t = trails.get(e.pointerId);
+            if (!t) { t = makeTrail(e.clientX, e.clientY); trails.set(e.pointerId, t); }
+            // coalesced events give smoother lines on fast moves
+            const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+            for (const ev of (evs.length ? evs : [e])) { t.x = ev.clientX; t.y = ev.clientY; pushHist(t); }
+            t.alive = true;
+            if (S.magnet) queueMagnet(t.x, t.y);
+            if (S.sound) whoosh(t);
+            wake();
+        }
+        function onUp(e) {
+            const t = trails.get(e.pointerId);
+            if (t && e.pointerType !== 'mouse') t.alive = false;   // fade out, then removed
+        }
+        addEventListener('pointerdown', onDown);
+        addEventListener('pointermove', onMove, { passive: true });
+        addEventListener('pointerup', onUp);
+        addEventListener('pointercancel', onUp);
+        document.addEventListener('mouseleave', () => { const t = trails.get(1); if (t) t.alive = false; });
 
-    trailContainer.appendChild(el);
-    dots.push({el,x:pointer.x,y:pointer.y});
-  }
+        function pushHist(t) {
+            t.hist.unshift({ x: t.x, y: t.y });
+            if (t.hist.length > 120) t.hist.length = 120;
+        }
 
-  for(let i=0;i<HISTORY;i++) posHistory.push({x:pointer.x,y:pointer.y});
+        // ------------------------------------------------------------------
+        // Colours
+        // ------------------------------------------------------------------
+        function colour(t, i, n, time) {
+            const k = i / Math.max(1, n - 1);
+            switch (S.palette) {
+                case 'rainbow': return `hsla(${(t.hue + k * 300 + time * 0.05) % 360}, 90%, 62%, ${0.75 - k * 0.6})`;
+                case 'neon': return `hsla(${(i % 2 ? 300 : 175)}, 100%, 60%, ${0.8 - k * 0.65})`;
+                case 'fire': return `hsla(${50 - k * 50}, 100%, ${60 - k * 15}%, ${0.85 - k * 0.7})`;
+                case 'ocean': return `hsla(${190 + k * 40}, 85%, ${65 - k * 25}%, ${0.75 - k * 0.6})`;
+                case 'mono': return document.body.classList.contains('light') ? `rgba(20,24,34,${0.6 - k * 0.5})` : `rgba(255,255,255,${0.55 - k * 0.45})`;
+                default: return `rgba(255,255,255,${0.1 - k * 0.06})`;   // glass
+            }
+        }
 
-  function updatePointer(x,y){
-    pointer.x=x;
-    pointer.y=y;
-    posHistory.unshift({x,y});
-    if(posHistory.length>HISTORY) posHistory.pop();
-  }
+        // ------------------------------------------------------------------
+        // Shapes
+        // ------------------------------------------------------------------
+        function shapePath(g, s) {
+            const r = s / 2;
+            g.beginPath();
+            switch (S.shape) {
+                case 'circle': g.arc(0, 0, r, 0, Math.PI * 2); break;
+                case 'triangle': g.moveTo(0, -r); g.lineTo(r * 0.92, r * 0.7); g.lineTo(-r * 0.92, r * 0.7); g.closePath(); break;
+                case 'diamond': g.moveTo(0, -r); g.lineTo(r * 0.75, 0); g.lineTo(0, r); g.lineTo(-r * 0.75, 0); g.closePath(); break;
+                case 'star':
+                    for (let i = 0; i < 10; i++) {
+                        const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+                        i ? g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : g.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+                    }
+                    g.closePath(); break;
+                case 'heart':
+                    g.moveTo(0, r * 0.75);
+                    g.bezierCurveTo(-r * 1.3, -r * 0.1, -r * 0.55, -r * 1.05, 0, -r * 0.35);
+                    g.bezierCurveTo(r * 0.55, -r * 1.05, r * 1.3, -r * 0.1, 0, r * 0.75);
+                    break;
+                default: {
+                    const q = r * 0.12;
+                    if (g.roundRect) g.roundRect(-r, -r, s, s, q); else g.rect(-r, -r, s, s);
+                }
+            }
+        }
 
-  window.addEventListener('pointermove', e=>updatePointer(e.clientX, e.clientY));
-  window.addEventListener('touchmove', e=>{
-    if(e.touches && e.touches[0]) updatePointer(e.touches[0].clientX, e.touches[0].clientY);
-  }, {passive:true});
+        // one glass piece: fill, chromatic bevel edges, highlight
+        function drawPiece(g, x, y, s, rot, fill, k) {
+            g.save();
+            g.translate(x, y);
+            g.rotate(rot);
+            shapePath(g, s);
+            g.fillStyle = fill;
+            if (S.glow && S.palette !== 'glass') { g.shadowColor = fill; g.shadowBlur = 18; }
+            g.fill();
+            g.shadowBlur = 0;
+            if (S.palette === 'glass') {
+                g.lineWidth = 2;
+                g.strokeStyle = `rgba(255,80,80,${0.22 - k * 0.15})`;
+                g.save(); g.translate(-1, -1); shapePath(g, s); g.stroke(); g.restore();
+                g.strokeStyle = `rgba(80,255,255,${0.22 - k * 0.15})`;
+                g.save(); g.translate(1, 1); shapePath(g, s); g.stroke(); g.restore();
+                g.strokeStyle = `rgba(255,255,255,${0.35 - k * 0.25})`;
+                g.lineWidth = 1;
+                shapePath(g, s); g.stroke();
+            } else {
+                g.strokeStyle = 'rgba(255,255,255,0.25)';
+                g.lineWidth = 1;
+                g.stroke();
+            }
+            g.restore();
+        }
 
-  function animate(){
-    for(let i=0;i<dots.length;i++){
-      const dot = dots[i];
-      const t = i/(dots.length-1);
-      const idx = Math.floor(t*(posHistory.length-1));
-      const target = posHistory[idx]||posHistory[posHistory.length-1];
+        // ------------------------------------------------------------------
+        // Particles (click bursts + gravity drops)
+        // ------------------------------------------------------------------
+        const parts = [];
+        function burst(x, y) {
+            const n = reduced ? 8 : 26;
+            for (let i = 0; i < n; i++) {
+                const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 6;
+                parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, s: 6 + Math.random() * 16, life: 1, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.3, hue: Math.random() * 360 });
+            }
+            if (S.sound) blip(520 + Math.random() * 300, 0.08);
+            if (parts.length > 400) parts.splice(0, parts.length - 400);
+            wake();
+        }
 
-      dot.x += (target.x - dot.x) * lerpAmt;
-      dot.y += (target.y - dot.y) * lerpAmt;
+        // ------------------------------------------------------------------
+        // Autopilot: a lissajous path while nobody is moving
+        // ------------------------------------------------------------------
+        function autopilot(time) {
+            if (!S.autopilot || performance.now() - lastInput < 2500 || [...trails.values()].some(t => t !== trails.get('auto') && t.alive)) return;
+            let t = trails.get('auto');
+            if (!t) { t = makeTrail(W / 2, H / 2); trails.set('auto', t); }
+            const s = time / 1000;
+            t.x = W / 2 + Math.sin(s * 0.9) * W * 0.32;
+            t.y = H / 2 + Math.sin(s * 1.3 + 1) * H * 0.26;
+            t.alive = true;
+            pushHist(t);
+            if (S.magnet) queueMagnet(t.x, t.y);
+        }
 
-      const sizeFactor = 1.0 - t*0.25;
-      const op = 0.85 - t*0.8;
-      dot.el.style.transform = `translate(${dot.x}px,${dot.y}px) translate(-50%,-50%) scale(${sizeFactor})`;
-      dot.el.style.opacity = op;
-    }
+        // ------------------------------------------------------------------
+        // Main loop - sleeps when nothing is moving
+        // ------------------------------------------------------------------
+        let raf = 0, still = 0, fpsN = 0, fpsT = 0;
+        function wake() { if (!raf) raf = requestAnimationFrame(frame); }
 
-    requestAnimationFrame(animate);
-  }
+        function frame(time) {
+            raf = 0;
+            autopilot(time);
+            ctx.clearRect(0, 0, W, H);
+            const n = S.len, size = S.size, ease = reduced ? 0.6 : S.ease;
+            let moving = false;
 
-  requestAnimationFrame(animate);
-})();
-</script>
+            for (const [id, t] of trails) {
+                const segs = t.segs;
+                // fade dead trails by collapsing them into their head
+                if (!t.alive) { t.fade = (t.fade || 1) - 0.06; if (t.fade <= 0) { trails.delete(id); continue; } }
+                for (let i = 0; i < n; i++) {
+                    const sg = segs[i];
+                    let tx, ty;
+                    if (S.motion === 'chain') {
+                        const h = t.hist[Math.min(t.hist.length - 1, Math.floor(i * 1.6))];
+                        tx = h.x; ty = h.y;
+                    } else if (S.motion === 'spring') {
+                        const lead = i === 0 ? t : segs[i - 1];
+                        sg.vx = (sg.vx + (lead.x - sg.x) * ease * 0.6) * 0.72;
+                        sg.vy = (sg.vy + (lead.y - sg.y) * ease * 0.6) * 0.72;
+                        tx = sg.x + sg.vx; ty = sg.y + sg.vy;
+                    } else if (S.motion === 'orbit') {
+                        const a = time / 600 + i * (Math.PI * 2 / n);
+                        const rad = 18 + i * 3.2;
+                        tx = t.x + Math.cos(a) * rad; ty = t.y + Math.sin(a) * rad;
+                    } else { // wave
+                        const h = t.hist[Math.min(t.hist.length - 1, Math.floor(i * 1.6))];
+                        tx = h.x + Math.sin(time / 180 + i * 0.6) * 10; ty = h.y + Math.cos(time / 220 + i * 0.6) * 10;
+                    }
+                    if (S.gravity) { sg.vy = (sg.vy || 0) + 0.5 * (i / n); ty += sg.vy * (i / n) * 4; if (sg.vy > 12) sg.vy = 12; }
+                    else if (S.motion !== 'spring') sg.vy = 0;
+                    const dx = tx - sg.x, dy = ty - sg.y;
+                    sg.x += dx * (S.motion === 'spring' ? 1 : ease);
+                    sg.y += dy * (S.motion === 'spring' ? 1 : ease);
+                    if (Math.abs(dx) + Math.abs(dy) > 0.3) moving = true;
+                }
+                // draw tail first so the head sits on top
+                const fade = t.fade ?? 1;
+                for (let i = n - 1; i >= 0; i--) {
+                    const sg = segs[i], k = i / Math.max(1, n - 1);
+                    const s = size * (1 - k * 0.55) * (S.motion === 'orbit' ? 0.5 : 1) * fade;
+                    const rot = S.shape === 'heart' || S.shape === 'triangle' ? 0 : (S.motion === 'wave' ? time / 900 + i * 0.1 : 0);
+                    const col = colour(t, i, n, time);
+                    for (const [px, py] of mirroredPoints(sg.x, sg.y)) drawPiece(ctx, px, py, s, rot, col, k);
+                }
+                // paint mode: leave the head's mark on the paint canvas
+                if (S.paint && t.alive) {
+                    const head = segs[0];
+                    const col = colour(t, 0, n, time).replace(/[\d.]+\)$/, '0.6)');
+                    for (const [px, py] of mirroredPoints(head.x, head.y)) drawPiece(pctx, px, py, size * 0.35, 0, col, 0);
+                }
+            }
 
+            // particles
+            for (let i = parts.length - 1; i >= 0; i--) {
+                const p = parts[i];
+                p.vy += S.gravity ? 0.35 : 0.12; p.vx *= 0.98; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life -= 0.018;
+                if (p.life <= 0 || p.y > H + 40) { parts.splice(i, 1); continue; }
+                const fill = S.palette === 'glass' ? `rgba(255,255,255,${0.35 * p.life})` : `hsla(${S.palette === 'fire' ? 30 : p.hue}, 95%, 62%, ${p.life})`;
+                drawPiece(ctx, p.x, p.y, p.s * p.life, p.rot, fill, 1 - p.life);
+                moving = true;
+            }
+
+            // fps
+            fpsN++;
+            if (time - fpsT > 500) { if (S.stats) $('stats').textContent = `${Math.round(fpsN * 1000 / (time - fpsT))} fps · ${trails.size} trail${trails.size === 1 ? '' : 's'} · ${parts.length} bits`; fpsN = 0; fpsT = time; }
+
+            // keep going while anything moves or the autopilot runs
+            const autopilotOn = trails.has('auto');
+            if (moving || autopilotOn || parts.length || [...trails.values()].some(t => !t.alive)) { still = 0; wake(); }
+            else if (++still < 20) wake();   // a few settle frames, then sleep
+        }
+
+        // kaleidoscope: every point repeated N times around the centre
+        function mirroredPoints(x, y) {
+            const m = S.mirror | 0;
+            if (m <= 1) return [[x, y]];
+            const cx = W / 2, cy = H / 2, out = [];
+            for (let i = 0; i < m; i++) {
+                const a = i * Math.PI * 2 / m, c = Math.cos(a), s = Math.sin(a), dx = x - cx, dy = y - cy;
+                out.push([cx + dx * c - dy * s, cy + dx * s + dy * c]);
+            }
+            return out;
+        }
+
+        // ------------------------------------------------------------------
+        // Magnet headline: letters move away from the nearest pointer
+        // ------------------------------------------------------------------
+        const title = $('heroTitle');
+        title.innerHTML = [...title.textContent].map(c => c === ' ' ? '<span>&nbsp;</span>' : `<span>${c}</span>`).join('');
+        const letters = [...title.children];
+        let magnetQ = null, magnetRaf = 0, letterBoxes = [];
+        function measureLetters() {
+            letters.forEach(l => { l.style.transform = ''; });
+            letterBoxes = letters.map(l => { const r = l.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+        }
+        function queueMagnet(x, y) {
+            magnetQ = [x, y];
+            if (!magnetRaf) magnetRaf = requestAnimationFrame(applyMagnet);
+        }
+        function applyMagnet() {
+            magnetRaf = 0;
+            if (!magnetQ || !S.magnet) return;
+            const [x, y] = magnetQ;
+            letters.forEach((l, i) => {
+                const b = letterBoxes[i]; if (!b) return;
+                const dx = b.x - x, dy = b.y - y, d = Math.hypot(dx, dy), R = 160;
+                if (d < R) {
+                    const f = (1 - d / R) * 40;
+                    l.style.transform = `translate(${dx / (d || 1) * f}px, ${dy / (d || 1) * f}px) rotate(${dx / (d || 1) * f * 0.4}deg)`;
+                } else if (l.style.transform) l.style.transform = '';
+            });
+        }
+        addEventListener('resize', () => setTimeout(measureLetters, 50));
+
+        // ------------------------------------------------------------------
+        // Sound (off by default): soft blips, pitch follows speed
+        // ------------------------------------------------------------------
+        let actx = null, lastWhoosh = 0;
+        function blip(freq, vol = 0.05) {
+            try {
+                actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+                actx.resume();
+                const o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime;
+                o.type = 'triangle'; o.frequency.value = freq;
+                g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+                o.connect(g).connect(actx.destination); o.start(t0); o.stop(t0 + 0.2);
+            } catch { }
+        }
+        function whoosh(t) {
+            const now = performance.now();
+            if (now - lastWhoosh < 90 || t.hist.length < 2) return;
+            const sp = Math.hypot(t.hist[0].x - t.hist[1].x, t.hist[0].y - t.hist[1].y);
+            if (sp < 6) return;
+            lastWhoosh = now;
+            blip(220 + Math.min(sp, 60) * 12, 0.02);
+        }
+
+        // ------------------------------------------------------------------
+        // UI
+        // ------------------------------------------------------------------
+        function chipGroup(el, items, key) {
+            el.innerHTML = '';
+            Object.entries(items).forEach(([v, label]) => {
+                const b = document.createElement('button');
+                b.className = 'chip' + (S[key] === v ? ' on' : '');
+                b.textContent = typeof label === 'string' ? label : label.label;
+                b.setAttribute('aria-pressed', String(S[key] === v));
+                b.addEventListener('click', () => { S[key] = v; apply(); });
+                el.appendChild(b);
+            });
+        }
+        function sliders() {
+            [['len', v => v], ['size', v => v + 'px'], ['ease', v => (+v).toFixed(2)], ['mirror', v => v === '1' || v === 1 ? 'off' : v + 'x']].forEach(([k, f]) => {
+                const inp = $(k);
+                inp.value = S[k];
+                $(k + 'Out').textContent = f(S[k]);
+                inp.oninput = () => { S[k] = +inp.value; $(k + 'Out').textContent = f(inp.value); save(); wake(); };
+            });
+        }
+        function toggles() {
+            const el = $('toggles');
+            el.innerHTML = '';
+            Object.entries(TOGGLES).forEach(([k, label]) => {
+                const b = document.createElement('button');
+                b.className = 'toggle' + (S[k] ? ' on' : '');
+                b.textContent = label;
+                b.setAttribute('aria-pressed', String(!!S[k]));
+                b.addEventListener('click', () => { S[k] = !S[k]; apply(); if (k === 'sound' && S.sound) blip(660); });
+                el.appendChild(b);
+            });
+        }
+        function apply() {
+            chipGroup($('shapes'), Object.fromEntries(SHAPES.map(s => [s, s[0].toUpperCase() + s.slice(1)])), 'shape');
+            chipGroup($('palettes'), PALETTES, 'palette');
+            chipGroup($('motions'), MOTIONS, 'motion');
+            chipGroup($('bgs'), BGS, 'bg');
+            sliders();
+            toggles();
+            $('bg').className = 'bg ' + S.bg;
+            document.body.classList.toggle('light', S.bg === 'paper');
+            $('stats').hidden = !S.stats;
+            if (!S.magnet) letters.forEach(l => { l.style.transform = ''; });
+            if (!S.autopilot) trails.delete('auto');
+            save();
+            wake();
+        }
+
+        let toastT = 0;
+        function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1600); }
+
+        function randomize() {
+            const pick = a => a[Math.floor(Math.random() * a.length)];
+            S.shape = pick(SHAPES); S.palette = pick(Object.keys(PALETTES)); S.motion = pick(Object.keys(MOTIONS));
+            S.len = 10 + Math.floor(Math.random() * 40); S.size = 30 + Math.floor(Math.random() * 90);
+            S.ease = +(0.08 + Math.random() * 0.35).toFixed(2); S.mirror = pick([1, 1, 1, 2, 3, 4, 6]);
+            S.glow = Math.random() < 0.5;
+            apply();
+            toast(`${S.shape} · ${S.palette} · ${S.motion}`);
+        }
+
+        $('random').onclick = randomize;
+        $('clear').onclick = () => { pctx.clearRect(0, 0, W, H); toast('Paint cleared'); };
+        $('save').onclick = () => {
+            const out = document.createElement('canvas');
+            out.width = fx.width; out.height = fx.height;
+            const g = out.getContext('2d');
+            const bgCol = { night: '#0b1430', sunset: '#7b2869', grid: '#050914', paper: '#efe9dc' }[S.bg];
+            g.fillStyle = bgCol; g.fillRect(0, 0, out.width, out.height);
+            g.drawImage(paint, 0, 0); g.drawImage(fx, 0, 0);
+            out.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'glass-cursor.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); });
+            toast('Saved PNG');
+        };
+        $('share').onclick = async () => {
+            const url = location.href.split('#')[0] + '#' + btoa(encodeURIComponent(JSON.stringify(S)));
+            history.replaceState(null, '', url);
+            try { await navigator.clipboard.writeText(url); toast('Link copied — it opens with these settings'); }
+            catch { toast('Link is in the address bar'); }
+        };
+        $('full').onclick = () => {
+            if (document.fullscreenElement) document.exitFullscreen();
+            else document.documentElement.requestFullscreen?.().catch(() => toast('Fullscreen not available'));
+        };
+        $('reset').onclick = () => { S = { ...DEFAULTS }; pctx.clearRect(0, 0, W, H); apply(); toast('Back to defaults'); };
+        $('collapse').onclick = () => {
+            const c = $('panel').classList.toggle('collapsed');
+            $('collapse').innerHTML = c ? '&#9652;' : '&#9662;';
+            $('collapse').setAttribute('aria-expanded', String(!c));
+        };
+        // phones start with the panel collapsed so the canvas is free
+        if (matchMedia('(max-width: 640px)').matches) $('collapse').click();
+
+        addEventListener('keydown', e => {
+            if (e.target.closest('input, select')) return;
+            const k = e.key.toLowerCase();
+            if (k === ' ') { e.preventDefault(); randomize(); }
+            else if (k === 'p') { S.paint = !S.paint; apply(); toast('Paint ' + (S.paint ? 'on' : 'off')); }
+            else if (k === 'c') $('clear').click();
+            else if (k === 'g') { S.gravity = !S.gravity; apply(); toast('Gravity ' + (S.gravity ? 'on' : 'off')); }
+            else if (k === 'h') $('panel').hidden = !$('panel').hidden;
+            else if (k === 'f') $('full').click();
+        });
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+
+        // boot
+        resize();
+        apply();
+        requestAnimationFrame(measureLetters);
+        document.fonts?.ready.then(measureLetters);
+        setInterval(() => { if (S.autopilot && !document.hidden && performance.now() - lastInput > 2500) wake(); }, 1000);
+    </script>
 </body>
+
 </html>

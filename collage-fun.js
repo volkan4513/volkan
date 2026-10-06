@@ -174,7 +174,7 @@
     // dot per block, keep the source colour under it, grow it to fill the
     // block) and a discrete transfer posterizes the colours.
     // =====================================================================
-    const BLOCK = window.innerWidth < 600 ? 4 : 6;   // smaller blocks on phones
+    const BLOCK = window.innerWidth < 600 ? 3 : 4;   // px per pixel-art block (smaller = sharper)
     function ensureFilter() {
         if (document.getElementById('fx-pixelate')) return;
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -182,7 +182,7 @@
         svg.setAttribute('height', '0');
         svg.setAttribute('aria-hidden', 'true');
         svg.style.position = 'absolute';
-        const half = BLOCK / 2;
+        const half = Math.floor(BLOCK / 2);
         svg.innerHTML = `
             <filter id="fx-pixelate" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
                 <feFlood x="${half}" y="${half}" width="1" height="1" flood-color="#000"/>
@@ -191,9 +191,9 @@
                 <feComposite in="SourceGraphic" in2="grid" operator="in"/>
                 <feMorphology operator="dilate" radius="${half}"/>
                 <feComponentTransfer>
-                    <feFuncR type="discrete" tableValues="0 .2 .4 .6 .8 1"/>
-                    <feFuncG type="discrete" tableValues="0 .2 .4 .6 .8 1"/>
-                    <feFuncB type="discrete" tableValues="0 .2 .4 .6 .8 1"/>
+                    <feFuncR type="discrete" tableValues="0 .14 .28 .43 .57 .71 .86 1"/>
+                    <feFuncG type="discrete" tableValues="0 .14 .28 .43 .57 .71 .86 1"/>
+                    <feFuncB type="discrete" tableValues="0 .14 .28 .43 .57 .71 .86 1"/>
                 </feComponentTransfer>
             </filter>`;
         document.body.appendChild(svg);
@@ -212,8 +212,9 @@
         foundPixel = true;
         try { sessionStorage.setItem('hint-pixel', '1'); sessionStorage.setItem('hint-start', '1'); } catch { }
         document.body.classList.toggle('pixel-mode', on);
+        pixelBtn?.setAttribute('aria-pressed', String(on));
         [392, 523, 659].forEach((f, i) => setTimeout(() => blip(on ? f : 1000 - f), i * 80));
-        toast(on ? (isTouch ? 'PIXEL MODE ON (tap "portfolio" 5x to exit)' : 'PIXEL MODE ON  (Esc to exit)') : 'Pixel mode off');
+        toast(on ? (isTouch ? 'PIXEL MODE ON (tap the pixel button to exit)' : 'PIXEL MODE ON  (Esc to exit)') : 'Pixel mode off');
     }
 
     // keyboard: Konami code or typing "pixel"
@@ -239,6 +240,37 @@
         if (taps.length >= 5) { taps = []; togglePixelMode(); }
         else if (taps.length >= 2 && !document.body.classList.contains('pixel-mode')) toast(`${5 - taps.length} more\u2026`);
     }
+
+    // ---- phones: a visible pixel-mode toggle in the top-right dock
+    let pixelBtn = null;
+    function mountPixelButton() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .pixel-btn { display: none; }
+            @media (max-width: 768px) {
+                .pixel-btn { display: grid; place-items: center; position: fixed; z-index: 60;
+                    top: max(12px, env(safe-area-inset-top)); right: max(120px, calc(env(safe-area-inset-right) + 120px));
+                    width: 44px; height: 44px; padding: 0; color: #0d0d0d; background: #c9ccd4;
+                    border: 3px solid #000; box-shadow: inset -3px -3px 0 rgba(0,0,0,.3), inset 3px 3px 0 rgba(255,255,255,.45), 3px 3px 0 #000;
+                    cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; opacity: .92; }
+                .pixel-btn[aria-pressed="true"] { background: #ff7ad9; transform: translate(3px, 3px); box-shadow: inset 3px 3px 0 rgba(0,0,0,.3); }
+                body.popup-open .pixel-btn { display: none; }
+            }`;
+        document.head.appendChild(style);
+        pixelBtn = document.createElement('button');
+        pixelBtn.className = 'pixel-btn';
+        pixelBtn.type = 'button';
+        pixelBtn.setAttribute('aria-label', 'Pixel mode');
+        pixelBtn.setAttribute('aria-pressed', 'false');
+        pixelBtn.title = 'Pixel mode';
+        // a little 4-colour pixel grid icon
+        pixelBtn.innerHTML = '<svg viewBox="0 0 8 8" width="20" height="20" shape-rendering="crispEdges" aria-hidden="true">' +
+            '<path fill="#ff6050" d="M0 0h4v4H0z"/><path fill="#00a5ff" d="M4 0h4v4H4z"/><path fill="#ffdf00" d="M0 4h4v4H0z"/><path fill="#3ddc84" d="M4 4h4v4H4z"/>' +
+            '<path fill="#0d0d0d" d="M3 0h2v8H3zM0 3h8v2H0z"/></svg>';
+        pixelBtn.addEventListener('click', e => { e.stopPropagation(); togglePixelMode(); });
+        document.body.appendChild(pixelBtn);
+    }
+    if (document.body) mountPixelButton(); else document.addEventListener('DOMContentLoaded', mountPixelButton);
 
     window.CollageFun = { run, togglePixelMode, confetti };
 })();

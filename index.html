@@ -541,6 +541,262 @@
             box-shadow: inset 3px 3px 0 rgba(0, 0, 0, 0.3);
         }
 
+        /* ---- header toggles ---- */
+        .view-toggles {
+            margin-left: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        .vt {
+            font: bold 13px/1 ui-monospace, 'Courier New', monospace;
+            color: var(--ink);
+            background: #fff;
+            border: 3px solid var(--ink);
+            box-shadow: 3px 3px 0 var(--ink);
+            padding: 8px 10px;
+            min-height: 38px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .vt[aria-pressed="true"] {
+            background: #ff7ad9;
+            transform: translate(3px, 3px);
+            box-shadow: none;
+        }
+
+        /* ---- extra blocks ---- */
+        .block {
+            margin-top: 48px;
+        }
+
+        .block-title {
+            font: 700 clamp(26px, 4vw, 38px)/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            margin-bottom: 18px;
+        }
+
+        .chip.r {
+            background: var(--r);
+            color: #fff;
+            transform: rotate(-1.5deg);
+        }
+
+        .skills {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 0;
+        }
+
+        .skills li {
+            font: bold 14px/1 ui-monospace, 'Courier New', monospace;
+            text-transform: uppercase;
+            padding: 9px 12px;
+            background: #fff;
+            border: 3px solid var(--ink);
+            box-shadow: 3px 3px 0 var(--ink);
+            transform: rotate(var(--t, 0deg));
+        }
+
+        .skills li:nth-child(4n+1) { background: var(--y); --t: -1.5deg; }
+        .skills li:nth-child(4n+2) { --t: 1deg; }
+        .skills li:nth-child(4n+3) { background: var(--b); color: #fff; --t: -0.5deg; }
+        .skills li:nth-child(4n) { --t: 1.5deg; }
+
+        .built {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+            gap: 14px 22px;
+            align-items: start;
+        }
+
+        .built details {
+            background: #fff;
+            border: 3px solid var(--ink);
+            box-shadow: 4px 4px 0 var(--ink);
+        }
+
+        .built summary {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            font: 700 20px/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+
+        .built summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .built summary::after {
+            content: '+';
+            margin-left: auto;
+            font: bold 20px/1 ui-monospace, monospace;
+        }
+
+        .built details[open] summary::after {
+            content: '\2212';
+        }
+
+        .built details[open] summary {
+            border-bottom: 3px dashed rgba(0, 0, 0, 0.25);
+        }
+
+        .built .b-body {
+            padding: 12px 14px 14px;
+        }
+
+        .built .b-body p {
+            font: 400 17px/1.4 'Kalam', 'Comic Sans MS', cursive;
+            margin-bottom: 10px;
+        }
+
+        .lab-intro {
+            margin: -8px 0 18px;
+        }
+
+        .lab {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+            gap: 22px;
+        }
+
+        .lab-tile {
+            position: relative;
+            display: block;
+            color: #f4f1e8;
+            text-decoration: none;
+            background: var(--g);
+            border: 3px solid var(--ink);
+            box-shadow: 5px 5px 0 var(--ink);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .lab-tile:hover,
+        .lab-tile:focus-visible {
+            transform: translate(-2px, -3px);
+            box-shadow: 8px 8px 0 var(--ink);
+        }
+
+        .lab-tile img {
+            display: block;
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            object-fit: cover;
+            border-bottom: 3px solid var(--ink);
+        }
+
+        .lab-tile .l-text {
+            padding: 12px 14px 14px;
+        }
+
+        .lab-tile h4 {
+            font: 700 22px/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            color: var(--y);
+            margin-bottom: 6px;
+        }
+
+        .lab-tile p {
+            font: 400 16px/1.35 'Kalam', 'Comic Sans MS', cursive;
+        }
+
+        .lab-tile .l-note {
+            display: inline-block;
+            margin-top: 8px;
+            font: bold 11px/1 ui-monospace, monospace;
+            color: var(--ink);
+            background: var(--y);
+            padding: 4px 6px;
+        }
+
+        .lab-tile .l-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font: bold 11px/1 ui-monospace, monospace;
+            color: var(--ink);
+            background: #3ddc84;
+            border: 2px solid var(--ink);
+            padding: 4px 6px;
+        }
+
+        /* ---- dark theme for the section ---- */
+        .more.dark {
+            --ink: #000;
+            color: #f4f1e8;
+            background:
+                radial-gradient(circle, rgba(255, 255, 255, 0.06) 1.2px, transparent 1.6px) 0 0 / 9px 9px,
+                #16181d;
+        }
+
+        .more.dark .hand,
+        .more.dark .more-foot .hand {
+            color: #d8dbe2;
+        }
+
+        .more.dark .chip.y,
+        .more.dark .card,
+        .more.dark .built details,
+        .more.dark .skills li {
+            color: #111;
+        }
+
+        .more.dark .skills li:nth-child(4n+3) {
+            color: #fff;
+        }
+
+        .more.dark .more-foot {
+            border-top-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .more.dark .vt {
+            background: #2a2d35;
+            color: #f4f1e8;
+        }
+
+        .more.dark .vt[aria-pressed="true"] {
+            background: #ff7ad9;
+            color: #111;
+        }
+
+        @media (max-width: 600px) {
+            .view-toggles {
+                margin-left: 0;
+            }
+
+            .block {
+                margin-top: 36px;
+            }
+
+            .lab {
+                grid-template-columns: 1fr 1fr;
+                gap: 14px;
+            }
+
+            .lab-tile h4 {
+                font-size: 17px;
+            }
+
+            .lab-tile p {
+                font-size: 13px;
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            .lab-tile .l-text {
+                padding: 8px 10px 10px;
+            }
+        }
+
         .more-foot {
             display: flex;
             justify-content: space-between;
@@ -1171,6 +1427,10 @@
             <header class="more-head">
                 <h2 id="more-title"><span class="chip y">More</span><span class="chip b">Stuff</span></h2>
                 <p class="hand">Everything I've been building &mdash; pick one and have a go.</p>
+                <div class="view-toggles" role="group" aria-label="Page style">
+                    <button class="vt" id="themeBtn" aria-pressed="false">&#9790; Dark</button>
+                    <button class="vt" id="pixelBtnDesk" aria-pressed="false">&#9638; Pixel</button>
+                </div>
             </header>
             <div class="cards" id="projectCards"></div>
             <div class="extras">
@@ -1208,6 +1468,22 @@
                     <div class="pb-status" id="pbStatus"></div>
                 </article>
             </div>
+            <section class="block" aria-labelledby="skillsTitle">
+                <h3 class="block-title" id="skillsTitle"><span class="chip y">Tools I use</span></h3>
+                <ul class="skills" id="skillsList"></ul>
+            </section>
+
+            <section class="block" aria-labelledby="builtTitle">
+                <h3 class="block-title" id="builtTitle"><span class="chip b">How I built it</span></h3>
+                <div class="built" id="builtList"></div>
+            </section>
+
+            <section class="block" aria-labelledby="labTitle">
+                <h3 class="block-title" id="labTitle"><span class="chip r">The lab</span></h3>
+                <p class="hand lab-intro">Small experiments and toys &mdash; unfinished, but fun to poke.</p>
+                <div class="lab" id="labList"></div>
+            </section>
+
             <footer class="more-foot">
                 <span class="hand">Made by Volkan &middot; runs entirely in your browser</span>
                 <span class="foot-actions">
@@ -1907,6 +2183,42 @@
                     cards.appendChild(a);
                 });
 
+                // tools strip
+                const skills = document.getElementById('skillsList');
+                (site.skills || []).forEach(t => {
+                    const li = document.createElement('li');
+                    li.textContent = t;
+                    skills.appendChild(li);
+                });
+
+                // how I built it
+                const built = document.getElementById('builtList');
+                (site.built || []).forEach((b, i) => {
+                    const d = document.createElement('details');
+                    if (i === 0) d.open = true;
+                    d.innerHTML = `<summary>${esc(b.title)}</summary><div class="b-body"><p>${esc(b.text)}</p>` +
+                        `<span class="tags">${(b.tools || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</span></div>`;
+                    d.addEventListener('toggle', () => window.Ambient?.blip(d.open ? 760 : 560));
+                    built.appendChild(d);
+                });
+
+                // lab tiles
+                const lab = document.getElementById('labList');
+                (site.lab || []).forEach(l => {
+                    const a = document.createElement('a');
+                    a.className = 'lab-tile';
+                    a.href = l.href;
+                    a.innerHTML = `<img src="${esc(l.thumb)}" alt="" loading="lazy" decoding="async"><span class="l-badge">EXPERIMENT</span>` +
+                        `<div class="l-text"><h4>${esc(l.title)}</h4><p>${esc(l.desc)}</p>${l.note ? `<span class="l-note">${esc(l.note)}</span>` : ''}</div>`;
+                    a.addEventListener('click', e => {
+                        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return;
+                        e.preventDefault();
+                        window.Ambient?.blip(520);
+                        PixelTransition.go(l.href);
+                    });
+                    lab.appendChild(a);
+                });
+
                 const about = site.about || {};
                 if (about.title) document.getElementById('aboutTitle').textContent = about.title;
                 document.getElementById('aboutText').textContent = about.text || '';
@@ -2013,6 +2325,24 @@
             ]).then(([cfg, img]) => { puzzleConfig = cfg; sheet = img; renderPuzzle(); }).catch(() => { });
             // refresh when coming back from the game via the back button
             window.addEventListener('pageshow', () => renderPuzzle());
+
+            // ---------- dark theme + pixel toggles in the section header ----------
+            const moreEl = document.getElementById('more');
+            const themeBtn = document.getElementById('themeBtn');
+            const pixelBtnDesk = document.getElementById('pixelBtnDesk');
+            function setDark(on) {
+                moreEl.classList.toggle('dark', on);
+                themeBtn.setAttribute('aria-pressed', String(on));
+                themeBtn.innerHTML = on ? '&#9728; Light' : '&#9790; Dark';
+                try { localStorage.setItem('more-theme', on ? 'dark' : 'light'); } catch { }
+            }
+            let dark = false;
+            try { dark = localStorage.getItem('more-theme') === 'dark'; } catch { }
+            setDark(dark);
+            themeBtn.addEventListener('click', () => { window.Ambient?.blip(640); setDark(!moreEl.classList.contains('dark')); });
+            pixelBtnDesk.addEventListener('click', () => window.CollageFun?.togglePixelMode());
+            new MutationObserver(() => pixelBtnDesk.setAttribute('aria-pressed', String(document.body.classList.contains('pixel-mode'))))
+                .observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
             // hide the floating mobile "try the puzzle" button while the
             // section (which has its own puzzle card) is on screen

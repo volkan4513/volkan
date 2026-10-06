@@ -98,5 +98,85 @@
             "color": "yellow",
             "sticker": "Try this!"
         }
+    ],
+    "skills": [
+        "Godot",
+        "Unity",
+        "C#",
+        "GDScript",
+        "JavaScript",
+        "HTML / CSS",
+        "Canvas 2D",
+        "Web Audio",
+        "Three.js",
+        "Photoshop",
+        "Pixel art",
+        "Python"
+    ],
+    "built": [
+        {
+            "title": "BMW M3 GTR",
+            "tools": [
+                "Godot",
+                "WebGL"
+            ],
+            "text": "Modelled scene set up in Godot, lit and exported to the web as a WebAssembly build. The biggest challenge was keeping a 70 MB scene loadable in a browser."
+        },
+        {
+            "title": "Just Jump It",
+            "tools": [
+                "Unity",
+                "C#",
+                "WebGL"
+            ],
+            "text": "A 3D platformer built in Unity with C# player controls, exported with Unity's WebGL template and compressed for the web."
+        },
+        {
+            "title": "Retro Image FX",
+            "tools": [
+                "Canvas 2D",
+                "JavaScript"
+            ],
+            "text": "Reads every pixel of an uploaded image with the Canvas API: scanlines blank out rows, ASCII maps brightness to characters, and pixel art averages blocks then snaps them to a small palette."
+        },
+        {
+            "title": "PS Music Player",
+            "tools": [
+                "Web Audio",
+                "Canvas 2D",
+                "JavaScript"
+            ],
+            "text": "PlayStation artwork layered in canvases and pixelated live with an ordered dither. Web Audio drives the visualizer; iTunes and lyrics come from public APIs."
+        },
+        {
+            "title": "Windows 98",
+            "tools": [
+                "HTML / CSS",
+                "JavaScript"
+            ],
+            "text": "A tiny window manager in plain JavaScript: draggable, resizable windows, a taskbar and Start menu, plus Paint, Minesweeper, an MS-DOS prompt and a media player. Every icon is drawn from code."
+        },
+        {
+            "title": "Parking Puzzle",
+            "tools": [
+                "JavaScript",
+                "Python"
+            ],
+            "text": "Sliding-block puzzle with drag, tap and keyboard controls. A Python solver checks every level, works out its par, and hill-climbs new harder levels."
+        }
+    ],
+    "lab": [
+        {
+            "title": "Widget Desktop",
+            "desc": "Wipe a blurred photo clear with a lens, then play with 10 draggable widgets: flip clock, calendar, moon phase, live FPS, music, notes, to-do and a focus timer.",
+            "thumb": "projects/07/images/lab_widgets.webp",
+            "href": "projects/07/unblur_page.html"
+        },
+        {
+            "title": "Glass Cursor",
+            "desc": "A canvas trail toy: 6 shapes, 6 palettes, spring and orbit motion, kaleidoscope mirror, paint mode, multi-touch and PNG export.",
+            "thumb": "projects/07/images/lab_cursor.webp",
+            "href": "projects/07/lots_of_square_cursor.html"
+        }
     ]
 }
