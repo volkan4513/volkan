@@ -16,20 +16,10 @@
     "just_cat_front",
     "lets_go",
     "portfolio_image",
-    "just_jump_name_image",
-    "reto_image_effects_studio_image",
-    "retro_image_image_noselect",
-    "retro_image_text",
-    "bmw_config_image_noselect",
-    "bmw_name_image",
-    "unity_text",
-    "unity_game_image_noselect",
     "cutout_noselect",
     "cutout_front_text",
-    "base_blue",
+    "@cards",
     "base_grey",
-    "base_red",
-    "base_yellow",
     "base",
     "base_base"
   ],
@@ -45,36 +35,16 @@
       "h": 2233
     },
     {
-      "name": "bmw_name_image",
-      "src": "images_to_use/optimized/bmw_name_image.webp",
-      "x": 76,
-      "y": 1838,
-      "w": 549,
-      "h": 141
+      "name": "@cards",
+      "slot": true
     },
     {
       "name": "flat2_noselect",
       "src": "images_to_use/optimized/flat2_noselect.webp",
-      "x": 48,
-      "y": 1271,
-      "w": 945,
-      "h": 887
-    },
-    {
-      "name": "reto_image_effects_studio_image",
-      "src": "images_to_use/optimized/reto_image_effects_studio_image.webp",
-      "x": 496,
-      "y": 1292,
-      "w": 297,
-      "h": 102
-    },
-    {
-      "name": "just_jump_name_image",
-      "src": "images_to_use/optimized/just_jump_name_image.webp",
-      "x": 48,
-      "y": 1586,
-      "w": 402,
-      "h": 115
+      "x": 34,
+      "y": 37,
+      "w": 1028,
+      "h": 1370
     },
     {
       "name": "portfolio_image",

@@ -4,64 +4,94 @@
         "text": "I make games, 3D scenes and odd little web toys. Everything on this page runs right in your browser, so go poke at it.",
         "links": []
     },
+    "featured": [
+        {
+            "id": "retro",
+            "title": [
+                "Retro Image",
+                "Effects Studio"
+            ],
+            "desc": "Scanline, ASCII and pixel-art effects, live.",
+            "tags": [
+                "Canvas",
+                "JavaScript"
+            ],
+            "thumbs": [
+                "projects/03/images/0.webp"
+            ],
+            "href": "projects/03/index.html"
+        },
+        {
+            "id": "unity",
+            "title": [
+                "Just Jump It",
+                "3D Platformer Game"
+            ],
+            "desc": "A Unity 3D jump platformer, exported to WebGL.",
+            "tags": [
+                "Unity",
+                "WebGL"
+            ],
+            "thumbs": [
+                "projects/02/images/0.webp"
+            ],
+            "href": "projects/02/index.html"
+        },
+        {
+            "id": "bmw",
+            "title": [
+                "BMW M3 GTR",
+                "3D Walkaround Scene"
+            ],
+            "tags": [
+                "Godot",
+                "WebGL"
+            ],
+            "thumbs": [
+                "projects/01/images/0.webp"
+            ],
+            "href": "projects/01/index.html"
+        }
+    ],
     "projects": [
         {
-            "title": "BMW M3 GTR",
-            "subtitle": "3D walkaround scene",
-            "tags": ["Godot", "WebGL"],
-            "desc": "A Godot-built 3D walkaround of the BMW M3 GTR, exported to run in the browser.",
-            "thumb": "projects/01/images/0.webp",
-            "href": "projects/01/index.html",
-            "color": "red",
-            "heavy": true
-        },
-        {
-            "title": "Just Jump It",
-            "subtitle": "3D platformer game",
-            "tags": ["Unity", "WebGL"],
-            "desc": "A Unity-built 3D jump platformer exported to WebGL and playable in the browser.",
-            "thumb": "projects/02/images/0.webp",
-            "href": "projects/02/index.html",
-            "color": "blue",
-            "heavy": true
-        },
-        {
-            "title": "Retro Image FX",
-            "subtitle": "Effects studio",
-            "tags": ["Canvas", "JavaScript"],
-            "desc": "Scanline, ASCII-art and pixel-art effects with live sliders and one-click download.",
-            "thumb": "projects/03/images/0.webp",
-            "href": "projects/03/index.html",
-            "color": "yellow"
-        },
-        {
             "title": "PS Music Player",
-            "subtitle": "PlayStation-style player",
-            "tags": ["Web Audio", "JavaScript"],
-            "desc": "A PlayStation-inspired music player with spinning disc art, a scrolling track list and lyrics.",
+            "subtitle": "Pixel-art PlayStation player",
+            "tags": [
+                "Web Audio",
+                "Pixel art"
+            ],
+            "desc": "A PlayStation-inspired music player in pixel art: spinning disc, visualizer, lyrics and iTunes previews.",
             "thumb": "projects/04/images/0.webp",
             "href": "projects/04/index.html",
             "color": "red",
-            "isNew": true
+            "sticker": "Try this!"
         },
         {
             "title": "Windows 98",
             "subtitle": "Desktop in a CRT",
-            "tags": ["HTML", "JavaScript"],
+            "tags": [
+                "HTML",
+                "JavaScript"
+            ],
             "desc": "A working Windows 98 desktop: Paint, Minesweeper, MS-DOS, a media player, Internet Explorer and more.",
             "thumb": "projects/05/images/0.webp",
             "href": "projects/05/index.html",
             "color": "blue",
-            "isNew": true
+            "sticker": "Try this!"
         },
         {
             "title": "Parking Puzzle",
             "subtitle": "Pixel-art puzzle game",
-            "tags": ["Game", "Touch"],
+            "tags": [
+                "Game",
+                "Touch"
+            ],
             "desc": "Slide the cars and free the red one. 20 levels, par moves and stars to earn.",
             "thumb": "images_to_use/puzzle_thumb.webp",
             "href": "page2.html",
-            "color": "yellow"
+            "color": "yellow",
+            "sticker": "Try this!"
         }
     ]
 }

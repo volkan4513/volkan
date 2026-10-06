@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 16px;
+            background: #0d0d0d repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 2px, transparent 2px 4px);
+            color: #f4f1e8;
+            font: bold 14px/1.6 ui-monospace, 'Courier New', monospace;
+        }
+
+        .card {
+            max-width: 460px;
+            padding: 24px;
+            background: #1b1d22;
+            border: 3px solid #000;
+            box-shadow: inset 3px 3px 0 rgba(255, 255, 255, 0.07), 6px 6px 0 #000;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 22px;
+            color: #ffd23f;
+            text-shadow: 3px 3px 0 #000;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+        }
+
+        p {
+            color: #c9ccd4;
+            margin-bottom: 18px;
+        }
+
+        .links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        a {
+            color: #0d0d0d;
+            background: #ffd23f;
+            border: 3px solid #000;
+            box-shadow: 3px 3px 0 #000;
+            padding: 8px 12px;
+            text-decoration: none;
+        }
+
+        a:active {
+            transform: translate(3px, 3px);
+            box-shadow: none;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="card">
+        <h1>YOU'RE OFFLINE</h1>
+        <p>This page hasn't been saved on this device yet. Everything you've already opened still works &mdash; and next time
+            you're online, use <b>Save everything for offline</b> on the main page.</p>
+        <div class="links">
+            <a href="./index.html">Portfolio</a>
+            <a href="./page2.html">Parking Puzzle</a>
+            <a href="./projects/05/index.html">Windows 98</a>
+            <a href="./projects/04/index.html">Music Player</a>
+        </div>
+    </main>
+</body>
+
+</html>

@@ -13,6 +13,9 @@ What it does:
   * The background sprite-sheet atlases are trimmed to just the frames that
     index.html actually plays (see BG_SEQUENCES below - keep in sync).
 
+Entries starting with "@" in image_filenames (e.g. "@cards") are slots
+where index.html inserts HTML content between the layers.
+
 Outputs images_to_use/optimized/*.webp + manifest.json. index.html falls back
 to the original full-size layers if the manifest is missing or stale.
 """
@@ -79,8 +82,13 @@ def main():
     design_size = None
     groups = []  # each: list of names flattened together, or a single name
     for name in order:
+        if name.startswith('@'):
+            # placeholder for HTML content (e.g. "@cards") - breaks flattening
+            # so layers above and below it stay separate
+            groups.append({'passive': False, 'slot': True, 'names': [name]})
+            continue
         passive = no_highlight(name) and name not in interactive and name not in positioned
-        if passive and groups and groups[-1]['passive']:
+        if passive and groups and groups[-1]['passive'] and not groups[-1].get('slot'):
             groups[-1]['names'].append(name)
         else:
             groups.append({'passive': passive, 'names': [name]})
@@ -88,6 +96,9 @@ def main():
     layers = []
     for gi, group in enumerate(groups):
         names = group['names']
+        if group.get('slot'):
+            layers.append({'name': names[0], 'slot': True})
+            continue
         if names[0] in positioned:
             # glasses etc. are sized/positioned by images_to_pos - use as is
             layers.append({'name': names[0], 'src': 'images_to_use/%s.webp' % names[0],

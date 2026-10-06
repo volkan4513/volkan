@@ -17,28 +17,14 @@
       "just_cat_front",
       "lets_go",
       "portfolio_image",
-      "just_jump_name_image",
-      "reto_image_effects_studio_image",
-      "retro_image_image_noselect",
-      "retro_image_text",
-      "bmw_config_image_noselect",
-      "bmw_name_image",
-      "unity_text",
-      "unity_game_image_noselect",
       "cutout_noselect",
       "cutout_front_text",
-      "base_blue",
+      "@cards",
       "base_grey",
-      "base_red",
-      "base_yellow",
       "base",
       "base_base"
     ],
-    "names_to_link": {
-      "bmw_name_image": "projects/01",
-      "just_jump_name_image": "projects/02",
-      "reto_image_effects_studio_image": "projects/03"
-    },
+    "names_to_link": {},
     "open_random_popup": {
       "just_cat_front": "",
       "cat01_front": "",
@@ -49,7 +35,18 @@
       "lets_go": "lets_go"
     },
     "random_image_click": {
-      "star_icon": ["beard1", "beard2", "beard3", "beard4", "beard5", "beard6", "beard7", "beard8", "beard9", "beard10"]
+      "star_icon": [
+        "beard1",
+        "beard2",
+        "beard3",
+        "beard4",
+        "beard5",
+        "beard6",
+        "beard7",
+        "beard8",
+        "beard9",
+        "beard10"
+      ]
     },
     "images_to_pos": {
       "glasses": "870,388,0.85",

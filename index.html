@@ -104,13 +104,12 @@
             display: flex;
             flex-direction: column;
             padding: 16px 16px 18px;
-            background: var(--c);
             color: var(--ink);
             text-decoration: none;
-            box-shadow: 6px 6px 0 var(--ink);
             transform: rotate(var(--tilt, -1deg));
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            transition: transform 0.18s ease;
             -webkit-tap-highlight-color: transparent;
+            --sx: 6px;
         }
 
         .card:nth-child(3n+2) {
@@ -132,7 +131,7 @@
         .card:hover,
         .card:focus-visible {
             transform: rotate(0deg) translate(-3px, -4px);
-            box-shadow: 10px 10px 0 var(--ink);
+            --sx: 10px;
         }
 
         .card:focus-visible {
@@ -142,7 +141,49 @@
 
         .card:active {
             transform: rotate(0deg) translate(2px, 2px);
-            box-shadow: 3px 3px 0 var(--ink);
+            --sx: 3px;
+        }
+
+        /* Cards draw their coloured paper and black shadow as two layers
+           behind the content, so photos and stickers can overhang the edge. */
+        .card,
+        .c-card {
+            isolation: isolate;
+        }
+
+        .card::before,
+        .card::after,
+        .c-card::before,
+        .c-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .card::before,
+        .c-card::before {
+            z-index: -2;
+            background: var(--ink);
+            transform: translate(var(--sx), var(--sx));
+            transition: transform 0.18s ease;
+        }
+
+        .card::after,
+        .c-card::after {
+            z-index: -1;
+            background: var(--c);
+        }
+
+        /* collage cards: faint paper texture - grain, a fine halftone and a
+           soft sheen, all multiplied over the card colour */
+        .c-card::after {
+            background:
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+                radial-gradient(circle, rgba(0, 0, 0, 0.07) 0.16cqw, transparent 0.22cqw) 0 0 / 0.85cqw 0.85cqw,
+                linear-gradient(115deg, rgba(255, 255, 255, 0.14), transparent 45%, rgba(0, 0, 0, 0.07)),
+                var(--c);
+            background-blend-mode: multiply, multiply, normal, normal;
         }
 
         /* photo glued on with a strip of tape */
@@ -245,11 +286,14 @@
             top: -18px;
             right: -14px;
             z-index: 2;
-            width: 64px;
-            height: 64px;
+            width: 86px;
+            height: 86px;
             display: grid;
             place-items: center;
-            font: 700 17px/1 'Oswald', Impact, sans-serif;
+            padding: 0 16px;
+            text-align: center;
+            font: 700 16px/0.95 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
             color: var(--ink);
             background: var(--y);
             clip-path: polygon(50% 0, 61% 18%, 82% 10%, 79% 32%, 100% 38%, 84% 54%, 96% 74%, 74% 76%, 70% 98%, 52% 85%, 33% 100%, 27% 78%, 5% 80%, 15% 60%, 0 42%, 20% 33%, 14% 12%, 36% 18%);
@@ -415,6 +459,28 @@
             border-top: 3px dashed rgba(0, 0, 0, 0.35);
         }
 
+.foot-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .save-offline {
+            font: bold 13px/1.2 ui-monospace, 'Courier New', monospace;
+            color: #0d0d0d;
+            background: #3ddc84;
+            border: 3px solid #000;
+            box-shadow: 4px 4px 0 var(--ink);
+            padding: 9px 12px;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .save-offline:disabled {
+            cursor: default;
+            opacity: 0.85;
+        }
+
         .to-top {
             font: 700 16px/1 'Oswald', Impact, sans-serif;
             text-transform: uppercase;
@@ -432,6 +498,89 @@
             .card:hover {
                 transition: none;
                 transform: none;
+            }
+        }
+
+        /* phones: "More Stuff" cards become short rectangles - small photo on
+           the left, text on the right */
+        @media (max-width: 600px) {
+            .cards {
+                gap: 24px;
+            }
+
+            .card {
+                display: grid;
+                grid-template-columns: 36% minmax(0, 1fr);
+                column-gap: 12px;
+                row-gap: 2px;
+                align-items: start;
+                padding: 12px 12px 12px 10px;
+            }
+
+            .card-thumb {
+                grid-column: 1;
+                grid-row: 1 / span 5;
+                align-self: center;
+                aspect-ratio: 4 / 3;
+                margin: 0;
+                border-width: 4px;
+            }
+
+            .card-thumb::before {
+                width: 46px;
+                height: 15px;
+                top: -9px;
+            }
+
+            .card-title,
+            .card-sub,
+            .card-desc,
+            .heavy-note,
+            .card-foot {
+                grid-column: 2;
+            }
+
+            .card-title {
+                font-size: 19px;
+                padding: 3px 7px 5px;
+                box-shadow: 3px 3px 0 var(--ink);
+            }
+
+            .card-sub {
+                font-size: 12px;
+                margin: 6px 0 0;
+            }
+
+            .card-desc {
+                font-size: 14px;
+                line-height: 1.25;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            .card-foot {
+                margin-top: 6px;
+                justify-content: flex-start;
+            }
+
+            .card .tags {
+                display: none;
+            }
+
+            .open-link {
+                font-size: 14px;
+                padding: 6px 10px;
+            }
+
+            .new-badge {
+                width: 60px;
+                height: 60px;
+                top: -16px;
+                right: -8px;
+                padding: 0 11px;
+                font-size: 12px;
             }
         }
 
@@ -493,6 +642,172 @@
         .layer.active {
             transform: scale(1.025);
             z-index: 10;
+        }
+
+        /* ---------- featured project cards inside the collage ----------
+           Positioned in design-canvas coordinates (see FEATURED_LAYOUT) and
+           sized in container units, so they scale exactly like the image
+           layers around them. */
+        .collage-stage {
+            position: absolute;
+            container-type: inline-size;
+            pointer-events: none;
+            isolation: isolate;
+        }
+
+        .c-card {
+            --c: #ffdf00;
+            --ink: #111;
+            --g: #323834;
+            position: absolute;
+            display: block;
+            color: var(--ink);
+            text-decoration: none;
+            --sx: 0.7cqw;
+            transform: rotate(var(--tilt, 0deg));
+            transition: transform 0.18s ease;
+            pointer-events: auto;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .c-card.blue {
+            --c: #00a5ff;
+        }
+
+        .c-card.red {
+            --c: #ff6050;
+        }
+
+        /* the raised card stays inside the stage's own stacking context, so
+           the cat / cow stickers drawn after the stage stay on top of it */
+        .c-card:hover,
+        .c-card:focus-visible {
+            transform: rotate(0deg) translate(-0.3cqw, -0.4cqw);
+            --sx: 1.1cqw;
+            z-index: 1;
+        }
+
+        .c-card:focus-visible {
+            outline: 0.4cqw solid var(--ink);
+            outline-offset: 0.5cqw;
+        }
+
+        .c-card>* {
+            position: absolute;
+        }
+
+        .c-photo {
+            background: #222;
+            border: 0.55cqw solid #fff;
+            box-shadow: 0.25cqw 0.35cqw 0 rgba(0, 0, 0, 0.35);
+            transform: rotate(var(--tilt, 0deg));
+        }
+
+        .c-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* strip of tape */
+        .c-photo::before {
+            content: '';
+            position: absolute;
+            top: -1.3cqw;
+            left: 50%;
+            width: 8cqw;
+            height: 2.2cqw;
+            transform: translateX(-50%) rotate(-4deg);
+            background: rgba(255, 250, 225, 0.72);
+            box-shadow: 0 0.1cqw 0.2cqw rgba(0, 0, 0, 0.18);
+        }
+
+        .c-title {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.8cqw;
+        }
+
+        .c-title span {
+            font: 700 4.3cqw/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            background: var(--g);
+            color: var(--c);
+            padding: 0.45cqw 1cqw 0.65cqw;
+            box-shadow: 0.45cqw 0.45cqw 0 var(--ink);
+            white-space: nowrap;
+        }
+
+        .c-title.row {
+            flex-direction: row;
+            align-items: center;
+            gap: 1.4cqw;
+        }
+
+        .c-title.row span {
+            font-size: 3.5cqw;
+        }
+
+        .c-title.row span+span {
+            font-size: 2.3cqw;
+        }
+
+        .c-foot.left {
+            justify-content: flex-start;
+            gap: 1.6cqw;
+        }
+
+        .c-title span+span {
+            font-size: 2.6cqw;
+            background: #fff;
+            color: var(--ink);
+            transform: rotate(-1.2deg);
+        }
+
+        .c-desc {
+            font: 400 max(7px, 1.85cqw)/1.3 'Kalam', 'Comic Sans MS', cursive;
+            overflow: hidden;
+        }
+
+        .c-foot {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1cqw;
+        }
+
+        .c-tags {
+            display: flex;
+            gap: 0.6cqw;
+        }
+
+        .c-tag {
+            font: bold max(6px, 1.15cqw)/1 ui-monospace, 'Courier New', monospace;
+            background: #fff;
+            border: 0.2cqw solid var(--ink);
+            padding: 0.45cqw 0.6cqw;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .c-open {
+            font: 700 max(8px, 2cqw)/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            white-space: nowrap;
+            background: var(--ink);
+            color: #fff;
+            padding: 0.8cqw 1.2cqw;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            .c-card,
+            .c-card:hover {
+                transition: none;
+                transform: none;
+            }
         }
 
         /* --- popup modal --- */
@@ -669,6 +984,7 @@
 
 <body>
     <script src="pixel-transition.js"></script>
+    <script src="offline.js"></script>
     <script>PixelTransition.reveal();</script>
 
     <canvas id="bg-sequence-left" class="bg-sequence"></canvas>
@@ -716,7 +1032,10 @@
             </div>
             <footer class="more-foot">
                 <span class="hand">Made by Volkan &middot; runs entirely in your browser</span>
-                <button class="to-top" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">&#9650; Back to top</button>
+                <span class="foot-actions">
+                    <button class="save-offline" id="saveOfflineBtn" hidden>&#11015; Save everything for offline</button>
+                    <button class="to-top" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">&#9650; Back to top</button>
+                </span>
             </footer>
         </div>
     </section>
@@ -731,6 +1050,8 @@
 
     <script>
         const wrapper = document.getElementById('wrapper');
+        // site.json holds the text for the featured cards and the section below
+        const sitePromise = fetch('site.json').then(r => r.json()).catch(() => ({}));
         const popupOverlay = document.getElementById('popup-overlay');
         const popupImg = document.getElementById('popup-img');
 
@@ -893,7 +1214,9 @@
             return {
                 design_w: DW,
                 design_h: DH,
-                layers: [...filenames].reverse().map(name => ({ name, x: 0, y: 0, w: DW, h: DH })),
+                layers: [...filenames].reverse().map(name => name.startsWith('@')
+                    ? { name, slot: true }
+                    : { name, x: 0, y: 0, w: DW, h: DH }),
             };
         }
 
@@ -982,22 +1305,120 @@
 
             // Cropped layers are placed where they'd sit inside the full
             // design canvas if it were object-fit: contain'ed in the wrapper.
+            // HTML slots (the featured cards) cover the whole design canvas.
             const croppedLayers = [];
+            const stages = [];
             function layoutCropped() {
                 const cw = wrapper.clientWidth, ch = wrapper.clientHeight;
                 if (!cw || !ch) return;
                 const s = Math.min(cw / DW, ch / DH);
                 const ox = (cw - DW * s) / 2, oy = (ch - DH * s) / 2;
-                for (const { img, x, y, w, h } of croppedLayers) {
-                    img.style.left = ((ox + x * s) / cw * 100) + '%';
-                    img.style.top = ((oy + y * s) / ch * 100) + '%';
-                    img.style.width = (w * s / cw * 100) + '%';
-                    img.style.height = (h * s / ch * 100) + '%';
-                }
+                const place = (node, x, y, w, h) => {
+                    node.style.left = ((ox + x * s) / cw * 100) + '%';
+                    node.style.top = ((oy + y * s) / ch * 100) + '%';
+                    node.style.width = (w * s / cw * 100) + '%';
+                    node.style.height = (h * s / ch * 100) + '%';
+                };
+                for (const { img, x, y, w, h } of croppedLayers) place(img, x, y, w, h);
+                for (const stage of stages) place(stage, 0, 0, DW, DH);
             }
+
+            // Featured project cards, laid out where the old image-based
+            // project bands were. Rects are [x, y, w, h] in design pixels.
+            const FEATURED_LAYOUT = {
+                retro: {
+                    card: [35, 1256, 1026, 289], color: 'yellow', tilt: -0.4,
+                    photos: [{ rect: [62, 1300, 360, 205], tilt: -2.2 }],
+                    // the person cutout covers this card's top-right, so the
+                    // text sits in the strip below it
+                    title: [462, 1410, 590, 46], titleRow: true,
+                    desc: [466, 1462, 560, 30],
+                    // kept left of the black cat's ear
+                    foot: [466, 1499, 130, 38], footLeft: true, openOnly: true,
+                },
+                unity: {
+                    card: [35, 1543, 1026, 289], color: 'blue', tilt: 0.5,
+                    photos: [{ rect: [452, 1566, 290, 160], tilt: 2.4 }],
+                    title: [62, 1568, 380, 120],
+                    desc: [62, 1700, 375, 62],
+                    foot: [62, 1772, 470, 44],
+                },
+                bmw: {
+                    card: [35, 1830, 1026, 289], color: 'red', tilt: -0.3,
+                    photos: [{ rect: [70, 1982, 350, 124], tilt: -1.4 }],
+                    title: [62, 1852, 490, 120],
+                    foot: [432, 2058, 120, 44], openOnly: true,
+                },
+            };
+
+            const designPx = (rect, origin) => [
+                (rect[0] - origin[0]) / origin[2] * 100, (rect[1] - origin[1]) / origin[3] * 100,
+                rect[2] / origin[2] * 100, rect[3] / origin[3] * 100];
+            function placeIn(node, rect, origin) {
+                const [l, t, w, h] = designPx(rect, origin);
+                Object.assign(node.style, { left: l + '%', top: t + '%', width: w + '%', height: h + '%' });
+            }
+
+            function buildFeaturedStage(featured) {
+                const stage = document.createElement('div');
+                stage.className = 'collage-stage';
+                const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                (featured || []).forEach(p => {
+                    const L = FEATURED_LAYOUT[p.id];
+                    if (!L) return;
+                    const card = document.createElement('a');
+                    card.className = 'c-card ' + L.color;
+                    card.href = p.href;
+                    card.style.setProperty('--tilt', L.tilt + 'deg');
+                    card.setAttribute('aria-label', `${(p.title || []).join(' ')}: open project`);
+                    placeIn(card, L.card, [0, 0, DW, DH]);
+
+                    (p.thumbs || []).slice(0, L.photos.length).forEach((src, i) => {
+                        const ph = document.createElement('div');
+                        ph.className = 'c-photo';
+                        ph.style.setProperty('--tilt', L.photos[i].tilt + 'deg');
+                        ph.innerHTML = `<img src="${esc(src)}" alt="">`;
+                        placeIn(ph, L.photos[i].rect, L.card);
+                        card.appendChild(ph);
+                    });
+
+                    const title = document.createElement('div');
+                    title.className = 'c-title' + (L.titleRow ? ' row' : '');
+                    title.innerHTML = (p.title || []).map(t => `<span>${esc(t)}</span>`).join('');
+                    placeIn(title, L.title, L.card);
+                    card.appendChild(title);
+
+                    if (L.desc && p.desc) {
+                        const desc = document.createElement('div');
+                        desc.className = 'c-desc';
+                        desc.textContent = p.desc;
+                        placeIn(desc, L.desc, L.card);
+                        card.appendChild(desc);
+                    }
+
+                    const foot = document.createElement('div');
+                    foot.className = 'c-foot' + (L.footLeft ? ' left' : '');
+                    foot.innerHTML = (L.openOnly ? '' : `<span class="c-tags">${(p.tags || []).map(t => `<span class="c-tag">${esc(t)}</span>`).join('')}</span>`) +
+                        '<span class="c-open">Open &#9654;</span>';
+                    placeIn(foot, L.foot, L.card);
+                    card.appendChild(foot);
+
+                    stage.appendChild(card);
+                });
+                return stage;
+            }
+            const site = await sitePromise;
 
             manifest.layers.forEach(layer => {
                 const name = layer.name;
+                if (layer.slot) {
+                    if (name === '@cards') {
+                        const stage = buildFeaturedStage(site.featured);
+                        stages.push(stage);
+                        wrapper.appendChild(stage);
+                    }
+                    return;
+                }
                 const img = document.createElement('img');
                 img.className = 'layer';
                 img.alt = decodeURIComponent(name);
@@ -1193,10 +1614,17 @@
                 if (!hoverRaf) hoverRaf = requestAnimationFrame(updateHover);
             });
 
-            function handleTap(clientX, clientY) {
+            // A sticker drawn over a card (cat, cow...) wins the click; a
+            // click on bare card opens that project.
+            function handleTap(e) {
                 const r = wrapper.getBoundingClientRect();
-                const hit = hitAt(clientX - r.left, clientY - r.top);
-                if (!hit) return;
+                const hit = hitAt(e.clientX - r.left, e.clientY - r.top);
+                const card = e.target.closest && e.target.closest('.c-card');
+                if (card && (hit || !(e.metaKey || e.ctrlKey || e.shiftKey))) e.preventDefault();
+                if (!hit) {
+                    if (card && !(e.metaKey || e.ctrlKey || e.shiftKey)) PixelTransition.go(card.getAttribute('href'));
+                    return;
+                }
                 const name = imgName(hit);
                 console.log(name);
 
@@ -1211,9 +1639,7 @@
                 }
             }
 
-            wrapper.addEventListener('click', e => {
-                handleTap(e.clientX, e.clientY);
-            });
+            wrapper.addEventListener('click', handleTap);
 
             wrapper.addEventListener('touchstart', e => {
                 const r = wrapper.getBoundingClientRect();
@@ -1248,14 +1674,14 @@
         (function () {
             const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-            fetch('site.json').then(r => r.json()).then(site => {
+            sitePromise.then(site => {
                 const cards = document.getElementById('projectCards');
                 (site.projects || []).forEach(p => {
                     const a = document.createElement('a');
                     a.className = 'card ' + (p.color || 'yellow');
                     a.href = p.href;
                     a.innerHTML =
-                        (p.isNew ? '<span class="new-badge" aria-hidden="true">NEW!</span>' : '') +
+                        (p.sticker ? `<span class="new-badge" aria-hidden="true">${esc(p.sticker)}</span>` : '') +
                         `<div class="card-thumb"><img src="${esc(p.thumb)}" alt="" loading="lazy" decoding="async"></div>` +
                         `<span class="card-title">${esc(p.title)}</span>` +
                         `<span class="card-sub">${esc(p.subtitle || '')}</span>` +
