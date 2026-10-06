@@ -168,7 +168,7 @@
     "lab": [
         {
             "title": "Widget Desktop",
-            "desc": "Wipe a blurred photo clear with a lens, then play with 10 draggable widgets: flip clock, calendar, moon phase, live FPS, music, notes, to-do and a focus timer.",
+            "desc": "A desktop of 25 draggable, resizable widgets over a photo you wipe clear with a lens: weather, Snake, calculator, habits, ambient sounds and more. On phones it turns into an Android-style home screen.",
             "thumb": "projects/07/images/lab_widgets.webp",
             "href": "projects/07/unblur_page.html"
         },

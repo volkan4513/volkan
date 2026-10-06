@@ -33,7 +33,7 @@ CORE = [
     'projects/04/index.html', 'projects/04/playlist.js', 'projects/04/ps_player_images/*', 'projects/04/music/cover/*',
     'projects/05/index.html', 'projects/05/windows98.html', 'projects/05/paint.html', 'projects/05/page_images/*',
     'projects/07/unblur_page.html', 'projects/07/lots_of_square_cursor.html', 'projects/07/images/lab_*.webp',
-    'projects/07/page_images/w_*.webp',
+    'projects/07/page_images/w_*.webp', 'projects/07/wd/*',
 ]
 
 HEAVY = [
