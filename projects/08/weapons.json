@@ -1,0 +1,23 @@
+{
+    "pistol": {
+        "name": "Pistol", "slot": 2, "price": 0,
+        "damage": 26, "headshot": 3.5, "pellets": 1,
+        "fireRate": 6, "auto": false,
+        "mag": 12, "reserve": 48, "reload": 1.8,
+        "spread": 0.012, "moveSpread": 0.03, "range": 60
+    },
+    "rifle": {
+        "name": "Rifle", "slot": 1, "price": 2700,
+        "damage": 34, "headshot": 4, "pellets": 1,
+        "fireRate": 10, "auto": true,
+        "mag": 30, "reserve": 90, "reload": 2.5,
+        "spread": 0.006, "moveSpread": 0.06, "range": 120
+    },
+    "shotgun": {
+        "name": "Shotgun", "slot": 1, "price": 1200,
+        "damage": 14, "headshot": 2, "pellets": 9,
+        "fireRate": 1.1, "auto": false,
+        "mag": 7, "reserve": 28, "reload": 3,
+        "spread": 0.07, "moveSpread": 0.02, "range": 25
+    }
+}

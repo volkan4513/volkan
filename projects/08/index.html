@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>Low-Poly Strike</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --y: #ffdf00;
+            --b: #00a5ff;
+            --r: #ff6050;
+            --g: #323834;
+            --ink: #111;
+            --paper: #f7f1e3;
+            --font: 'Oswald', 'Arial Narrow', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #bfe3ff;
+            color: var(--ink);
+            font-family: var(--font);
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
+            touch-action: none;
+        }
+
+        #view {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        [hidden] { display: none !important; }
+
+        /* ---------- screens (menu, settings, pause) ---------- */
+        .screen {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+            background: rgba(17, 17, 17, 0.25);
+        }
+
+        .card {
+            width: min(420px, 100%);
+            max-height: 100%;
+            overflow-y: auto;
+            padding: 22px 22px 24px;
+            background: var(--paper);
+            border: 3px solid var(--ink);
+            box-shadow: 8px 8px 0 var(--ink);
+            transform: rotate(-0.6deg);
+        }
+
+        .card h1 {
+            font-size: clamp(30px, 7vw, 44px);
+            line-height: 0.95;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card h1 span { color: var(--r); -webkit-text-stroke: 1.5px var(--ink); }
+
+        .card h2 {
+            font-size: 26px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .card .sub {
+            margin: 6px 0 18px;
+            font-size: 14px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #555;
+        }
+
+        .btn {
+            all: unset;
+            box-sizing: border-box;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 10px;
+            padding: 12px 16px;
+            font: 700 20px/1 var(--font);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            background: var(--y);
+            border: 3px solid var(--ink);
+            box-shadow: 4px 4px 0 var(--ink);
+            cursor: pointer;
+            transition: transform 0.08s, box-shadow 0.08s;
+        }
+
+        .btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+        .btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+        .btn:focus-visible { outline: 3px dashed var(--b); outline-offset: 3px; }
+        .btn.alt { background: #fff; }
+        .btn small { font-size: 12px; font-weight: 600; opacity: 0.7; }
+
+        .btn[disabled] {
+            background: #ddd;
+            color: #777;
+            box-shadow: 4px 4px 0 #777;
+            border-color: #777;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .soon {
+            padding: 3px 6px;
+            font-size: 11px;
+            color: #fff;
+            background: var(--r);
+            border: 2px solid var(--ink);
+            transform: rotate(4deg);
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 12px;
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+
+        .row input[type=range] { flex: 1; max-width: 190px; accent-color: var(--ink); }
+        .row input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--ink); }
+        .row output { width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+
+        /* ---------- HUD ---------- */
+        #hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+
+        /* Four ticks around the centre; --gap follows the weapon's current spread. */
+        #crosshair { position: absolute; left: 50%; top: 50%; --gap: 6px; }
+
+        #crosshair i {
+            position: absolute;
+            background: #fff;
+            box-shadow: 0 0 0 1.5px var(--ink);
+        }
+
+        #crosshair i:nth-child(1) { left: -1px; bottom: var(--gap); width: 2px; height: 8px; }
+        #crosshair i:nth-child(2) { left: -1px; top: var(--gap); width: 2px; height: 8px; }
+        #crosshair i:nth-child(3) { top: -1px; right: var(--gap); width: 8px; height: 2px; }
+        #crosshair i:nth-child(4) { top: -1px; left: var(--gap); width: 8px; height: 2px; }
+
+        #hitmark {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 26px;
+            height: 26px;
+            transform: translate(-50%, -50%) rotate(45deg);
+            opacity: 0;
+        }
+
+        #hitmark::before, #hitmark::after {
+            content: '';
+            position: absolute;
+            background: #fff;
+            box-shadow: 0 0 0 1.5px var(--ink);
+        }
+
+        #hitmark::before { left: 12px; top: 0; width: 2px; height: 26px; }
+        #hitmark::after { left: 0; top: 12px; width: 26px; height: 2px; }
+        #hitmark.hs::before, #hitmark.hs::after { background: var(--r); }
+
+        #vignette {
+            position: absolute;
+            inset: 0;
+            box-shadow: inset 0 0 90px 30px rgba(255, 40, 30, 0.75);
+            opacity: 0;
+        }
+
+        .big {
+            position: absolute;
+            padding: 6px 12px;
+            font: 700 30px/1 var(--font);
+            font-variant-numeric: tabular-nums;
+            background: var(--paper);
+            border: 3px solid var(--ink);
+            box-shadow: 4px 4px 0 var(--ink);
+        }
+
+        .big small { font-size: 14px; letter-spacing: 1px; text-transform: uppercase; opacity: 0.7; }
+
+        #hp { left: max(14px, env(safe-area-inset-left)); bottom: max(14px, env(safe-area-inset-bottom)); }
+        #hp.low { background: var(--r); color: #fff; }
+        #ammo { right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); text-align: right; }
+        body.touch #hp { bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 54px); left: max(10px, env(safe-area-inset-left)); font-size: 20px; }
+        body.touch #ammo { bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 54px); right: max(10px, env(safe-area-inset-right)); font-size: 20px; }
+
+        #feed {
+            position: absolute;
+            top: calc(max(10px, env(safe-area-inset-top)) + 40px);
+            right: max(10px, env(safe-area-inset-right));
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+
+        body.touch #feed { top: calc(max(10px, env(safe-area-inset-top)) + 104px); }
+
+        #feed div {
+            padding: 3px 8px;
+            font: 600 13px/1.2 var(--font);
+            letter-spacing: 0.5px;
+            color: #fff;
+            background: rgba(17, 17, 17, 0.7);
+            border-left: 4px solid var(--y);
+        }
+
+        #feed div.me { background: rgba(17, 17, 17, 0.9); border-left-color: var(--r); }
+        #feed .t { color: #ff8a7c; }
+        #feed .ct { color: #6cc8ff; }
+
+        #dead {
+            top: 30%;
+            left: 50%;
+            transform: translateX(-50%) rotate(-1deg);
+            text-align: center;
+            font-size: 24px;
+            background: var(--r);
+            color: #fff;
+        }
+
+        #board {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: min(560px, calc(100% - 32px));
+            max-height: calc(100% - 32px);
+            overflow: auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            padding: 12px;
+            background: var(--paper);
+            border: 3px solid var(--ink);
+            box-shadow: 6px 6px 0 var(--ink);
+        }
+
+        #board table { width: 100%; border-collapse: collapse; font: 600 14px/1.5 var(--font); }
+        #board th { text-align: left; font-size: 18px; padding-bottom: 4px; border-bottom: 3px solid var(--ink); }
+        #board td { padding: 1px 4px; font-variant-numeric: tabular-nums; }
+        #board td + td, #board th + th { text-align: right; width: 34px; }
+        #board tr.me td { background: var(--y); }
+        #board .tT { color: var(--r); }
+        #board .tCT { color: var(--b); }
+
+        .tag {
+            position: absolute;
+            padding: 4px 8px;
+            font: 700 13px/1 var(--font);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: var(--paper);
+            border: 2px solid var(--ink);
+            box-shadow: 3px 3px 0 var(--ink);
+        }
+
+        #modeTag { top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); background: var(--y); }
+        #stats { top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); font-variant-numeric: tabular-nums; }
+        #hint { bottom: max(10px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 12px; }
+        body.touch #hint { display: none; }
+
+        body.playing .site-home-btn { display: none !important; }
+
+        /* ---------- touch controls ---------- */
+        #touch { position: fixed; inset: 0; z-index: 12; touch-action: none; }
+
+        #stick {
+            position: absolute;
+            width: 112px;
+            height: 112px;
+            margin: -56px 0 0 -56px;
+            border: 3px solid rgba(17, 17, 17, 0.6);
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.18);
+            pointer-events: none;
+            opacity: 0.35;
+        }
+
+        #stick.on { opacity: 1; }
+
+        #knob {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 48px;
+            height: 48px;
+            margin: -24px 0 0 -24px;
+            border: 3px solid var(--ink);
+            border-radius: 50%;
+            background: var(--y);
+        }
+
+        .tbtn {
+            all: unset;
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: calc(64px * var(--ts, 1));
+            height: calc(64px * var(--ts, 1));
+            font: 700 13px/1 var(--font);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: rgba(247, 241, 227, 0.85);
+            border: 3px solid var(--ink);
+            border-radius: 50%;
+            box-shadow: 3px 3px 0 var(--ink);
+            touch-action: none;
+        }
+
+        .tbtn.on { background: var(--y); transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+
+        /* Right thumb cluster: fire biggest, the rest around it. */
+        #touch { --R: max(16px, env(safe-area-inset-right)); --B: max(16px, env(safe-area-inset-bottom)); --u: calc(76px * var(--ts, 1)); }
+        #tFire { right: var(--R); bottom: calc(var(--B) + var(--u)); width: calc(var(--u) * 1.15); height: calc(var(--u) * 1.15); background: rgba(255, 96, 80, 0.9); color: #fff; font-size: 15px; }
+        #tFire.on { background: var(--r); }
+        #tJump { right: var(--R); bottom: var(--B); width: calc(var(--u) * 0.85); height: calc(var(--u) * 0.85); }
+        #tCrouch { right: calc(var(--R) + var(--u)); bottom: var(--B); width: calc(var(--u) * 0.85); height: calc(var(--u) * 0.85); }
+        #tReload { right: calc(var(--R) + var(--u) * 1.35); bottom: calc(var(--B) + var(--u) * 1.05); width: calc(var(--u) * 0.7); height: calc(var(--u) * 0.7); font-size: 11px; }
+        #tSwap { right: calc(var(--R) + var(--u) * 0.15); bottom: calc(var(--B) + var(--u) * 2.35); width: calc(var(--u) * 0.7); height: calc(var(--u) * 0.7); font-size: 11px; }
+        #tPause, #tBoard { top: max(10px, env(safe-area-inset-top)); width: 44px; height: 44px; border-radius: 0; font-size: 16px; }
+        #tPause { left: max(10px, env(safe-area-inset-left)); }
+        #tBoard { left: calc(max(10px, env(safe-area-inset-left)) + 56px); font-size: 12px; }
+
+        .seg { display: flex; gap: 6px; }
+        .seg label { position: relative; }
+        .seg input { position: absolute; opacity: 0; pointer-events: none; }
+        .seg span {
+            display: block;
+            padding: 6px 10px;
+            font-size: 14px;
+            border: 2px solid var(--ink);
+            background: #fff;
+            cursor: pointer;
+        }
+        .seg input:checked + span { background: var(--y); box-shadow: 2px 2px 0 var(--ink); }
+        .seg input:focus-visible + span { outline: 3px dashed var(--b); outline-offset: 2px; }
+
+        /* ---------- rotate overlay: phones in portrait ---------- */
+        #rotate {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            padding: 16px;
+            text-align: center;
+            background: var(--y);
+            font-size: 28px;
+            text-transform: uppercase;
+        }
+
+        #rotate .phone {
+            width: 54px;
+            height: 92px;
+            border: 4px solid var(--ink);
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 5px 5px 0 var(--ink);
+            animation: turn 1.8s ease-in-out infinite;
+        }
+
+        #rotate p { font-size: 15px; letter-spacing: 1px; }
+
+        @keyframes turn {
+            0%, 25% { transform: rotate(0deg); }
+            60%, 100% { transform: rotate(-90deg); }
+        }
+
+        @media (orientation: portrait) and (pointer: coarse) {
+            #rotate { display: flex; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="view"></canvas>
+
+    <div id="hud" hidden>
+        <div id="vignette"></div>
+        <div id="crosshair"><i></i><i></i><i></i><i></i></div>
+        <div id="hitmark"></div>
+        <div id="modeTag" class="tag">Free Area</div>
+        <div id="stats" class="tag" hidden></div>
+        <div id="feed"></div>
+        <div id="hp" class="big">100 <small>HP</small></div>
+        <div id="ammo" class="big">30 <small>/ 90</small></div>
+        <div id="dead" class="big" hidden></div>
+        <div id="board" hidden></div>
+        <div id="hint" class="tag">WASD move · Click fire · R reload · 1-3 weapons · Tab score · Esc pause</div>
+    </div>
+
+    <div id="touch" hidden>
+        <div id="stick"><div id="knob"></div></div>
+        <button id="tFire" class="tbtn" type="button">Fire</button>
+        <button id="tCrouch" class="tbtn" type="button">Duck</button>
+        <button id="tJump" class="tbtn" type="button">Jump</button>
+        <button id="tReload" class="tbtn" type="button">Reload</button>
+        <button id="tSwap" class="tbtn" type="button">Swap</button>
+        <button id="tPause" class="tbtn" type="button" aria-label="Pause">II</button>
+        <button id="tBoard" class="tbtn" type="button" aria-label="Scoreboard">Score</button>
+    </div>
+
+    <section id="menu" class="screen">
+        <div class="card">
+            <h1>Low-Poly <span>Strike</span></h1>
+            <p class="sub">4v4 in your browser · no install</p>
+            <button class="btn" type="button" data-open="freeSetup">Free Area <small>bots · offline</small></button>
+            <button class="btn" type="button" disabled>Host game <span class="soon">Soon</span></button>
+            <button class="btn" type="button" disabled>Join game <span class="soon">Soon</span></button>
+            <button class="btn alt" type="button" data-open="settings">Settings</button>
+        </div>
+    </section>
+
+    <section id="freeSetup" class="screen" hidden>
+        <div class="card">
+            <h2>Free Area</h2>
+            <label class="row">Enemy bots <input id="fEnemies" type="range" min="1" max="4" step="1"><output for="fEnemies"></output></label>
+            <label class="row">Team bots <input id="fAllies" type="range" min="0" max="3" step="1"><output for="fAllies"></output></label>
+            <div class="row">Bots
+                <div class="seg" role="radiogroup" aria-label="Bot difficulty">
+                    <label><input type="radio" name="diff" value="easy"><span>Easy</span></label>
+                    <label><input type="radio" name="diff" value="normal"><span>Normal</span></label>
+                    <label><input type="radio" name="diff" value="hard"><span>Hard</span></label>
+                </div>
+            </div>
+            <button id="playFree" class="btn" type="button">Start</button>
+            <button class="btn alt" type="button" data-back>Back</button>
+        </div>
+    </section>
+
+    <section id="pause" class="screen" hidden>
+        <div class="card">
+            <h2>Paused</h2>
+            <button id="resume" class="btn" type="button">Resume</button>
+            <button class="btn alt" type="button" data-open="settings">Settings</button>
+            <button id="quit" class="btn alt" type="button">Quit to menu</button>
+        </div>
+    </section>
+
+    <section id="settings" class="screen" hidden>
+        <div class="card">
+            <h2>Settings</h2>
+            <label class="row">Mouse sens <input id="sMouse" type="range" min="0.2" max="3" step="0.05"><output for="sMouse"></output></label>
+            <label class="row">Touch sens <input id="sTouch" type="range" min="0.2" max="3" step="0.05"><output for="sTouch"></output></label>
+            <label class="row">Touch button size <input id="sSize" type="range" min="0.7" max="1.5" step="0.05"><output for="sSize"></output></label>
+            <label class="row">Low quality <input id="sLow" type="checkbox"></label>
+            <label class="row">Show FPS <input id="sFps" type="checkbox"></label>
+            <button id="settingsBack" class="btn" type="button">Back</button>
+        </div>
+    </section>
+
+    <div id="rotate">
+        <div class="phone"></div>
+        Rotate your phone
+        <p>This game plays in landscape</p>
+    </div>
+
+    <!-- Shared pixel transition + back button. -->
+    <script src="../../pixel-transition.js"></script>
+    <script src="../../site-nav.js" data-home="../../index.html"></script>
+    <script type="module" src="game.js"></script>
+</body>
+</html>
