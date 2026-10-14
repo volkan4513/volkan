@@ -860,6 +860,7 @@ function startMatch() {
         e.q = new InputQueue();
         if (!e.link) me = p;
     }
+    world.hist = [];
     if (settings.fillBots) {
         for (const team of ['t', 'ct']) {
             while (world.players.filter((p) => p.team === team).length < 4) addBot(team, names);
@@ -1168,6 +1169,7 @@ function onSnapshot(s) {
     if (s.k <= lastK) return;
     lastK = s.k;
     const now = performance.now();
+    interp.mark(now, s.k);
     world.time = s.tm;
     world.score.t = s.sc[0];
     world.score.ct = s.sc[1];
@@ -1226,7 +1228,7 @@ function onSnapshot(s) {
 }
 
 function clientTick() {
-    const cmd = quantiseInput(input, ++seq);
+    const cmd = quantiseInput({ ...input, view: interp.tickAt(performance.now()) }, ++seq);
     pending.push(cmd);
     if (me.alive) {
         me.yaw = cmd.yaw;
@@ -1466,6 +1468,7 @@ window.__lps = {
     get link() { return link; },
     get seq() { return seq; },
     set fire(v) { touch.fire = !!v; },
+    set look([yaw, pitch]) { lookYaw = yaw; lookPitch = pitch; },
     peers, netStats, SIM_NET,
 };
 

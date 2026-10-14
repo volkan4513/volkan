@@ -204,6 +204,7 @@ export function quantiseInput(inp, seq) {
         mx: r2(inp.mx), mz: r2(inp.mz),
         jump: !!inp.jump, crouch: !!inp.crouch, walk: !!inp.walk, fire: !!inp.fire, reload: !!inp.reload, use: !!inp.use,
         yaw: r3(inp.yaw), pitch: r3(inp.pitch), slot: inp.slot,
+        view: inp.view == null ? null : Math.round(inp.view * 10) / 10,
     };
 }
 
@@ -214,7 +215,7 @@ export function packInputs(cmds) {
         c: cmds.map((c) => [
             c.seq, c.mx, c.mz,
             (c.jump ? BIT.jump : 0) | (c.crouch ? BIT.crouch : 0) | (c.walk ? BIT.walk : 0) | (c.fire ? BIT.fire : 0) | (c.reload ? BIT.reload : 0) | (c.use ? BIT.use : 0),
-            c.yaw, c.pitch, c.slot,
+            c.yaw, c.pitch, c.slot, c.view,
         ]),
     };
 }
@@ -228,6 +229,7 @@ export function unpackInput(a) {
         jump: !!(bits & BIT.jump), crouch: !!(bits & BIT.crouch), walk: !!(bits & BIT.walk),
         fire: !!(bits & BIT.fire), reload: !!(bits & BIT.reload), use: !!(bits & BIT.use),
         yaw: num(a[4]), pitch: num(a[5]), slot: a[6] | 0,
+        view: Number.isFinite(a[7]) ? a[7] : null,     // host tick the client sees others at
     };
 }
 
@@ -241,6 +243,9 @@ export class InputQueue {
         this.ack = 0;
         this.last = null;
         this.starve = 0;
+        this.low = 99;     // shallowest queue seen this window
+        this.win = 0;
+        this.drain = 0;    // extra inputs to skip, decided once per window
     }
 
     push(list) {
@@ -253,12 +258,26 @@ export class InputQueue {
         }
     }
 
-    // One input per host tick. Bursts are trimmed, short gaps repeat the last input,
-    // and a long gap (tab hidden, link stalled) stops movement and fire. A held plant/defuse
-    // survives gaps up to 1 s: a slow phone sends in bursts, and a reset there means starting over.
+    // One input per host tick, like a jitter buffer: bursts are played out, and only a backlog
+    // that never drained below 2 for half a second is caught up, one extra input per tick.
+    // A huge backlog (tab was hidden) collapses to the newest 3. Skipped inputs are merged,
+    // so presses survive. Short gaps repeat the last input, and a long gap (link stalled)
+    // stops movement and fire. A held plant/defuse survives gaps up to 1 s: a slow phone
+    // sends in bursts, and a reset there means starting over.
     next() {
-        if (this.q.length > 8) this.q.splice(0, this.q.length - 3);
-        const c = this.q.shift();
+        this.low = Math.min(this.low, this.q.length);
+        if (++this.win >= 30) {
+            this.drain = Math.max(0, this.low - 2);
+            this.low = 99;
+            this.win = 0;
+        }
+        let c = this.q.shift();
+        let skip = this.q.length > 60 ? this.q.length - 3 : this.drain > 0 && this.q.length > 1 ? 1 : 0;
+        if (skip === 1) this.drain--;
+        while (skip-- > 0) {
+            const n = this.q.shift();
+            c = { ...n, jump: c.jump || n.jump, fire: c.fire || n.fire, reload: c.reload || n.reload };
+        }
         if (c) {
             this.ack = c.seq;
             this.last = c;
@@ -276,6 +295,25 @@ export class Interp {
     constructor(delayMs = 100) {
         this.delay = delayMs;
         this.buf = new Map();
+        this.ticks = [];       // host tick of each snapshot, by arrival time
+    }
+
+    // Called once per snapshot, so tickAt() can tell which host tick is on screen.
+    mark(now, k) {
+        this.ticks.push({ t: now, k });
+        if (this.ticks.length > 30) this.ticks.shift();
+    }
+
+    // Host tick the remote players are drawn at right now (fractional), or null.
+    tickAt(now) {
+        const b = this.ticks;
+        if (!b.length) return null;
+        const t = now - this.delay;
+        let i = b.length - 1;
+        while (i > 0 && b[i - 1].t > t) i--;
+        const a = b[Math.max(0, i - 1)], c = b[i];
+        if (t >= c.t || a === c) return c.k;
+        return a.k + (c.k - a.k) * Math.max(0, (t - a.t) / (c.t - a.t));
     }
 
     push(id, now, x, y, z, yaw, pitch) {
@@ -287,7 +325,7 @@ export class Interp {
 
     drop(id) { this.buf.delete(id); }
 
-    clear() { this.buf.clear(); }
+    clear() { this.buf.clear(); this.ticks.length = 0; }
 
     // Fills out {x, y, z, yaw, pitch}; false when nothing is known yet.
     sample(id, now, out) {

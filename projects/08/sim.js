@@ -197,6 +197,7 @@ export function createWorld(map, weapons, rules = {}) {
         score: { t: 0, ct: 0 },
         over: null,
         nextId: 1,
+        hist: null,                     // lag compensation: set to [] on a network host
     };
 }
 
@@ -284,6 +285,7 @@ export function stepWorld(world, inputs) {
         if (r.killLimit && Math.max(s.t, s.ct) >= r.killLimit) endMatch(world, lead);
         else if (r.timeLimit && world.time >= r.timeLimit) endMatch(world, lead);
     }
+    if (world.hist) recordHistory(world);
 }
 
 function endMatch(world, winner) {
@@ -329,7 +331,7 @@ function updateWeapon(world, p, inp) {
         p.nextFire = t + 1 / W.fireRate;
         p.trigger = false;
         p.invulnUntil = 0;         // shooting drops the spawn shield
-        fire(world, p, W, cur.id);
+        fire(world, p, W, cur.id, inp.view);
         p.bloom = Math.min(p.bloom + (W.auto ? 0.005 : 0.012), 0.05);
     }
 }
@@ -341,7 +343,8 @@ export function spreadOf(p, W) {
     return p.crouch ? s * 0.7 : s;
 }
 
-function fire(world, p, W, weaponId) {
+function fire(world, p, W, weaponId, view) {
+    const undo = world.hist && view != null ? rewind(world, p, view) : null;
     const o = [p.x, p.y + eyeHeight(p), p.z];
     const spread = spreadOf(p, W);
     const hits = new Map();
@@ -359,7 +362,48 @@ function fire(world, p, W, weaponId) {
             hits.set(res.player, h);
         }
     }
+    if (undo) undo();
     for (const [tgt, h] of hits) damage(world, p, tgt, Math.round(h.dmg), h.hs, weaponId);
+}
+
+// ---------------------------------------------------------------------------
+// Lag compensation. A remote client sees other players in the past (its link delay plus
+// the interpolation delay) and sends the host tick it is looking at with each input.
+// When it fires, everyone else is moved back to that tick for the ray, then put back.
+
+export const LAGCOMP = { maxTicks: 30 };    // rewind at most 0.5 s
+
+function recordHistory(world) {
+    world.hist.push({ k: world.tick, ps: world.players.map((p) => [p, p.x, p.y, p.z, p.crouch]) });
+    if (world.hist.length > LAGCOMP.maxTicks + 1) world.hist.shift();
+}
+
+// Moves every other living player to where they were at tick `view` (fractional).
+// Returns a function that puts them back.
+function rewind(world, shooter, view) {
+    const h = world.hist;
+    if (!h.length || !Number.isFinite(view)) return null;
+    const k = Math.max(world.tick - LAGCOMP.maxTicks, Math.min(world.tick, view));
+    if (k >= h[h.length - 1].k) return null;
+    let i = h.length - 1;
+    while (i > 0 && h[i - 1].k > k) i--;
+    const a = h[Math.max(0, i - 1)], c = h[i];
+    const f = a === c ? 1 : Math.max(0, Math.min(1, (k - a.k) / (c.k - a.k)));
+    const from = new Map(a.ps.map((e) => [e[0], e]));
+    const saved = [];
+    for (const e of c.ps) {
+        const p = e[0];
+        if (p === shooter || !p.alive) continue;
+        const b = from.get(p) || e;
+        // Respawn or teleport between the two ticks: do not slide across the map.
+        const t = Math.hypot(e[1] - b[1], e[3] - b[3]) > 6 ? 1 : f;
+        saved.push([p, p.x, p.y, p.z, p.crouch]);
+        p.x = b[1] + (e[1] - b[1]) * t;
+        p.y = b[2] + (e[2] - b[2]) * t;
+        p.z = b[3] + (e[3] - b[3]) * t;
+        p.crouch = t < 0.5 ? b[4] : e[4];
+    }
+    return () => { for (const [p, x, y, z, cr] of saved) { p.x = x; p.y = y; p.z = z; p.crouch = cr; } };
 }
 
 function damage(world, by, tgt, dmg, hs, weaponId) {

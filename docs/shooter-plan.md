@@ -82,11 +82,11 @@ Positions are rounded to 2 decimals (3 for the client's own state and angles).
 ### Feel
 - Client-side prediction for the local player, reconciled by input `seq`.
 - Remote players interpolated 100 ms in the past. A jump over 6 m (respawn) snaps instead of sliding.
-- Hitscan on the host. **No lag compensation** (see section 9).
+- Hitscan on the host, with lag compensation: each client input carries the host tick the client sees other players at (`view`, from the snapshot ticks in `Interp`). The host keeps 0.5 s of player positions (`world.hist`), and when a client fires it moves everyone else back to that tick for the ray, then puts them back. Rewind is capped at 30 ticks; bots and the host's own shots are not rewound.
 - Tracers, muzzle flash and hit markers are local effects driven by events.
 
 ### Host input queue
-One client input per host tick (60 Hz). Short gaps repeat the last input. A long gap (tab hidden, link stalled) stops movement and fire, but a held Use (plant/defuse) is kept for up to 1 s, because slow clients send in bursts and a dropped Use resets the progress. Bursts over 8 queued inputs are trimmed to the newest 3.
+One client input per host tick (60 Hz). Short gaps repeat the last input. A long gap (tab hidden, link stalled) stops movement and fire, but a held Use (plant/defuse) is kept for up to 1 s, because slow clients send in bursts and a dropped Use resets the progress. It works like a jitter buffer: bursts are played out, and only a backlog that never drops below 2 for half a second is caught up, one extra input per tick. A backlog over 60 (hidden tab) collapses to the newest 3. Skipped inputs are merged, so jump, fire and reload presses are kept.
 
 ---
 
@@ -232,9 +232,10 @@ All six phases are done:
 
 ## 9. Known limits and issues
 
-- The host input queue trims to 3 when more than 8 inputs pile up, so lag spikes can drop client inputs. Under `?lag=120&loss=5` it trims about 1-2 times a second.
+- Under `?lag=120&loss=5` the host input queue skips about 1 input per 5 s while catching up (it was about 45 per 5 s with the old trim-to-3). Plants 4/4, full bomb match with halftime passes.
 - A hidden host tab gets bursty inputs (the browser throttles timers). Host from a visible PC tab.
-- No lag compensation on hitscan: high-ping clients must lead targets.
+- Lag compensation favours the shooter: a high-ping client can hit someone who already reached cover on the host's screen (up to 0.5 s back).
+- Lag compensation A/B (client aims at a strafing target as drawn on its screen, `?lag=120`): 45% hits with rewind vs 11% without. Headless runs at about 10 fps, so 100% isn't reachable here.
 - Manual handshake has STUN only, so strict NATs can fail. The room-code path has PeerJS's TURN.
 - PeerJS cloud signaling is third-party and can go down. Manual handshake is the fallback.
 - A cheating host is possible because the host is authoritative. Fine for friends-only play.
