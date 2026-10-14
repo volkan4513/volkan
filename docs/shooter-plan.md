@@ -86,7 +86,7 @@ Positions are rounded to 2 decimals (3 for the client's own state and angles).
 - Tracers, muzzle flash and hit markers are local effects driven by events.
 
 ### Host input queue
-One client input per host tick (60 Hz). Short gaps repeat the last input. A long gap (tab hidden, link stalled) stops movement and fire. Bursts over 8 queued inputs are trimmed to the newest 3.
+One client input per host tick (60 Hz). Short gaps repeat the last input. A long gap (tab hidden, link stalled) stops movement and fire, but a held Use (plant/defuse) is kept for up to 1 s, because slow clients send in bursts and a dropped Use resets the progress. Bursts over 8 queued inputs are trimmed to the newest 3.
 
 ---
 
@@ -188,7 +188,7 @@ projects/08/
 | `site.json` | One new `projects` entry (`href: "projects/08/index.html"`, `thumb: "projects/08/images/0.webp"`, colour red, sticker "Play it!"). |
 | `tools/build_offline_manifest.py` | `CORE` gets `projects/08/index.html`, `projects/08/*.js`, `projects/08/*.json`, `projects/08/images/0.webp`. `expand()` raises if a pattern matches nothing. |
 | `sw-manifest.js` | **Regenerated only** with `python tools/build_offline_manifest.py`. Never hand-edit. |
-| `projects/08/index.html` | Includes `../../pixel-transition.js` and `../../site-nav.js` (with `data-home="../../index.html"`) like the other project pages. |
+| `projects/08/index.html` | Includes `../../pixel-transition.js`, `../../offline.js` and `../../site-nav.js` (with `data-home="../../index.html"`) like projects 01-05. `offline.js` registers the service worker, so a friend who opens a shared game link directly also gets the offline cache. |
 
 ## 7. What NOT to change
 
@@ -221,18 +221,18 @@ All six phases are done:
 - Manual handshake with QR.
 - A bomb round with plant and defuse over the network.
 - A bots-only bomb match in Node.
+- Full networked bomb match with bots, first to 4, with and without `?lag=120&loss=5`: halftime swap (banner, `world.att` flip, money back to $1600, loadout reset), match end on both sides, no console errors.
+- Touch Buy and Use on an emulated landscape phone: the buy menu opens and closes, a shotgun buy reaches the host, and a plant completes over the network (4/4 plants under lag/loss after the input queue fix).
+- Opening the game page directly registers the service worker. Every request the game makes is in `OFFLINE_CORE` (fonts go to the runtime cache).
 
 ### Not tested yet
 - Real phone on mobile data.
-- QR camera scan.
-- Touch Use and Buy buttons.
-- Networked halftime.
-- Full networked bomb match with bots.
-- Offline cold load from the cache.
+- QR camera scan. `BarcodeDetector` exists only on Android Chrome and macOS. Windows Chrome and iOS Safari don't have it, so the Scan buttons hide and paste is the only path there.
+- A true offline cold load. CacheStorage is broken inside the test sandbox (even a synthetic `cache.put` fails), so check it on a real browser: visit once online, go offline, reload the game.
 
 ## 9. Known limits and issues
 
-- The host input queue trims to 3 when more than 8 inputs pile up, so lag spikes can drop client inputs.
+- The host input queue trims to 3 when more than 8 inputs pile up, so lag spikes can drop client inputs. Under `?lag=120&loss=5` it trims about 1-2 times a second.
 - A hidden host tab gets bursty inputs (the browser throttles timers). Host from a visible PC tab.
 - No lag compensation on hitscan: high-ping clients must lead targets.
 - Manual handshake has STUN only, so strict NATs can fail. The room-code path has PeerJS's TURN.

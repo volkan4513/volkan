@@ -254,7 +254,8 @@ export class InputQueue {
     }
 
     // One input per host tick. Bursts are trimmed, short gaps repeat the last input,
-    // and a long gap (tab hidden, link stalled) stops movement and fire.
+    // and a long gap (tab hidden, link stalled) stops movement and fire. A held plant/defuse
+    // survives gaps up to 1 s: a slow phone sends in bursts, and a reset there means starting over.
     next() {
         if (this.q.length > 8) this.q.splice(0, this.q.length - 3);
         const c = this.q.shift();
@@ -266,7 +267,7 @@ export class InputQueue {
         }
         if (!this.last) return null;
         if (++this.starve <= 5) return this.last;
-        return { ...this.last, mx: 0, mz: 0, jump: false, fire: false, reload: false, use: false };
+        return { ...this.last, mx: 0, mz: 0, jump: false, fire: false, reload: false, use: this.last.use && this.starve <= 60 };
     }
 }
 
