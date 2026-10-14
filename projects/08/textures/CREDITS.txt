@@ -1,0 +1,15 @@
+Textures and sky made from CC0 (public domain) photo textures by Poly Haven, https://polyhaven.com
+Each was shrunk to 128 px, colour graded and reduced to 256 colours for a CS 1.6 look.
+
+wall.png     large_sandstone_blocks_01
+stone.png    sandstone_blocks_08
+sand.png     dirt_floor
+cobble.png   cobblestone_floor_01
+plaster.png  sandstone_cracks
+metal.png    metal_plate
+crate.png    wood_planks (frame and brace drawn on top)
+gcrate.png   green_metal_rust (rim, ribs and hazard stripes drawn on top)
+door.png     weathered_planks (iron bands and seam drawn on top)
+sky.jpg      kloofendal_48d_partly_cloudy_puresky (tonemapped, lower half faded to haze)
+
+Rebuild with: python tools/make_cs_textures.py <download_dir>

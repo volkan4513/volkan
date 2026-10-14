@@ -395,6 +395,8 @@
         #buy button.own { background: #bfe3ff; }
         #buy p { margin-top: 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #555; }
         #touch:not(.bomb) #tUse, #touch:not(.bomb) #tBuy { display: none; }
+        #tAim { right: calc(var(--R) + var(--u) * 1.25); bottom: calc(var(--B) + var(--u) * 2.1); width: calc(var(--u) * 0.75); height: calc(var(--u) * 0.75); font-size: 11px; }
+        #tAim.on { background: var(--y); }
         #tUse { right: calc(var(--R) + var(--u) * 2.0); bottom: calc(var(--B) + var(--u) * 0.1); width: calc(var(--u) * 0.85); height: calc(var(--u) * 0.85); }
         #tBuy { top: max(10px, env(safe-area-inset-top)); left: calc(max(10px, env(safe-area-inset-left)) + 112px); width: 44px; height: 44px; border-radius: 0; font-size: 12px; }
 
@@ -426,29 +428,38 @@
         .slots small { opacity: 0.65; font-variant-numeric: tabular-nums; }
         #lockHint { top: 78px; left: 50%; transform: translateX(-50%); background: var(--y); }
 
+        /* ---------- scopes ---------- */
+        #scope { position: absolute; inset: 0; opacity: 0; --lens: min(46vh, 46vw); }
+        #scope::before, #scope::after { content: ''; position: absolute; left: 50%; top: 50%; }
+        #scope.sniper { background: radial-gradient(circle at 50% 50%, transparent 0 calc(var(--lens) - 3px), #111 var(--lens)); }
+        #scope.sniper::before { width: calc(var(--lens) * 2); height: 2px; margin: -1px 0 0 calc(var(--lens) * -1); background: #111; }
+        #scope.sniper::after { width: 2px; height: calc(var(--lens) * 2); margin: calc(var(--lens) * -1) 0 0 -1px; background: #111; }
+        #scope.acog { --lens: min(30vh, 30vw); background: radial-gradient(circle at 50% 50%, transparent 0 calc(var(--lens) - 3px), #111 calc(var(--lens) - 1px), rgba(17, 17, 17, 0.88) calc(var(--lens) + 6px)); }
+        #scope.acog::before { margin: -2px 0 0 -9px; border: 9px solid transparent; border-top: 0; border-bottom: 14px solid #ff3a20; filter: drop-shadow(0 0 2px #ff3a20); }
+        #scope.acog::after { width: 2px; height: calc(var(--lens) * 0.6); margin: 16px 0 0 -1px; background: #111; }
+        #scope.reddot::before { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%; background: #ff2a14; box-shadow: 0 0 6px 2px rgba(255, 42, 20, 0.8); }
 
-        .codebox {
-            display: block;
-            width: 100%;
-            height: 74px;
-            margin-top: 6px;
-            padding: 6px 8px;
-            font: 600 12px/1.25 monospace;
-            word-break: break-all;
-            resize: none;
-            background: #fff;
-            border: 3px solid var(--ink);
-            user-select: text;
-            -webkit-user-select: text;
-            touch-action: auto;
+        /* ---------- battle royale ---------- */
+        #board.one { grid-template-columns: 1fr; width: min(380px, calc(100% - 32px)); }
+        #board td.out { opacity: 0.55; }
+
+        /* ---------- touch layout editor ---------- */
+        #touch .tbtn { opacity: var(--ta, 1); }
+        #touch.noscope #tAim { display: none; }
+        #touch.editing { background: rgba(17, 17, 17, 0.35); }
+        #touch.editing .tbtn { display: flex !important; opacity: 1; cursor: grab; }
+        #touch.editing #stick { opacity: 1; pointer-events: auto; cursor: grab; }
+        #touch.editing #knob { pointer-events: none; }
+        #touch.editing .sel { outline: 3px dashed var(--y); outline-offset: 5px; }
+        #editBar {
+            position: fixed; z-index: 30; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%);
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; width: min(640px, calc(100% - 24px));
+            padding: 8px 12px; font-size: 14px; text-transform: uppercase; background: var(--paper); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
         }
-
-        .step { margin-top: 14px; font-size: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .step b { display: inline-block; width: 24px; height: 24px; margin-right: 6px; text-align: center; line-height: 21px; background: var(--y); border: 2px solid var(--ink); }
-        .qr { display: block; width: 220px; height: 220px; margin: 8px auto 0; image-rendering: pixelated; border: 3px solid var(--ink); background: #fff; }
-        .btnrow { display: flex; gap: 8px; }
-        .btnrow .btn { width: auto; margin-top: 6px; font-size: 16px; padding: 8px 12px; }
-        #scanView { width: min(420px, 100%); border: 3px solid var(--ink); background: #000; }
+        #editBar label { display: flex; align-items: center; gap: 6px; }
+        #editBar input[type=range] { width: 110px; accent-color: var(--ink); }
+        #editBar .btn { width: auto; margin: 0; padding: 6px 12px; font-size: 15px; box-shadow: 3px 3px 0 var(--ink); }
+        #eName { min-width: 90px; }
 
         /* ---------- rotate overlay: phones in portrait ---------- */
         #rotate {
@@ -493,6 +504,7 @@
     <canvas id="view"></canvas>
 
     <div id="hud" hidden>
+        <div id="scope"></div>
         <div id="vignette"></div>
         <div id="crosshair"><i></i><i></i><i></i><i></i></div>
         <div id="hitmark"></div>
@@ -508,7 +520,7 @@
         <div id="actbar" hidden><span id="actLabel"></span><i></i></div>
         <div id="banner" class="big" hidden></div>
         <div id="lockHint" class="tag" hidden>Click to capture the mouse</div>
-        <div id="hint" class="tag">WASD move · Click fire · R reload · 1-3 weapons · E use · B buy · Tab score · Esc pause</div>
+        <div id="hint" class="tag">WASD move · Click fire · Right click scope · R reload · 1-4 weapons · E use · B buy · Tab score · Esc pause</div>
     </div>
 
     <div id="touch" hidden>
@@ -516,6 +528,7 @@
         <button id="tFire" class="tbtn" type="button">Fire</button>
         <button id="tCrouch" class="tbtn" type="button">Duck</button>
         <button id="tJump" class="tbtn" type="button">Jump</button>
+        <button id="tAim" class="tbtn" type="button">Scope</button>
         <button id="tReload" class="tbtn" type="button">Reload</button>
         <button id="tSwap" class="tbtn" type="button">Swap</button>
         <button id="tUse" class="tbtn" type="button">Use</button>
@@ -524,20 +537,28 @@
         <button id="tBoard" class="tbtn" type="button" aria-label="Scoreboard">Score</button>
     </div>
 
+    <div id="editBar" hidden>
+        <b id="eName">Drag a control</b>
+        <label>Size <input id="eSize" type="range" min="0.5" max="2" step="0.05"></label>
+        <label>Opacity <input id="eAlpha" type="range" min="0.25" max="1" step="0.05"></label>
+        <button id="eReset" class="btn alt" type="button">Reset</button>
+        <button id="eDone" class="btn" type="button">Done</button>
+    </div>
+
     <div id="buy" hidden>
         <h3>Buy <small id="buyMoney"></small></h3>
         <button type="button" data-item="rifle"><span><b>1</b>Rifle</span><span class="price"></span></button>
         <button type="button" data-item="shotgun"><span><b>2</b>Shotgun</span><span class="price"></span></button>
+        <button type="button" data-item="sniper"><span><b>3</b>Sniper</span><span class="price"></span></button>
         <p>B closes · buy phase only</p>
     </div>
 
     <section id="menu" class="screen">
         <div class="card">
             <h1>Low-Poly <span>Strike</span></h1>
-            <p class="sub">4v4 in your browser · no install</p>
+            <p class="sub">4v4 or battle royale in your browser · no install</p>
             <button class="btn" type="button" data-open="freeSetup">Free Area <small>bots · offline</small></button>
             <button id="hostBtn" class="btn" type="button">Host game <small>room code</small></button>
-            <button id="hostManualBtn" class="btn alt" type="button">Host game <small>no server</small></button>
             <button class="btn" type="button" data-open="joinScreen">Join game <small>room code</small></button>
             <button class="btn alt" type="button" data-open="settings">Settings</button>
         </div>
@@ -546,13 +567,26 @@
     <section id="freeSetup" class="screen" hidden>
         <div class="card">
             <h2>Free Area</h2>
-            <label class="row">Enemy bots <input id="fEnemies" type="range" min="1" max="4" step="1"><output for="fEnemies"></output></label>
-            <label class="row">Team bots <input id="fAllies" type="range" min="0" max="3" step="1"><output for="fAllies"></output></label>
-            <div class="row">Bots
+            <div class="row">Mode
+                <div class="seg" role="radiogroup" aria-label="Mode">
+                    <label><input type="radio" name="fmode" value="tdm"><span>Team</span></label>
+                    <label><input type="radio" name="fmode" value="br"><span>Battle royale</span></label>
+                </div>
+            </div>
+            <label id="fBrRow" class="row">Bots <input id="fBrBots" type="range" min="3" max="15" step="1"><output for="fBrBots"></output></label>
+            <label id="fEnemiesRow" class="row">Enemy bots <input id="fEnemies" type="range" min="1" max="4" step="1"><output for="fEnemies"></output></label>
+            <label id="fAlliesRow" class="row">Team bots <input id="fAllies" type="range" min="0" max="3" step="1"><output for="fAllies"></output></label>
+            <div class="row">Skill
                 <div class="seg" role="radiogroup" aria-label="Bot difficulty">
                     <label><input type="radio" name="diff" value="easy"><span>Easy</span></label>
                     <label><input type="radio" name="diff" value="normal"><span>Normal</span></label>
                     <label><input type="radio" name="diff" value="hard"><span>Hard</span></label>
+                </div>
+            </div>
+            <div class="row">Map
+                <div class="seg" role="radiogroup" aria-label="Map">
+                    <label><input type="radio" name="fmap" value="yard"><span>Yard</span></label>
+                    <label><input type="radio" name="fmap" value="dust"><span>Dust</span></label>
                 </div>
             </div>
             <button id="playFree" class="btn" type="button">Start</button>
@@ -574,6 +608,7 @@
             <h2>Settings</h2>
             <label class="row">Mouse sens <input id="sMouse" type="range" min="0.2" max="3" step="0.05"><output for="sMouse"></output></label>
             <label class="row">Touch sens <input id="sTouch" type="range" min="0.2" max="3" step="0.05"><output for="sTouch"></output></label>
+            <button id="sTouchEdit" class="btn alt" type="button">Customize touch controls <small>drag &amp; resize</small></button>
             <label class="row">Touch button size <input id="sSize" type="range" min="0.7" max="1.5" step="0.05"><output for="sSize"></output></label>
             <label class="row">Low quality <input id="sLow" type="checkbox"></label>
             <label class="row">Show FPS <input id="sFps" type="checkbox"></label>
@@ -588,7 +623,6 @@
             <label class="row">Room code <input id="jCode" class="txt code" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
             <p id="jStatus" class="msg"></p>
             <button id="jGo" class="btn" type="button">Join</button>
-            <button class="btn alt" type="button" data-open="joinManual">Join with pasted code <small>no server</small></button>
             <button class="btn alt" type="button" data-back>Back</button>
         </div>
     </section>
@@ -604,10 +638,17 @@
             </div>
             <div id="lHost">
                 <label class="row">Your name <input id="lName" class="txt" maxlength="14" autocomplete="off" spellcheck="false"></label>
+                <div class="row">Map
+                    <div class="seg" role="radiogroup" aria-label="Map">
+                        <label><input type="radio" name="lmap" value="yard"><span>Yard</span></label>
+                        <label><input type="radio" name="lmap" value="dust"><span>Dust</span></label>
+                    </div>
+                </div>
                 <div class="row">Mode
                     <div class="seg" role="radiogroup" aria-label="Mode">
                         <label><input type="radio" name="lmode" value="tdm"><span>Deathmatch</span></label>
                         <label><input type="radio" name="lmode" value="bomb"><span>Bomb</span></label>
+                        <label><input type="radio" name="lmode" value="br"><span>Royale</span></label>
                     </div>
                 </div>
                 <div id="lRoundsRow" class="row">First to
@@ -642,50 +683,8 @@
             </div>
             <p id="lInfo" class="msg"></p>
             <button id="lStart" class="btn" type="button">Start match</button>
-            <button id="lAdd" class="btn alt" type="button">Add player by code <small>no server</small></button>
             <button id="lTeam" class="btn alt" type="button">Switch team</button>
             <button id="lLeave" class="btn alt" type="button">Leave</button>
-        </div>
-    </section>
-
-    <section id="manualHost" class="screen" hidden>
-        <div class="card wide">
-            <h2>Add player</h2>
-            <p class="step"><b>1</b>Send this code to your friend</p>
-            <textarea id="mOffer" class="codebox" readonly placeholder="Making code..."></textarea>
-            <div class="btnrow"><button id="mCopy" class="btn alt" type="button">Copy</button></div>
-            <canvas id="mQr" class="qr" hidden></canvas>
-            <p class="step"><b>2</b>Paste the answer they send back</p>
-            <textarea id="mAnswer" class="codebox" placeholder="Answer code"></textarea>
-            <div class="btnrow"><button id="mScan" class="btn alt" type="button" hidden>Scan QR</button></div>
-            <p id="mStatus" class="msg"></p>
-            <button id="mGo" class="btn" type="button">Connect</button>
-            <button id="mCancel" class="btn alt" type="button">Cancel</button>
-        </div>
-    </section>
-
-    <section id="joinManual" class="screen" hidden>
-        <div class="card wide">
-            <h2>Join with a code</h2>
-            <label class="row">Name <input id="kName" class="txt" maxlength="14" autocomplete="off" spellcheck="false"></label>
-            <p class="step"><b>1</b>Paste the host's code</p>
-            <textarea id="kOffer" class="codebox" placeholder="Code from the host"></textarea>
-            <div class="btnrow"><button id="kScan" class="btn alt" type="button" hidden>Scan QR</button></div>
-            <p class="step"><b>2</b>Send this answer back</p>
-            <textarea id="kAnswer" class="codebox" readonly placeholder="Press Make answer"></textarea>
-            <div class="btnrow"><button id="kCopy" class="btn alt" type="button">Copy</button></div>
-            <canvas id="kQr" class="qr" hidden></canvas>
-            <p id="kStatus" class="msg"></p>
-            <button id="kGo" class="btn" type="button">Make answer</button>
-            <button id="kCancel" class="btn alt" type="button">Cancel</button>
-        </div>
-    </section>
-
-    <section id="scanScreen" class="screen" hidden>
-        <div class="card">
-            <h2>Scan QR</h2>
-            <video id="scanView" playsinline muted></video>
-            <button id="scanCancel" class="btn alt" type="button">Cancel</button>
         </div>
     </section>
 

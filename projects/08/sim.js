@@ -44,7 +44,7 @@ export function eyeHeight(p) {
     return p.crouch ? PLAYER.crouchEye : PLAYER.eye;
 }
 
-// inp: { mx: strafe -1..1, mz: forward -1..1, jump, crouch, walk }
+// inp: { mx: strafe -1..1, mz: forward -1..1, jump, crouch, walk, aim }
 // boxes: map.json boxes, [x0, y0, z0, x1, y1, z1, colour]
 export function stepPlayer(p, inp, boxes, dt = TICK) {
     // Crouch, and only stand up when there is room above.
@@ -71,7 +71,7 @@ export function stepPlayer(p, inp, boxes, dt = TICK) {
     if (len > 0) {
         wx /= len;
         wz /= len;
-        const max = p.crouch ? MOVE.crouch : inp.walk ? MOVE.walk : MOVE.run;
+        const max = p.crouch ? MOVE.crouch : inp.walk || inp.aim ? MOVE.walk : MOVE.run;
         const wishSpeed = max * Math.min(len, 1);
         const cap = p.onGround ? wishSpeed : Math.min(wishSpeed, MOVE.airCap);
         const add = cap - (p.vx * wx + p.vz * wz);
@@ -187,6 +187,8 @@ export function createWorld(map, weapons, rules = {}) {
         att: 't',                       // bomb mode: the squad (team) attacking right now
         round: null,                    // bomb mode: { n, phase: 'buy' | 'live' | 'end', until, winner, reason }
         bomb: null,                     // bomb mode: { state, carrier, x, y, z, site, fuseAt }
+        zone: null,                     // battle royale: the safe circle, see stepZone
+        loot: null,                     // battle royale: [{ id, kind, x, y, z, taken }]
         plan: { site: 'A' },            // bomb mode: where attacking bots head this round
         lossStreak: { t: 0, ct: 0 },
         roundsPlayed: 0,
@@ -204,16 +206,16 @@ export function createWorld(map, weapons, rules = {}) {
 export const isBomb = (world) => world.rules.mode === 'bomb';
 
 export function addPlayer(world, { name, team, bot = false, loadout }) {
-    const bomb = isBomb(world);
+    const bomb = isBomb(world), br = isBR(world);
     const p = Object.assign(createPlayer(0, 0), {
         id: world.nextId++, name, team, bot,
-        loadout: loadout || (bomb ? ['pistol'] : ['rifle', 'pistol', 'shotgun']),
+        loadout: loadout || (bomb || br ? ['pistol'] : ['rifle', 'pistol', 'shotgun', 'sniper']),
         hp: 0, alive: false, kills: 0, deaths: 0, respawnAt: 0,
-        money: bomb ? ECON.start : 0, act: 0, keepInv: false,
+        money: bomb ? ECON.start : 0, act: 0, keepInv: false, place: 0,
     });
     world.players.push(p);
-    // Bomb mode: someone joining mid-round waits for the next one.
-    if (!bomb || !world.round || world.round.phase === 'buy') respawn(world, p);
+    // Bomb mode: someone joining mid-round waits for the next one. Battle royale: for the next match.
+    if (br ? !world.zone : !bomb || !world.round || world.round.phase === 'buy') respawn(world, p);
     else p.inv = p.loadout.map((id) => ({ id, mag: world.weapons[id].mag, reserve: world.weapons[id].reserve }));
     return p;
 }
@@ -228,8 +230,21 @@ export function removePlayer(world, id) {
 // Bomb rounds pass the spot in, so nobody stacks.
 function respawn(world, p, spot = null) {
     const side = isBomb(world) && p.team !== world.att ? 'ct' : isBomb(world) ? 't' : p.team;
-    let best = spot;
-    if (!best) {
+    let best = spot, y = 0;
+    if (!best && isBR(world)) {
+        // Drop in from the sky over the open-air waypoint farthest from everyone else.
+        const others = world.players.filter((e) => e.alive && e !== p);
+        const covered = (s) => world.boxes.some((b) => b[1] > 1 && s[0] > b[0] && s[0] < b[3] && s[1] > b[2] && s[1] < b[5]);
+        let pt = null, bestD = -1;
+        for (const s of shuffled(world.map.waypoints)) {
+            if (covered(s)) continue;
+            let d = Infinity;
+            for (const e of others) d = Math.min(d, Math.hypot(e.x - s[0], e.z - s[1]));
+            if (d > bestD) { bestD = d; pt = s; }
+        }
+        best = [pt[0], pt[1], Math.random() * Math.PI * 2];
+        y = groundAt(world.boxes, pt[0], pt[1]) + BR.drop;
+    } else if (!best) {
         const enemies = world.players.filter((e) => e.alive && e.team !== p.team);
         const mates = world.players.filter((e) => e.alive && e !== p);
         let spots = world.map.spawns[side].filter((s) => !mates.some((m) => Math.hypot(m.x - s[0], m.z - s[1]) < 1.5));
@@ -245,13 +260,13 @@ function respawn(world, p, spot = null) {
     }
     const keep = isBomb(world) && p.keepInv && p.inv;
     const money = p.money, act = 0;
-    Object.assign(p, createPlayer(best[0], best[1], best[2]), {
+    Object.assign(p, createPlayer(best[0], best[1], best[2], y), {
         hp: 100, alive: true,
-        invulnUntil: isBomb(world) ? 0 : world.time + SPAWN_SHIELD,
+        invulnUntil: isBomb(world) ? 0 : world.time + (isBR(world) ? BR.shield : SPAWN_SHIELD),
         inv: keep || p.loadout.map((id) => ({ id, mag: world.weapons[id].mag, reserve: world.weapons[id].reserve })),
         slot: 0, nextFire: 0, reloadUntil: 0, switchUntil: world.time + SWITCH_TIME,
-        fireHeld: false, trigger: false, bloom: 0,
-        lastHitBy: 0, lastHitAt: -1, money, act,
+        fireHeld: false, trigger: false, bloom: 0, aim: false, zoneAt: 0,
+        lastHitBy: 0, lastHitAt: -1, money, act, place: 0,
     });
     world.events.push({ t: 'spawn', id: p.id, yaw: p.yaw });
 }
@@ -268,18 +283,32 @@ export function stepWorld(world, inputs) {
             continue;
         }
         const raw = inputs.get(p.id) || IDLE;
-        const inp = isBomb(world) ? effectiveInput(world, p, raw) : raw;
+        const inp = effectiveInput(world, p, raw);
         if (inp.yaw !== undefined) p.yaw = inp.yaw;
         if (inp.pitch !== undefined) p.pitch = Math.max(-1.55, Math.min(1.55, inp.pitch));
+        p.aim = !!inp.aim;
         stepPlayer(p, inp, world.boxes);
         if (p.y < -30) { killPlayer(world, p, null, 'fall', false); continue; }
         updateWeapon(world, p, inp);
         if (isBomb(world) && world.round) bombActions(world, p, raw);
+        if (world.zone) {
+            lootPickup(world, p);
+            zoneDamage(world, p);
+        }
     }
 
     if (isBomb(world) && world.round && !world.over) stepRound(world);
 
-    if (!world.over && !isBomb(world)) {
+    if (world.zone && !world.over) {
+        stepZone(world);
+        const alive = world.players.filter((p) => p.alive);
+        if (alive.length <= 1 && world.players.length > 1) {
+            if (alive[0]) alive[0].place = 1;
+            endMatch(world, alive[0] ? alive[0].id : 0);
+        }
+    }
+
+    if (!world.over && !isBomb(world) && !isBR(world)) {
         const s = world.score;
         const lead = s.t === s.ct ? null : s.t > s.ct ? 't' : 'ct';
         if (r.killLimit && Math.max(s.t, s.ct) >= r.killLimit) endMatch(world, lead);
@@ -336,10 +365,11 @@ function updateWeapon(world, p, inp) {
     }
 }
 
-// Current cone half-angle in radians: moving, jumping and spraying all widen it.
+// Current cone half-angle in radians: moving, jumping and spraying all widen it; a scope tightens it.
 export function spreadOf(p, W) {
     const speed = Math.hypot(p.vx, p.vz);
-    const s = W.spread + W.moveSpread * Math.min(speed / MOVE.run, 1) + (p.onGround ? 0 : 0.08) + (p.bloom || 0);
+    const base = p.aim && W.scope ? W.scope.spread : W.spread;
+    const s = base + W.moveSpread * Math.min(speed / MOVE.run, 1) + (p.onGround ? 0 : 0.08) + (p.bloom || 0);
     return p.crouch ? s * 0.7 : s;
 }
 
@@ -354,7 +384,7 @@ function fire(world, p, W, weaponId, view) {
         const d = [-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)];
         const res = castRay(world, o, d, W.range, p);
         const end = o.map((v, k) => round2(v + d[k] * res.t));
-        world.events.push({ t: 'shot', by: p.id, to: end, hit: res.player ? (res.player.team === p.team ? 'm' : 'p') : res.wall ? 'w' : '' });
+        world.events.push({ t: 'shot', by: p.id, to: end, hit: res.player ? (sameSide(world, res.player, p) ? 'm' : 'p') : res.wall ? 'w' : '' });
         if (res.player) {
             const h = hits.get(res.player) || { dmg: 0, hs: false };
             h.dmg += W.damage * (res.head ? W.headshot : 1);
@@ -407,7 +437,7 @@ function rewind(world, shooter, view) {
 }
 
 function damage(world, by, tgt, dmg, hs, weaponId) {
-    if (!tgt.alive || tgt.team === by.team || world.time < tgt.invulnUntil) return;
+    if (!tgt.alive || sameSide(world, tgt, by) || world.time < tgt.invulnUntil) return;
     tgt.hp -= dmg;
     tgt.lastHitBy = by.id;
     tgt.lastHitAt = world.time;
@@ -422,15 +452,129 @@ function killPlayer(world, p, by, weaponId, hs) {
     p.respawnAt = world.time + world.rules.respawn;
     dropBomb(world, p);
     p.act = 0;
+    if (isBR(world)) p.place = world.players.filter((q) => q.alive).length + 1;
     if (by && by !== p) {
         by.kills++;
         if (isBomb(world)) {
             if (by.team !== p.team) by.money = Math.min(ECON.cap, by.money + ECON.kill);
-        } else {
+        } else if (!isBR(world)) {
             world.score[by.team]++;
         }
     }
-    world.events.push({ t: 'kill', by: by ? by.id : 0, tgt: p.id, w: weaponId, hs: hs ? 1 : 0 });
+    world.events.push({ t: 'kill', by: by ? by.id : 0, tgt: p.id, w: weaponId, hs: hs ? 1 : 0, pl: p.place || 0 });
+}
+
+// ---------------------------------------------------------------------------
+// Battle royale: everyone for themselves and no respawns. Players drop in from the sky
+// with a pistol, pick up loot by walking over it and stay inside a shrinking zone.
+// The last one alive wins.
+
+export const isBR = (world) => world.rules.mode === 'br';
+export const sameSide = (world, a, b) => a === b || (!isBR(world) && a.team === b.team);
+
+export const LOOT_KINDS = ['rifle', 'shotgun', 'sniper', 'med'];
+const LOOT_ODDS = [0.3, 0.25, 0.15, 0.3];
+export const BR = { drop: 18, shield: 3, pickup: 1.2, med: 50, fill: 10 };
+// Zone stages: [wait s, shrink s, radius after shrinking as a share of the first circle, damage per second outside].
+export const ZONE = [[20, 15, 0.52, 2], [15, 12, 0.29, 4], [12, 10, 0.15, 7], [10, 8, 0.05, 12], [8, 10, 0, 20]];
+
+// Highest walkable surface (top at most 1.5 m) under a point.
+export function groundAt(boxes, x, z) {
+    let y = 0;
+    for (const b of boxes) {
+        if (x > b[0] && x < b[3] && z > b[2] && z < b[5] && b[4] <= 1.5) y = Math.max(y, b[4]);
+    }
+    return y;
+}
+
+// Floor extent [x0, z0, x1, z1]: every box whose top sits at ground level.
+function mapBounds(map) {
+    const b = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const f of map.boxes) {
+        if (Math.abs(f[4]) > 0.01) continue;
+        b[0] = Math.min(b[0], f[0]); b[1] = Math.min(b[1], f[2]);
+        b[2] = Math.max(b[2], f[3]); b[3] = Math.max(b[3], f[5]);
+    }
+    return b;
+}
+
+// Call once all players are added: scatters loot and starts the zone.
+export function startBR(world) {
+    const b = mapBounds(world.map);
+    const x = (b[0] + b[2]) / 2, z = (b[1] + b[3]) / 2, r0 = Math.hypot(b[2] - b[0], b[3] - b[1]) / 2 + 2;    // covers the corners
+    world.zone = { x, z, r: r0, r0, fx: x, fz: z, fr: r0, tx: x, tz: z, tr: r0, stage: 0, shrinking: false, until: world.time + ZONE[0][0], dps: ZONE[0][3] };
+    nextZoneTarget(world);
+    const spots = shuffled(world.map.waypoints);
+    const n = Math.min(spots.length, Math.max(16, world.players.length * 2));
+    world.loot = spots.slice(0, n).map(([lx, lz, ly], id) => {
+        let k = 0, r = Math.random();
+        while (k < LOOT_ODDS.length - 1 && (r -= LOOT_ODDS[k]) > 0) k++;
+        return { id, kind: LOOT_KINDS[k], x: lx, y: ly ?? groundAt(world.boxes, lx, lz), z: lz, taken: false };
+    });
+}
+
+// The next circle lies fully inside the current one, centre kept on the map.
+function nextZoneTarget(world) {
+    const zn = world.zone, tr = ZONE[zn.stage][2] * zn.r0, b = mapBounds(world.map);
+    const room = Math.max(0, zn.r - tr);
+    const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * room;
+    zn.tx = Math.max(b[0] + 4, Math.min(b[2] - 4, zn.x + Math.cos(a) * d));
+    zn.tz = Math.max(b[1] + 4, Math.min(b[3] - 4, zn.z + Math.sin(a) * d));
+    zn.tr = tr;
+}
+
+function stepZone(world) {
+    const zn = world.zone, t = world.time;
+    if (zn.stage >= ZONE.length) return;
+    const st = ZONE[zn.stage];
+    if (!zn.shrinking) {
+        if (t >= zn.until) Object.assign(zn, { shrinking: true, fx: zn.x, fz: zn.z, fr: zn.r, until: t + st[1] });
+        return;
+    }
+    const k = Math.min(1, 1 - (zn.until - t) / st[1]);
+    zn.x = zn.fx + (zn.tx - zn.fx) * k;
+    zn.z = zn.fz + (zn.tz - zn.fz) * k;
+    zn.r = zn.fr + (zn.tr - zn.fr) * k;
+    if (k < 1) return;
+    zn.stage++;
+    zn.shrinking = false;
+    if (zn.stage < ZONE.length) {
+        zn.until = t + ZONE[zn.stage][0];
+        zn.dps = ZONE[zn.stage][3];
+        nextZoneTarget(world);
+    }
+}
+
+export const outsideZone = (zn, p) => Math.hypot(p.x - zn.x, p.z - zn.z) > zn.r;
+
+// Outside the circle: damage in half-second chunks.
+function zoneDamage(world, p) {
+    if (!outsideZone(world.zone, p)) { p.zoneAt = 0; return; }
+    if (!p.zoneAt) p.zoneAt = world.time + 0.5;
+    if (world.time < p.zoneAt) return;
+    p.zoneAt = world.time + 0.5;
+    const dmg = Math.max(1, Math.round(world.zone.dps * 0.5));
+    p.hp -= dmg;
+    world.events.push({ t: 'hit', by: 0, tgt: p.id, dmg, hs: 0 });
+    if (p.hp <= 0) killPlayer(world, p, null, 'zone', false);
+}
+
+// Walking over loot takes it: a new weapon, ammo for one you have, or a med kit when hurt.
+function lootPickup(world, p) {
+    for (const l of world.loot) {
+        if (l.taken || Math.hypot(p.x - l.x, p.z - l.z) > BR.pickup || Math.abs(p.y - l.y) > 1.5) continue;
+        if (l.kind === 'med') {
+            if (p.hp >= 100) continue;
+            p.hp = Math.min(100, p.hp + BR.med);
+        } else {
+            const W = world.weapons[l.kind], own = p.inv.find((w) => w.id === l.kind);
+            if (own && own.reserve >= W.reserve) continue;
+            if (own) own.reserve = W.reserve;
+            else p.inv.push({ id: l.kind, mag: W.mag, reserve: W.reserve });
+        }
+        l.taken = true;
+        world.events.push({ t: 'loot', by: p.id, id: l.id, kind: l.kind, slot: p.inv.findIndex((w) => w.id === l.kind) });
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -457,13 +601,20 @@ export function actKind(world, p) {
     return null;
 }
 
-// What the player's input really does this tick: frozen while buying, rooted while planting or defusing.
-// The client predicts with the same function.
+// True when the weapon in hand has a scope and is ready (not reloading or being drawn).
+export function canAim(world, p) {
+    const cur = p.inv && p.inv[p.slot], W = cur && world.weapons[cur.id];
+    return !!(W && W.scope) && p.alive && !p.reloadUntil && world.time >= p.switchUntil;
+}
+
+// What the player's input really does this tick: no scope without one, frozen while buying,
+// rooted while planting or defusing. The client predicts with the same function.
 export function effectiveInput(world, p, inp) {
     const rd = world.round;
-    if (!isBomb(world) || !rd) return inp;
-    if (rd.phase === 'buy' || (inp.use && actKind(world, p))) return { ...inp, mx: 0, mz: 0, jump: false, fire: false };
-    return inp;
+    const out = inp.aim && !canAim(world, p) ? { ...inp, aim: false } : inp;
+    if (!isBomb(world) || !rd) return out;
+    if (rd.phase === 'buy' || (inp.use && actKind(world, p))) return { ...out, mx: 0, mz: 0, jump: false, fire: false, aim: false };
+    return out;
 }
 
 export function buyItem(world, p, item) {
@@ -546,7 +697,8 @@ export function startRound(world, fresh = false) {
 }
 
 function autoBuy(world, p) {
-    if (p.money >= world.weapons.rifle.price) buyItem(world, p, 'rifle');
+    if (p.money >= world.weapons.sniper.price + 1000 && Math.random() < 0.25) buyItem(world, p, 'sniper');
+    else if (p.money >= world.weapons.rifle.price) buyItem(world, p, 'rifle');
     else if (p.money >= world.weapons.shotgun.price && Math.random() < 0.7) buyItem(world, p, 'shotgun');
 }
 

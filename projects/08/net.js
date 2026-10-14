@@ -195,14 +195,14 @@ const r2 = (v) => Math.round(v * 100) / 100;
 const r3 = (v) => Math.round(v * 1000) / 1000;
 export { r2, r3 };
 
-const BIT = { jump: 1, crouch: 2, walk: 4, fire: 8, reload: 16, use: 32 };
+const BIT = { jump: 1, crouch: 2, walk: 4, fire: 8, reload: 16, use: 32, aim: 64 };
 
 // Inputs are quantised before the client predicts with them, so client and host step identical numbers.
 export function quantiseInput(inp, seq) {
     return {
         seq,
         mx: r2(inp.mx), mz: r2(inp.mz),
-        jump: !!inp.jump, crouch: !!inp.crouch, walk: !!inp.walk, fire: !!inp.fire, reload: !!inp.reload, use: !!inp.use,
+        jump: !!inp.jump, crouch: !!inp.crouch, walk: !!inp.walk, fire: !!inp.fire, reload: !!inp.reload, use: !!inp.use, aim: !!inp.aim,
         yaw: r3(inp.yaw), pitch: r3(inp.pitch), slot: inp.slot,
         view: inp.view == null ? null : Math.round(inp.view * 10) / 10,
     };
@@ -214,7 +214,7 @@ export function packInputs(cmds) {
         t: 'in',
         c: cmds.map((c) => [
             c.seq, c.mx, c.mz,
-            (c.jump ? BIT.jump : 0) | (c.crouch ? BIT.crouch : 0) | (c.walk ? BIT.walk : 0) | (c.fire ? BIT.fire : 0) | (c.reload ? BIT.reload : 0) | (c.use ? BIT.use : 0),
+            (c.jump ? BIT.jump : 0) | (c.crouch ? BIT.crouch : 0) | (c.walk ? BIT.walk : 0) | (c.fire ? BIT.fire : 0) | (c.reload ? BIT.reload : 0) | (c.use ? BIT.use : 0) | (c.aim ? BIT.aim : 0),
             c.yaw, c.pitch, c.slot, c.view,
         ]),
     };
@@ -227,7 +227,7 @@ export function unpackInput(a) {
         seq: a[0] | 0,
         mx: Math.max(-1, Math.min(1, num(a[1]))), mz: Math.max(-1, Math.min(1, num(a[2]))),
         jump: !!(bits & BIT.jump), crouch: !!(bits & BIT.crouch), walk: !!(bits & BIT.walk),
-        fire: !!(bits & BIT.fire), reload: !!(bits & BIT.reload), use: !!(bits & BIT.use),
+        fire: !!(bits & BIT.fire), reload: !!(bits & BIT.reload), use: !!(bits & BIT.use), aim: !!(bits & BIT.aim),
         yaw: num(a[4]), pitch: num(a[5]), slot: a[6] | 0,
         view: Number.isFinite(a[7]) ? a[7] : null,     // host tick the client sees others at
     };
@@ -350,197 +350,4 @@ export class Interp {
         out.pitch = a.pitch + (c.pitch - a.pitch) * k;
         return true;
     }
-}
-
-// ---------- option B: manual handshake (copy/paste or QR, no signaling server) ----------
-// Same links as the room code path, but offer and answer travel by hand. Non-trickle ICE:
-// wait for gathering to finish so each code is one self-contained blob.
-const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
-const GATHER_MS = 4000;
-
-const toB64Url = (bytes) => {
-    let s = '';
-    for (const b of bytes) s += String.fromCharCode(b);
-    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-};
-const fromB64Url = (str) => {
-    const s = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
-    return Uint8Array.from(s, (c) => c.charCodeAt(0));
-};
-
-async function streamBytes(stream, bytes) {
-    const out = await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer();
-    return new Uint8Array(out);
-}
-
-// 'z' + deflated JSON, or 'p' + plain JSON when CompressionStream is missing.
-export async function packCode(obj) {
-    const raw = new TextEncoder().encode(JSON.stringify(obj));
-    if (typeof CompressionStream === 'function') return 'z' + toB64Url(await streamBytes(new CompressionStream('deflate-raw'), raw));
-    return 'p' + toB64Url(raw);
-}
-
-export async function unpackCode(code) {
-    const c = String(code).replace(/\s+/g, '');
-    try {
-        const bytes = fromB64Url(c.slice(1));
-        if (c[0] === 'z') return JSON.parse(new TextDecoder().decode(await streamBytes(new DecompressionStream('deflate-raw'), bytes)));
-        if (c[0] === 'p') return JSON.parse(new TextDecoder().decode(bytes));
-    } catch { /* fall through */ }
-    throw new Error('That code is not valid. Copy the whole code.');
-}
-
-// Gives Link the same small interface PeerJS connections have.
-class ChannelConn {
-    constructor(ch, pc) {
-        this.ch = ch;
-        this.pc = pc;
-        this.h = {};
-        ch.onmessage = (e) => this.emit('data', e.data);
-        ch.onclose = () => this.emit('close');
-        ch.onerror = () => this.emit('error');
-        pc.onconnectionstatechange = () => {
-            if (pc.connectionState === 'failed' || pc.connectionState === 'closed') this.emit('close');
-        };
-    }
-
-    on(ev, fn) { (this.h[ev] || (this.h[ev] = [])).push(fn); }
-    emit(ev, d) { for (const fn of this.h[ev] || []) fn(d); }
-    send(s) { this.ch.send(s); }
-
-    close() {
-        try { this.ch.close(); } catch { /* already closed */ }
-        try { this.pc.close(); } catch { /* already closed */ }
-    }
-}
-
-function gathered(pc) {
-    return new Promise((resolve) => {
-        if (pc.iceGatheringState === 'complete') return resolve();
-        const done = () => { clearTimeout(timer); pc.removeEventListener('icegatheringstatechange', onChange); resolve(); };
-        const onChange = () => { if (pc.iceGatheringState === 'complete') done(); };
-        const timer = setTimeout(done, GATHER_MS);
-        pc.addEventListener('icegatheringstatechange', onChange);
-    });
-}
-
-// Host: makes an offer code. finish(answerCode) resolves with a Link once the channels open.
-export async function manualOffer() {
-    const pc = new RTCPeerConnection(RTC_CONFIG);
-    const rel = pc.createDataChannel('rel', { ordered: true });
-    const fast = pc.createDataChannel('fast', { ordered: false, maxRetransmits: 0 });
-    await pc.setLocalDescription(await pc.createOffer());
-    await gathered(pc);
-    const code = await packCode({ sdp: pc.localDescription.sdp });
-    const finish = async (answerCode) => {
-        const a = await unpackCode(answerCode);
-        if (typeof a.sdp !== 'string') throw new Error('That is not an answer code.');
-        await pc.setRemoteDescription({ type: 'answer', sdp: a.sdp });
-        return new Promise((resolve, reject) => {
-            const timer = setTimeout(() => { pc.close(); reject(new Error('Could not connect. Different networks or a strict firewall can block this.')); }, 20000);
-            const ready = () => {
-                clearTimeout(timer);
-                const link = new Link(new ChannelConn(rel, pc));
-                link.attachFast(fast);
-                resolve(link);
-            };
-            if (rel.readyState === 'open') ready();
-            else rel.onopen = ready;
-        });
-    };
-    return { code, finish, cancel: () => pc.close() };
-}
-
-// Joiner: turns an offer code into an answer code; link resolves when the host has connected.
-export async function manualAnswer(offerCode) {
-    const o = await unpackCode(offerCode);
-    if (typeof o.sdp !== 'string') throw new Error('That is not an offer code.');
-    const pc = new RTCPeerConnection(RTC_CONFIG);
-    let rel = null, fast = null, link = null, onLink = null;
-    const open = () => {
-        if (link || !rel || rel.readyState !== 'open') return;
-        link = new Link(new ChannelConn(rel, pc));
-        if (fast) link.attachFast(fast);
-        if (onLink) onLink(link);
-    };
-    pc.ondatachannel = (e) => {
-        if (e.channel.label === 'fast') {
-            fast = e.channel;
-            if (link) link.attachFast(fast);
-        } else {
-            rel = e.channel;
-            rel.onopen = open;
-            open();
-        }
-    };
-    await pc.setRemoteDescription({ type: 'offer', sdp: o.sdp });
-    await pc.setLocalDescription(await pc.createAnswer());
-    await gathered(pc);
-    const code = await packCode({ sdp: pc.localDescription.sdp });
-    const linkPromise = new Promise((resolve, reject) => {
-        onLink = resolve;
-        if (link) resolve(link);
-        setTimeout(() => { if (!link) { pc.close(); reject(new Error('The host did not connect in time.')); } }, 120000);
-    });
-    return { code, link: linkPromise, cancel: () => pc.close() };
-}
-
-// ---------- QR codes ----------
-let qrLoad = null;
-function loadQr() {
-    if (!qrLoad) {
-        qrLoad = new Promise((resolve, reject) => {
-            if (window.qrcode) return resolve(window.qrcode);
-            const s = document.createElement('script');
-            s.src = 'qrcode.js';
-            s.onload = () => resolve(window.qrcode);
-            s.onerror = () => { qrLoad = null; reject(new Error('QR library missing')); };
-            document.head.append(s);
-        });
-    }
-    return qrLoad;
-}
-
-// Draws text as a QR code on a canvas. Returns false when it does not fit.
-export async function drawQr(canvas, text) {
-    const qrcode = await loadQr();
-    const qr = qrcode(0, 'L');
-    qr.addData(text, 'Byte');
-    try { qr.make(); } catch { return false; }
-    const n = qr.getModuleCount(), scale = 4, quiet = 4;
-    const size = (n + quiet * 2) * scale;
-    canvas.width = canvas.height = size;
-    const g = canvas.getContext('2d');
-    g.fillStyle = '#fff';
-    g.fillRect(0, 0, size, size);
-    g.fillStyle = '#000';
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (qr.isDark(y, x)) g.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
-    return true;
-}
-
-export const canScan = () => 'BarcodeDetector' in window && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-
-// Opens the camera on `video` until a QR code is read. result resolves with the text.
-export function scanQr(video) {
-    let stream = null, stopped = false;
-    const stop = () => {
-        stopped = true;
-        if (stream) for (const t of stream.getTracks()) t.stop();
-        video.srcObject = null;
-    };
-    const result = (async () => {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        video.srcObject = stream;
-        await video.play();
-        const det = new BarcodeDetector({ formats: ['qr_code'] });
-        while (!stopped) {
-            try {
-                const found = await det.detect(video);
-                if (found.length) { stop(); return found[0].rawValue; }
-            } catch { /* frame not ready */ }
-            await new Promise((r) => setTimeout(r, 200));
-        }
-        return null;
-    })();
-    return { result, stop };
 }

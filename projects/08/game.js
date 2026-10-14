@@ -3,13 +3,12 @@
 import * as THREE from './three.module.min.js';
 import {
     TICK, PLAYER, BOMB, createWorld, addPlayer, removePlayer, stepWorld, stepPlayer, playerHeight, spreadOf,
-    startRound, buyItem, effectiveInput, actKind, isBomb,
+    startRound, buyItem, effectiveInput, actKind, isBomb, isBR, startBR, canAim, outsideZone, LOOT_KINDS, ZONE, BR,
 } from './sim.js';
 import { buildGraph, createBrain, botInput, BOT_NAMES } from './bots.js';
-import { createPlayerModel, updatePlayerModel, createViewModel, createEffects } from './models.js';
+import { createPlayerModel, updatePlayerModel, createViewModel, createEffects, createLootModel } from './models.js';
 import {
     hostRoom, joinRoom, cleanCode, quantiseInput, packInputs, InputQueue, Interp, FLAG, r2, r3, netStats, SIM_NET,
-    manualOffer, manualAnswer, drawQr, canScan, scanQr,
 } from './net.js';
 
 const $ = (id) => document.getElementById(id);
@@ -18,8 +17,9 @@ const $ = (id) => document.getElementById(id);
 const SETTINGS_KEY = 'lp-strike-settings';
 const settings = {
     mouseSens: 1, touchSens: 1, touchSize: 1, low: false, fps: false,
-    enemies: 4, allies: 3, diff: 'normal',
-    name: '', hostKills: 20, hostTime: 600, fillBots: true, hostDiff: 'normal', hostMode: 'tdm', hostRounds: 6,
+    enemies: 4, allies: 3, diff: 'normal', freeMode: 'tdm', brBots: 9,
+    touchLayout: null, touchAlpha: 1,       // touch editor: { id: { x, y, s } } as screen fractions, and button opacity
+    map: 'yard', hostMap: 'yard', name: '', hostKills: 20, hostTime: 600, fillBots: true, hostDiff: 'normal', hostMode: 'tdm', hostRounds: 6,
     ...loadSettings(),
 };
 
@@ -32,20 +32,22 @@ function saveSettings() {
 }
 
 const fetchJson = async (url) => (await fetch(url)).json();
-const [map, weapons] = await Promise.all([fetchJson('map.json'), fetchJson('weapons.json')]);
-const graph = buildGraph(map);
+const MAP_FILES = { yard: 'map.json', dust: 'map2.json' };
+const [weapons, ...mapList] = await Promise.all([fetchJson('weapons.json'), ...Object.values(MAP_FILES).map(fetchJson)]);
+const MAPS = Object.fromEntries(Object.keys(MAP_FILES).map((id, i) => [id, mapList[i]]));
+for (const id in MAPS) MAPS[id].graph = buildGraph(MAPS[id]);
+let map = MAPS.yard, graph = map.graph;
 if (!settings.name) { settings.name = 'Player' + (100 + Math.floor(Math.random() * 900)); saveSettings(); }
 const WEAPON_IDS = Object.keys(weapons);
 const PHASES = ['buy', 'live', 'end'];
 const BSTATES = ['carried', 'dropped', 'planted', 'defused', 'exploded'];
-const pal = Object.fromEntries(Object.entries(map.palette).map(([k, v]) => [k, new THREE.Color(v)]));
+let pal;
 
 // ---------- renderer ----------
 const canvas = $('view');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 const scene = new THREE.Scene();
-scene.background = pal.sky;
-scene.fog = new THREE.Fog(pal.sky, 45, 150);
+scene.fog = new THREE.Fog(0xffffff, 45, 150);
 
 const camera = new THREE.PerspectiveCamera(75, 1, 0.05, 400);
 camera.rotation.order = 'YXZ';
@@ -93,21 +95,25 @@ function geometryFrom(pos, nor, col) {
 }
 
 // All boxes in one draw call, plus a slightly bigger back-face copy for the ink outline.
-function mergeBoxes(boxes, grow, withColor) {
-    const pos = [], nor = [], col = [];
+// withUv keeps each face's own 0..1 UVs (one whole texture per face, for crates).
+function mergeBoxes(boxes, grow, withColor, withUv = false) {
+    const pos = [], nor = [], col = [], uv = [];
     boxes.forEach((b, i) => {
         const g = new THREE.BoxGeometry(b[3] - b[0] + grow * 2, b[4] - b[1] + grow * 2, b[5] - b[2] + grow * 2)
             .translate((b[0] + b[3]) / 2, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2)
             .toNonIndexed();
         pos.push(...g.attributes.position.array);
         nor.push(...g.attributes.normal.array);
+        if (withUv) uv.push(...g.attributes.uv.array);
         if (withColor) {
             const c = (pal[b[6]] || pal.wall).clone().offsetHSL(0, 0, jitter(i) * 0.05);
             for (let v = 0; v < g.attributes.position.count; v++) col.push(c.r, c.g, c.b);
         }
         g.dispose();
     });
-    return geometryFrom(pos, nor, withColor ? col : null);
+    const geo = geometryFrom(pos, nor, withColor ? col : null);
+    if (withUv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    return geo;
 }
 
 // Checkered floor: one quad per 4 m tile on the floor box's top face.
@@ -131,7 +137,7 @@ function floorGeometry(b) {
 }
 
 // Hard "painted" shadows: each grounded box's footprint swept along the sun direction.
-function shadowGeometry(boxes) {
+function shadowGeometry(boxes, y = 0.012) {
     const pos = [];
     const sx = -LIGHT_DIR.x / LIGHT_DIR.y, sz = -LIGHT_DIR.z / LIGHT_DIR.y;
     for (const b of boxes) {
@@ -140,7 +146,7 @@ function shadowGeometry(boxes) {
         const pts = [[b[0], b[2]], [b[3], b[2]], [b[3], b[5]], [b[0], b[5]]];
         const hull = convexHull([...pts, ...pts.map(([x, z]) => [x + ox, z + oz])]);
         for (let i = 1; i < hull.length - 1; i++) {
-            for (const [x, z] of [hull[0], hull[i], hull[i + 1]]) pos.push(x, 0.012, z);
+            for (const [x, z] of [hull[0], hull[i], hull[i + 1]]) pos.push(x, y, z);
         }
     }
     return geometryFrom(pos);
@@ -183,28 +189,177 @@ function siteDecal(letter, r, color) {
         new THREE.PlaneGeometry(r[2] - r[0], r[3] - r[1]).rotateX(-Math.PI / 2),
         new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, fog: true, ...decalOffset }),
     );
-    mesh.position.set((r[0] + r[2]) / 2, 0.02, (r[1] + r[3]) / 2);
+    mesh.position.set((r[0] + r[2]) / 2, map.style === 'cs' ? 0.05 : 0.02, (r[1] + r[3]) / 2);   // CS maps: above the cobblestone
     return mesh;
 }
 
 const decalOffset = { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 };
 
+// CS 1.6 look: 128 px, 256-colour textures made from CC0 photos (see textures/CREDITS.txt),
+// bilinear filtered like the GL renderer. m = metres per tile; fit = one whole texture per face.
+const CS_TEX = {
+    wall: { m: 2.4 }, stone: { m: 2 }, sand: { m: 3 }, cobble: { m: 2.2 }, plaster: { m: 2.5 }, metal: { m: 1.6 },
+    crate: { fit: true }, gcrate: { fit: true }, door: { fit: true },
+};
+const CS_ALIAS = { brick: 'wall' };
+const texLoader = new THREE.TextureLoader();
+await Promise.all(Object.entries(CS_TEX).map(async ([kind, t]) => {
+    try {
+        t.tex = await texLoader.loadAsync(`textures/${kind}.png`);
+    } catch {
+        t.tex = null;       // missing file: plain colour instead
+        return;
+    }
+    t.tex.colorSpace = THREE.SRGBColorSpace;
+    t.tex.wrapS = t.tex.wrapT = THREE.RepeatWrapping;
+    t.tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+    t.tex.userData.shared = true;     // kept across map switches
+}));
+
+// One merged mesh per texture; UVs follow world position so tiles line up across boxes.
+// Vertex colours fake CS lightmaps: walls get darker toward the floor, undersides are dark.
+function texturedMesh(kind, g) {
+    const t = CS_TEX[kind];
+    const P = g.attributes.position, N = g.attributes.normal, uv = [], col = [];
+    for (let i = 0; i < P.count; i++) {
+        const x = P.getX(i), y = P.getY(i), z = P.getZ(i);
+        const ax = Math.abs(N.getX(i)), ny = N.getY(i), ay = Math.abs(ny);
+        if (!t.fit) {
+            const [u, v] = ax > 0.5 ? [z, y] : ay > 0.5 ? [x, z] : [x, y];
+            uv.push(u / t.m, v / t.m);
+        }
+        const k = ny < -0.5 ? 0.5 : ay > 0.5 ? 1 : 0.62 + 0.38 * Math.min(1, Math.max(0, y / 2.6));
+        col.push(k, k, k);
+    }
+    if (!t.fit) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    return new THREE.Mesh(g, new THREE.MeshLambertMaterial(t.tex
+        ? { map: t.tex, vertexColors: true }
+        : { color: map.palette[kind] || '#c9a76a', vertexColors: true }));
+}
+
+function buildTexturedMap(boxes, extras) {
+    const kindOf = (b) => {
+        const k = CS_ALIAS[b[6]] || b[6];
+        return CS_TEX[k] ? k : 'wall';
+    };
+    for (const [kind, t] of Object.entries(CS_TEX)) {
+        const list = boxes.filter((b) => kindOf(b) === kind);
+        if (list.length) mapGroup.add(texturedMesh(kind, mergeBoxes(list, 0, false, !!t.fit)));
+        if (extras[kind]) mapGroup.add(texturedMesh(kind, concatGeometry(extras[kind])));
+    }
+    if (extras.dark) mapGroup.add(new THREE.Mesh(concatGeometry(extras.dark), new THREE.MeshLambertMaterial({ color: 0x2a1f14 })));
+}
+
+// Joins non-indexed geometries with the same attributes into one.
+function concatGeometry(list) {
+    const out = {};
+    for (const g of list) {
+        for (const name of ['position', 'normal', 'uv']) {
+            if (!g.attributes[name]) continue;
+            (out[name] || (out[name] = [])).push(...g.attributes[name].array);
+        }
+        g.dispose();
+    }
+    const geo = new THREE.BufferGeometry();
+    for (const [name, arr] of Object.entries(out)) geo.setAttribute(name, new THREE.Float32BufferAttribute(arr, name === 'uv' ? 2 : 3));
+    return geo;
+}
+
+// ---------- render-only details (map.deco) ----------
+// Outline of an opening w wide and h tall whose top is an arc rising `rise` (0 = square top).
+function openingPath(path, w, h, rise, y0 = 0) {
+    const hw = w / 2;
+    path.moveTo(-hw, y0);
+    path.lineTo(hw, y0);
+    if (rise > 0) {
+        const R = (hw * hw + rise * rise) / (2 * rise), cy = y0 + h - R, a = Math.atan2(y0 + h - rise - cy, hw);
+        path.lineTo(hw, y0 + h - rise);
+        path.absarc(0, cy, R, a, Math.PI - a, false);
+    } else {
+        path.lineTo(hw, y0 + h);
+        path.lineTo(-hw, y0 + h);
+    }
+    path.lineTo(-hw, y0);
+    return path;
+}
+
+// Puts a shape built facing +z onto a wall face with outward normal (nx, nz).
+function onFace(g, x, y, z, nx, nz, out = 0) {
+    g.rotateY(Math.atan2(nx, nz));
+    return g.translate(x + nx * out, y, z + nz * out);
+}
+
+const extrude = (shape, depth) => new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 10 });
+
+// Returns { kind: [geometries] } plus the plain render-only boxes.
+function buildDeco(deco = []) {
+    const extras = {}, boxes = [];
+    const add = (kind, g) => (extras[kind] || (extras[kind] = [])).push(g.index ? g.toNonIndexed() : g);
+    for (const d of deco) {
+        if (d[0] === 'box') {
+            boxes.push(d.slice(1));
+        } else if (d[0] === 'arch') {
+            // Fills the space between the curve and the lintel above the doorway.
+            const [, x, y, z, axis, w, depth, crown, rise, kind] = d;
+            const hw = w / 2, top = crown - 0.04, r = rise - 0.04, R = (hw * hw + r * r) / (2 * r), cy = top - R;
+            const a = Math.atan2(top - r - cy, hw);
+            const s = new THREE.Shape();
+            s.moveTo(hw, crown - rise);
+            s.lineTo(hw, crown);
+            s.lineTo(-hw, crown);
+            s.lineTo(-hw, crown - rise);
+            s.absarc(0, cy, R, Math.PI - a, a, true);
+            const g = extrude(s, depth).translate(0, 0, -depth / 2);
+            if (axis === 'z') g.rotateY(Math.PI / 2);
+            add(CS_ALIAS[kind] || kind, g.translate(x, y, z));
+        } else if (d[0] === 'window') {
+            // Dark arched recess in a stone frame with a sill.
+            const [, x, y, z, nx, nz, w, h] = d;
+            add('dark', onFace(new THREE.ShapeGeometry(openingPath(new THREE.Shape(), w, h, w / 2)), x, y, z, nx, nz, 0.02));
+            const frame = openingPath(new THREE.Shape(), w + 0.36, h + 0.3, (w + 0.36) / 2, -0.12);
+            frame.holes.push(openingPath(new THREE.Path(), w, h, w / 2));
+            add('stone', onFace(extrude(frame, 0.1), x, y, z, nx, nz));
+            add('stone', onFace(new THREE.BoxGeometry(w + 0.6, 0.12, 0.24).translate(0, -0.18, 0.12), x, y, z, nx, nz));
+        } else if (d[0] === 'door') {
+            // Wooden double door in a stone frame.
+            const [, x, y, z, nx, nz, w, h] = d;
+            add('door', onFace(new THREE.PlaneGeometry(w, h).translate(0, h / 2, 0), x, y, z, nx, nz, 0.03));
+            const W = w + 0.5, f = new THREE.Shape();
+            f.moveTo(-W / 2, 0); f.lineTo(-w / 2, 0); f.lineTo(-w / 2, h); f.lineTo(w / 2, h); f.lineTo(w / 2, 0);
+            f.lineTo(W / 2, 0); f.lineTo(W / 2, h + 0.3); f.lineTo(-W / 2, h + 0.3); f.lineTo(-W / 2, 0);
+            add('stone', onFace(extrude(f, 0.14), x, y, z, nx, nz));
+        }
+    }
+    return { extras, boxes };
+}
+
 function buildMap() {
+    if (map.style === 'cs') {
+        const deco = buildDeco(map.deco);
+        buildTexturedMap(map.boxes.concat(deco.boxes), deco.extras);
+        mapGroup.add(new THREE.Mesh(shadowGeometry(map.boxes.filter((b) => b[4] > 0.5), 0.045), new THREE.MeshBasicMaterial({
+            color: 0x3a2410, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide, ...decalOffset,
+        })));
+        mapGroup.add(siteDecal('A', map.sites.A, map.palette.red));
+        mapGroup.add(siteDecal('B', map.sites.B, map.palette.blue));
+        return;
+    }
     const solid = map.boxes.filter((b) => b[6] !== 'floor');
     const lit = new THREE.MeshLambertMaterial({ vertexColors: true });
 
-    scene.add(new THREE.Mesh(mergeBoxes(solid, 0, true), lit));
-    scene.add(new THREE.Mesh(mergeBoxes(solid, 0.05, false),
+    mapGroup.add(new THREE.Mesh(mergeBoxes(solid, 0, true), lit));
+    mapGroup.add(new THREE.Mesh(mergeBoxes(solid, 0.05, false),
         new THREE.MeshBasicMaterial({ color: pal.ink, side: THREE.BackSide })));
 
-    for (const b of map.boxes.filter((b) => b[6] === 'floor')) scene.add(new THREE.Mesh(floorGeometry(b), lit));
+    for (const b of map.boxes.filter((b) => b[6] === 'floor')) mapGroup.add(new THREE.Mesh(floorGeometry(b), lit));
 
-    scene.add(new THREE.Mesh(shadowGeometry(solid), new THREE.MeshBasicMaterial({
+    mapGroup.add(new THREE.Mesh(shadowGeometry(solid), new THREE.MeshBasicMaterial({
         color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide, ...decalOffset,
     })));
 
-    scene.add(siteDecal('A', map.sites.A, map.palette.red));
-    scene.add(siteDecal('B', map.sites.B, map.palette.blue));
+    mapGroup.add(siteDecal('A', map.sites.A, map.palette.red));
+    mapGroup.add(siteDecal('B', map.sites.B, map.palette.blue));
 }
 
 // Low-poly backdrop: mountains peeking over the outer walls and a few clouds. One draw call each.
@@ -213,7 +368,7 @@ function buildBackdrop() {
     const hills = new THREE.InstancedMesh(
         new THREE.ConeGeometry(1, 1, 5, 1), new THREE.MeshLambertMaterial({ flatShading: true }), 28);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
-    const hillColors = ['#7fa37a', '#6b8f6a', '#94ab86', '#8a9a8f'].map((c) => new THREE.Color(c));
+    const hillColors = (map.hills || ['#7fa37a', '#6b8f6a', '#94ab86', '#8a9a8f']).map((c) => new THREE.Color(c));
     for (let i = 0; i < hills.count; i++) {
         const a = (i / hills.count) * Math.PI * 2 + rnd(i) * 0.2;
         const r = 95 + rnd(i + 1) * 40;
@@ -224,7 +379,7 @@ function buildBackdrop() {
         hills.setMatrixAt(i, m.compose(p, q, s));
         hills.setColorAt(i, hillColors[i % hillColors.length]);
     }
-    scene.add(hills);
+    mapGroup.add(hills);
 
     const clouds = new THREE.InstancedMesh(
         new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true, fog: false }), 24);
@@ -237,19 +392,97 @@ function buildBackdrop() {
         s.set(k * 1.4, k * 0.8, k);
         clouds.setMatrixAt(i, m.compose(p, q, s));
     }
-    scene.add(clouds);
+    mapGroup.add(clouds);
 }
 
-buildMap();
-buildBackdrop();
+const mapGroup = new THREE.Group();
+scene.add(mapGroup);
+
+function useMap(id) {
+    map = MAPS[id] || MAPS.yard;
+    graph = map.graph;
+    pal = Object.fromEntries(Object.entries(map.palette).map(([k, v]) => [k, new THREE.Color(v)]));
+    scene.background = map.sky ? skyTexture(map.sky) : pal.sky;
+    scene.fog.color.copy(pal.sky);
+    [scene.fog.near, scene.fog.far] = map.fog || [45, 150];
+    for (const o of mapGroup.children.slice()) {
+        mapGroup.remove(o);
+        o.traverse((n) => { if (n.geometry) n.geometry.dispose(); if (n.material) { if (n.material.map && !n.material.map.userData.shared) n.material.map.dispose(); n.material.dispose(); } });
+    }
+    buildMap();
+    if (!map.sky) buildBackdrop();
+}
+
+const skies = new Map();
+function skyTexture(url) {
+    if (!skies.has(url)) {
+        const t = texLoader.load(url);
+        t.mapping = THREE.EquirectangularReflectionMapping;
+        t.colorSpace = THREE.SRGBColorSpace;
+        skies.set(url, t);
+    }
+    return skies.get(url);
+}
+useMap(settings.map);
 
 const fx = createEffects(scene);
+
+// Battle royale: the zone wall, a ring where it shrinks to next, and the loot on the floor.
+const zoneWall = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 60, 72, 1, true), new THREE.MeshBasicMaterial({
+    color: 0x3a8dff, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false, fog: false,
+}));
+const zoneNext = new THREE.Mesh(new THREE.RingGeometry(0.985, 1, 96).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false, ...decalOffset,
+}));
+zoneWall.position.y = 25;
+zoneNext.position.y = 0.05;
+zoneWall.visible = zoneNext.visible = false;
+scene.add(zoneWall, zoneNext);
+
+const lootGroup = new THREE.Group();
+scene.add(lootGroup);
+let lootMeshes = [];
+
+function buildLoot() {
+    for (const m of lootMeshes) {
+        lootGroup.remove(m.root);
+        m.root.traverse((n) => { if (n.geometry) n.geometry.dispose(); });
+    }
+    lootMeshes = world && world.loot ? world.loot.map((l) => {
+        const m = createLootModel(l.kind);
+        lootGroup.add(m.root);
+        return m;
+    }) : [];
+}
+
+function updateZoneAndLoot(now) {
+    const zn = world && world.zone;
+    zoneWall.visible = !!zn && zn.r > 0.05;
+    zoneNext.visible = !!zn && zn.stage < ZONE.length && zn.tr > 0.05;
+    if (zn) {
+        zoneWall.position.x = zn.x;
+        zoneWall.position.z = zn.z;
+        zoneWall.scale.set(Math.max(zn.r, 0.01), 1, Math.max(zn.r, 0.01));
+        zoneNext.position.set(zn.tx, 0.05, zn.tz);
+        zoneNext.scale.setScalar(Math.max(zn.tr, 0.01));
+    }
+    lootMeshes.forEach((m, i) => {
+        const l = world.loot[i];
+        m.root.visible = !l.taken;
+        if (l.taken) return;
+        m.root.position.set(l.x, l.y + 0.5 + Math.sin(now / 400 + i) * 0.06, l.z);
+        m.item.rotation.y = now / 700 + i;
+    });
+}
+
+// Everyone gets their own colour in battle royale.
+const BR_COLORS = [0xff6050, 0x00a5ff, 0x3cc85a, 0xffb020, 0xb36bff, 0xff7ac8, 0x22d3c5, 0xf2f2f2, 0x8a6a3c, 0x9bd23a, 0x5b6bff, 0xff9a3c];
 
 // The bomb on the floor (dropped) or armed (planted): a dark case with a blinking light.
 const bombMesh = new THREE.Group();
 const bombLight = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.1, 0.14), new THREE.MeshBasicMaterial({ color: 0xff3020 }));
 bombLight.position.y = 0.14;
-bombMesh.add(new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.2, 0.32), new THREE.MeshLambertMaterial({ color: pal.dark })), bombLight);
+bombMesh.add(new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.2, 0.32), new THREE.MeshLambertMaterial({ color: 0x323834 })), bombLight);
 bombMesh.visible = false;
 scene.add(bombMesh);
 
@@ -266,16 +499,27 @@ const byId = (id) => world && world.players.find((p) => p.id === id);
 
 function startFreeArea() {
     clearMatch();
-    world = createWorld(map, weapons, { infiniteAmmo: true });
+    useMap(settings.map);
+    const br = settings.freeMode === 'br';
+    world = createWorld(map, weapons, br
+        ? { mode: 'br', respawn: -1, infiniteAmmo: false, map: settings.map }
+        : { infiniteAmmo: true, map: settings.map });
     me = addPlayer(world, { name: 'You', team: 't' });
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
     const addBot = (team) => {
-        const p = addPlayer(world, { name: names.pop(), team, bot: true });
+        const p = addPlayer(world, { name: names.pop() || `Bot ${world.nextId}`, team, bot: true });
         brains.set(p.id, createBrain(settings.diff));
     };
-    for (let i = 0; i < settings.allies; i++) addBot('t');
-    for (let i = 0; i < settings.enemies; i++) addBot('ct');
+    if (br) {
+        for (let i = 0; i < settings.brBots; i++) addBot('ct');
+        startBR(world);
+        buildLoot();
+    } else {
+        for (let i = 0; i < settings.allies; i++) addBot('t');
+        for (let i = 0; i < settings.enemies; i++) addBot('ct');
+    }
     drainEvents();
+    overAt = 0;
     beginPlay();
 }
 
@@ -295,12 +539,15 @@ function clearMatch() {
     prevPos.clear();
     feedEl.textContent = '';
     world = me = killer = null;
+    buildLoot();
+    aimK = 0;
+    touch.aim = false;
 }
 
 function modelFor(p) {
     let m = models.get(p.id);
     if (!m) {
-        m = createPlayerModel(p.team);
+        m = createPlayerModel(isBR(world) ? BR_COLORS[p.id % BR_COLORS.length] : p.team);
         models.set(p.id, m);
         scene.add(m.root);
     }
@@ -324,6 +571,11 @@ function tick() {
     jumpQueued = reloadQueued = false;
     drainEvents();
     if (role === 'host') hostAfterTick();
+    else if (world.over && isBR(world)) {
+        // Free Area battle royale: show the result for a few seconds, then back to the menu.
+        if (!overAt) overAt = performance.now() + 8000;
+        else if (performance.now() >= overAt) { overAt = 0; quit(); }
+    }
 }
 
 // ---------- events -> effects and HUD ----------
@@ -369,9 +621,28 @@ function onEvent(e) {
         for (let i = 0; i < 3; i++) fx.impact(tmpB, [0xffa030, 0xff6050, 0x323834][i], 40);
     } else if (e.t === 'over') {
         world.over = { winner: e.winner };
+        if (isBR(world)) {
+            const w = byId(e.winner);
+            if (w) w.place = 1;
+            showBanner(w === me ? 'Winner! #1' : w ? `${w.name} wins` : 'Nobody survived', 6);
+        }
     } else if (e.t === 'kill') {
+        const tgt = byId(e.tgt);
+        if (tgt && e.pl) tgt.place = e.pl;
         addFeed(e);
         if (e.tgt === me.id) killer = byId(e.by) || null;
+    } else if (e.t === 'loot') {
+        const l = world.loot && world.loot[e.id];
+        if (l) l.taken = true;
+        if (e.by === me.id) {
+            showBanner(e.kind === 'med' ? '+50 HP' : `Picked up ${weapons[e.kind].name}`, 1.4);
+            // Swap to a new gun straight away when all you hold is the pistol.
+            const cur = me.inv[me.slot];
+            if (e.kind !== 'med' && e.slot >= 0 && (!cur || cur.id === 'pistol')) {
+                lastSlot = wantSlot;
+                wantSlot = e.slot;
+            }
+        }
     } else if (e.t === 'spawn') {
         const p = byId(e.id);
         if (!p) return;
@@ -418,12 +689,12 @@ function addFeed(e) {
     if (by === me || tgt === me) row.className = 'me';
     const name = (p) => {
         const s = document.createElement('span');
-        s.className = p.team;
+        s.className = isBR(world) ? '' : p.team;
         s.textContent = p.name;
         return s;
     };
     if (by && by !== tgt) row.append(name(by), ` [${weapons[e.w] ? weapons[e.w].name : e.w}${e.hs ? ' HS' : ''}] `, name(tgt));
-    else row.append(name(tgt), ' fell');
+    else row.append(name(tgt), e.w === 'zone' ? ' was caught by the zone' : ' fell');
     feedEl.prepend(row);
     while (feedEl.children.length > 5) feedEl.lastChild.remove();
     setTimeout(() => row.remove(), 5000);
@@ -431,17 +702,24 @@ function addFeed(e) {
 
 // ---------- input ----------
 const keys = new Set();
-const input = { mx: 0, mz: 0, jump: false, crouch: false, walk: false, yaw: 0, pitch: 0, fire: false, reload: false, use: false, slot: 0 };
-let jumpQueued = false, reloadQueued = false, mouseFire = false;
-const touch = { mx: 0, mz: 0, jump: false, crouch: false, fire: false, board: false, use: false };
+const input = { mx: 0, mz: 0, jump: false, crouch: false, walk: false, yaw: 0, pitch: 0, fire: false, reload: false, use: false, aim: false, slot: 0 };
+let jumpQueued = false, reloadQueued = false, mouseFire = false, mouseAim = false;
+const touch = { mx: 0, mz: 0, jump: false, crouch: false, fire: false, board: false, use: false, aim: false };
+let aimK = 0, zoomNow = 1;     // scope: 0..1 aim-in progress and the current zoom, for drawing and look speed
 let touchMode = matchMedia('(pointer: coarse)').matches;
 
-const GAME_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyC', 'ShiftLeft', 'ShiftRight', 'Tab', 'KeyR', 'KeyQ', 'KeyE', 'KeyB', 'Digit1', 'Digit2', 'Digit3'];
+const GAME_KEYS = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'KeyC', 'ShiftLeft', 'ShiftRight', 'Tab', 'KeyR', 'KeyQ', 'KeyE', 'KeyB', 'Digit1', 'Digit2', 'Digit3', 'Digit4'];
 
 function selectSlot(i) {
     if (!me || !me.inv[i] || i === wantSlot) return;
     lastSlot = wantSlot;
     wantSlot = i;
+    setTouchAim(false);       // switching weapons drops the scope
+}
+
+function setTouchAim(on) {
+    touch.aim = on;
+    $('tAim').classList.toggle('on', on);
 }
 
 function cycleSlot(dir) {
@@ -463,7 +741,7 @@ addEventListener('keydown', (e) => {
     keys.add(e.code);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
-addEventListener('blur', () => { keys.clear(); mouseFire = false; });
+addEventListener('blur', () => { keys.clear(); mouseFire = mouseAim = false; });
 
 function readInput() {
     const k = (c) => (keys.has(c) ? 1 : 0);
@@ -475,6 +753,7 @@ function readInput() {
     input.fire = mouseFire || touch.fire;
     input.reload = reloadQueued;
     input.use = keys.has('KeyE') || touch.use;
+    input.aim = mouseAim || touch.aim;
     input.yaw = lookYaw;
     input.pitch = lookPitch;
     input.slot = wantSlot;
@@ -483,10 +762,11 @@ function readInput() {
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const PITCH_LIMIT = Math.PI / 2 - 0.02;
 
+// Looking slows down with the zoom, so a scope stays steady.
 function look(dx, dy) {
     if (!me || !me.alive) return;
-    lookYaw -= dx;
-    lookPitch = clamp(lookPitch - dy, -PITCH_LIMIT, PITCH_LIMIT);
+    lookYaw -= dx / zoomNow;
+    lookPitch = clamp(lookPitch - dy / zoomNow, -PITCH_LIMIT, PITCH_LIMIT);
 }
 
 // Mouse look with pointer lock.
@@ -507,10 +787,17 @@ document.addEventListener('mousemove', (e) => {
     look(e.movementX * k, e.movementY * k);
 });
 
+// Left button fires, right button holds the scope.
 document.addEventListener('mousedown', (e) => {
-    if (e.button === 0 && state === 'play' && isLocked()) mouseFire = true;
+    if (state !== 'play' || !isLocked()) return;
+    if (e.button === 0) mouseFire = true;
+    else if (e.button === 2) mouseAim = true;
 });
-document.addEventListener('mouseup', (e) => { if (e.button === 0) mouseFire = false; });
+document.addEventListener('mouseup', (e) => {
+    if (e.button === 0) mouseFire = false;
+    else if (e.button === 2) mouseAim = false;
+});
+document.addEventListener('contextmenu', (e) => { if (state !== 'menu') e.preventDefault(); });
 document.addEventListener('wheel', (e) => {
     if (state === 'play' && isLocked() && e.deltaY) cycleSlot(e.deltaY > 0 ? 1 : -1);
 }, { passive: true });
@@ -529,15 +816,25 @@ const STICK_R = 56;
 const TOUCH_LOOK = 0.0055;
 let stickId = null, stickX = 0, stickY = 0, lookId = null, lookX = 0, lookY = 0;
 
+const stickLayout = () => (settings.touchLayout && settings.touchLayout.stick) || null;
+const stickR = () => STICK_R * ((stickLayout() && stickLayout().s) || 1);
+
 function placeStickHome() {
-    stick.style.left = `${Math.max(90, innerWidth * 0.14)}px`;
-    stick.style.top = `${innerHeight - Math.max(90, innerHeight * 0.26)}px`;
+    const L = stickLayout();
+    stick.style.left = L ? `${L.x * innerWidth}px` : `${Math.max(90, innerWidth * 0.14)}px`;
+    stick.style.top = L ? `${L.y * innerHeight}px` : `${innerHeight - Math.max(90, innerHeight * 0.26)}px`;
+}
+
+// The floating stick lives on whichever half of the screen its home is on.
+function inStickZone(x) {
+    const L = stickLayout();
+    return L && L.x > 0.5 ? x > innerWidth * 0.55 : x < innerWidth * 0.45;
 }
 
 touchLayer.addEventListener('pointerdown', (e) => {
-    if (e.target !== touchLayer) return;
+    if (e.target !== touchLayer || editing) return;
     touchLayer.setPointerCapture(e.pointerId);
-    if (e.clientX < innerWidth * 0.45 && stickId === null) {
+    if (inStickZone(e.clientX) && stickId === null) {
         stickId = e.pointerId;
         stickX = e.clientX;
         stickY = e.clientY;
@@ -553,12 +850,13 @@ touchLayer.addEventListener('pointerdown', (e) => {
 
 touchLayer.addEventListener('pointermove', (e) => {
     if (e.pointerId === stickId) {
+        const R = stickR();
         let dx = e.clientX - stickX, dy = e.clientY - stickY;
         const d = Math.hypot(dx, dy);
-        if (d > STICK_R) { dx *= STICK_R / d; dy *= STICK_R / d; }
-        knob.style.transform = `translate(${dx}px, ${dy}px)`;
-        touch.mx = dx / STICK_R;
-        touch.mz = -dy / STICK_R;
+        if (d > R) { dx *= R / d; dy *= R / d; }
+        knob.style.transform = `translate(${dx * STICK_R / R}px, ${dy * STICK_R / R}px)`;
+        touch.mx = dx / R;
+        touch.mz = -dy / R;
     } else if (e.pointerId === lookId) {
         const k = TOUCH_LOOK * settings.touchSens;
         look((e.clientX - lookX) * k, (e.clientY - lookY) * k);
@@ -616,6 +914,7 @@ tapButton(tCrouch, () => {
     tCrouch.classList.toggle('on', touch.crouch);
 });
 tapButton($('tReload'), () => { reloadQueued = true; });
+tapButton($('tAim'), () => setTouchAim(!touch.aim));
 tapButton($('tSwap'), () => cycleSlot(1));
 tapButton(tBoard, () => {
     touch.board = !touch.board;
@@ -635,13 +934,120 @@ addEventListener('pointerdown', (e) => {
 
 function resetTouch() {
     stickId = lookId = null;
-    Object.assign(touch, { mx: 0, mz: 0, jump: false, crouch: false, fire: false, board: false, use: false });
-    mouseFire = false;
+    Object.assign(touch, { mx: 0, mz: 0, jump: false, crouch: false, fire: false, board: false, use: false, aim: false });
+    mouseFire = mouseAim = false;
     knob.style.transform = '';
     stick.classList.remove('on');
     for (const b of touchLayer.querySelectorAll('.tbtn')) b.classList.remove('on');
     placeStickHome();
 }
+
+// ---------- touch layout editor ----------
+// Drag any control to move it, pick one and set its size. Positions are saved as screen
+// fractions of the control's centre, so a layout survives rotation and other phones.
+const EDIT_NAMES = {
+    stick: 'Move stick', tFire: 'Fire', tAim: 'Scope', tJump: 'Jump', tCrouch: 'Duck', tReload: 'Reload',
+    tSwap: 'Swap', tUse: 'Use', tBuy: 'Buy', tPause: 'Pause', tBoard: 'Score',
+};
+let editing = false, editSel = null, editDrag = null;
+
+function applyTouchLayout() {
+    const L = settings.touchLayout || {};
+    for (const id of Object.keys(EDIT_NAMES)) {
+        const el = $(id), e = L[id];
+        el.style.scale = e && e.s !== 1 ? e.s : '';
+        if (id === 'stick') continue;       // its home goes through placeStickHome
+        Object.assign(el.style, e
+            ? { left: `${e.x * 100}%`, top: `${e.y * 100}%`, right: 'auto', bottom: 'auto', translate: '-50% -50%' }
+            : { left: '', top: '', right: '', bottom: '', translate: '' });
+    }
+    touchLayer.style.setProperty('--ta', settings.touchAlpha);
+    placeStickHome();
+}
+
+// The saved entry for a control, created from where it sits now.
+function layoutEntry(id) {
+    const L = settings.touchLayout || (settings.touchLayout = {});
+    if (!L[id]) {
+        const r = $(id).getBoundingClientRect();
+        L[id] = { x: (r.left + r.width / 2) / innerWidth, y: (r.top + r.height / 2) / innerHeight, s: 1 };
+    }
+    return L[id];
+}
+
+function selectEdit(id) {
+    if (editSel) $(editSel).classList.remove('sel');
+    editSel = id;
+    if (id) $(id).classList.add('sel');
+    $('eName').textContent = id ? EDIT_NAMES[id] : 'Drag a control';
+    $('eSize').disabled = !id;
+    $('eSize').value = id && settings.touchLayout && settings.touchLayout[id] ? settings.touchLayout[id].s : 1;
+}
+
+function openTouchEditor() {
+    editing = true;
+    resetTouch();
+    show(null);
+    touchLayer.classList.add('editing');
+    $('editBar').hidden = false;
+    $('eAlpha').value = settings.touchAlpha;
+    updateLayers();
+    selectEdit(null);
+}
+
+function closeTouchEditor() {
+    selectEdit(null);
+    editing = false;
+    editDrag = null;
+    touchLayer.classList.remove('editing');
+    $('editBar').hidden = true;
+    saveSettings();
+    updateLayers();
+    show('settings');
+}
+
+// Capture phase: while editing, presses move controls instead of reaching their game handlers.
+touchLayer.addEventListener('pointerdown', (e) => {
+    if (!editing) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const el = e.target.closest('.tbtn, #stick');
+    selectEdit(el ? el.id : null);
+    if (!el) return;
+    const entry = layoutEntry(el.id);
+    editDrag = { id: e.pointerId, entry, dx: e.clientX - entry.x * innerWidth, dy: e.clientY - entry.y * innerHeight };
+    touchLayer.setPointerCapture(e.pointerId);
+}, true);
+
+touchLayer.addEventListener('pointermove', (e) => {
+    if (!editing || !editDrag || e.pointerId !== editDrag.id) return;
+    editDrag.entry.x = clamp((e.clientX - editDrag.dx) / innerWidth, 0.02, 0.98);
+    editDrag.entry.y = clamp((e.clientY - editDrag.dy) / innerHeight, 0.02, 0.98);
+    applyTouchLayout();
+}, true);
+
+const endEditDrag = (e) => { if (editDrag && e.pointerId === editDrag.id) editDrag = null; };
+touchLayer.addEventListener('pointerup', endEditDrag, true);
+touchLayer.addEventListener('pointercancel', endEditDrag, true);
+
+$('eSize').addEventListener('input', () => {
+    if (!editSel) return;
+    layoutEntry(editSel).s = Number($('eSize').value);
+    applyTouchLayout();
+});
+$('eAlpha').addEventListener('input', () => {
+    settings.touchAlpha = Number($('eAlpha').value);
+    applyTouchLayout();
+});
+$('eReset').addEventListener('click', () => {
+    settings.touchLayout = null;
+    settings.touchAlpha = 1;
+    $('eAlpha').value = 1;
+    applyTouchLayout();
+    selectEdit(null);
+});
+$('eDone').addEventListener('click', closeTouchEditor);
+$('sTouchEdit').addEventListener('click', openTouchEditor);
 
 // ---------- online: lobby, host and client ----------
 // The host tab runs the same stepWorld as Free Area, bots included, and streams snapshots.
@@ -692,16 +1098,17 @@ function renderLobby() {
     fill($('lBlue'), 'ct');
     const host = role === 'host', s = lobby.s;
     $('lHost').hidden = !host;
-    const bombPick = settings.hostMode === 'bomb';
+    const bombPick = settings.hostMode === 'bomb', tdmPick = settings.hostMode === 'tdm';
     $('lRoundsRow').hidden = !bombPick;
-    $('lKillsRow').hidden = bombPick;
-    $('lTimeRow').hidden = bombPick;
+    $('lKillsRow').hidden = !tdmPick;
+    $('lTimeRow').hidden = !tdmPick;
     $('lStart').hidden = !host;
-    $('lAdd').hidden = !host;
+    $('lTeam').hidden = (host ? settings.hostMode : s.mode) === 'br';
     $('lInfo').textContent = host
         ? 'Share the room code. Friends use Join game.'
         : !s.k ? 'Connected. Waiting for the host...'
         : s.mode === 'bomb' ? `Bomb mode, first to ${s.rounds} rounds · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`
+        : s.mode === 'br' ? `Battle royale, last one standing · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`
         : `First to ${s.k} kills or ${Math.round(s.tm / 60)} min · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`;
 }
 
@@ -735,7 +1142,7 @@ setInterval(() => {
 }, 2000);
 
 // ----- host -----
-async function startHosting(useRoom = true) {
+async function startHosting() {
     role = 'host';
     phase = 'lobby';
     myKey = 0;
@@ -743,11 +1150,10 @@ async function startHosting(useRoom = true) {
     peers.clear();
     peers.set(0, { key: 0, name: playerName(), team: 't', link: null, q: null, pid: 0 });
     lobby = { r: [], s: lobbySettings(), code: '' };
-    $('lStatus').textContent = useRoom ? 'Opening room...' : 'No server: use "Add player by code" for each friend.';
+    $('lStatus').textContent = 'Opening room...';
     $('lStatus').classList.remove('err');
     show('lobby');
     renderLobby();
-    if (!useRoom) return;
     try {
         const r = await hostRoom(onHostLink);
         if (role !== 'host') return r.close();
@@ -820,16 +1226,19 @@ function addBot(team, names) {
 }
 
 // A player joining a running match takes a bot's seat when their team is full.
+// Battle royale: they watch until the next match.
 function joinMatch(e) {
     const mates = world.players.filter((p) => p.team === e.team);
-    const bot = mates.length >= 4 && mates.find((p) => p.bot);
+    const bot = !isBR(world) && mates.length >= 4 && mates.find((p) => p.bot);
     if (bot) dropPlayer(bot.id);
     const p = addPlayer(world, { name: e.name, team: e.team });
     e.pid = p.id;
     e.q = new InputQueue();
-    e.link.send({ t: 'start', you: p.id, rules: world.rules, r: playRoster() });
+    e.link.send({ t: 'start', you: p.id, rules: world.rules, r: playRoster(), loot: lootWire() });
     pushRoster();
 }
+
+const lootWire = () => world.loot && world.loot.map((l) => [LOOT_KINDS.indexOf(l.kind), r2(l.x), r2(l.y), r2(l.z)]);
 
 function peerGone(e) {
     peers.delete(e.key);
@@ -851,9 +1260,12 @@ function startMatch() {
     if (role !== 'host' || phase !== 'lobby') return;
     clearMatch();
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
-    world = createWorld(map, weapons, settings.hostMode === 'bomb'
-        ? { mode: 'bomb', rounds: settings.hostRounds, respawn: -1, infiniteAmmo: false }
-        : { respawn: 3, killLimit: settings.hostKills, timeLimit: settings.hostTime, infiniteAmmo: true });
+    useMap(settings.hostMap);
+    const mode = settings.hostMode;
+    world = createWorld(map, weapons, mode === 'bomb'
+        ? { mode: 'bomb', rounds: settings.hostRounds, respawn: -1, infiniteAmmo: false, map: settings.hostMap }
+        : mode === 'br' ? { mode: 'br', respawn: -1, infiniteAmmo: false, map: settings.hostMap }
+        : { respawn: 3, killLimit: settings.hostKills, timeLimit: settings.hostTime, infiniteAmmo: true, map: settings.hostMap });
     for (const e of peers.values()) {
         const p = addPlayer(world, { name: e.name, team: e.team });
         e.pid = p.id;
@@ -861,18 +1273,23 @@ function startMatch() {
         if (!e.link) me = p;
     }
     world.hist = [];
-    if (settings.fillBots) {
+    if (settings.fillBots && isBR(world)) {
+        while (world.players.length < BR.fill) addBot('ct', names);
+    } else if (settings.fillBots) {
         for (const team of ['t', 'ct']) {
             while (world.players.filter((p) => p.team === team).length < 4) addBot(team, names);
         }
     }
     if (isBomb(world)) startRound(world, true);
+    if (isBR(world)) startBR(world);
+    buildLoot();
     drainEvents(false);
     phase = 'play';
     overAt = 0;
     const r = playRoster();
     for (const p of world.players) p.ping = 0;
-    for (const e of peers.values()) if (e.link) e.link.send({ t: 'start', you: e.pid, rules: world.rules, r });
+    const loot = lootWire();
+    for (const e of peers.values()) if (e.link) e.link.send({ t: 'start', you: e.pid, rules: world.rules, r, loot });
     beginPlay();
     requestWake();
 }
@@ -926,6 +1343,11 @@ function sendSnapshots() {
                 r2(Math.max(0, b.fuseAt - world.time)), b.carrier, r2(defusing)];
         }
     }
+    const zn = world.zone;
+    if (zn) {
+        base.zn = [r2(zn.x), r2(zn.z), r2(zn.r), r2(zn.tx), r2(zn.tz), r2(zn.tr), r2(Math.max(0, zn.until - world.time)), zn.stage, zn.shrinking ? 1 : 0, zn.dps];
+        base.lt = world.loot.map((l) => (l.taken ? 1 : 0)).join('');
+    }
     for (const e of peers.values()) {
         if (!e.link || !e.pid) continue;
         const p = byId(e.pid);
@@ -977,120 +1399,6 @@ function enterClientLobby(l, code) {
     show('lobby');
 }
 
-// ----- manual handshake (no signaling server) -----
-let offer = null, answerSess = null, scanner = null;
-
-function copyText(el) {
-    el.select();
-    if (navigator.clipboard) navigator.clipboard.writeText(el.value).catch(() => document.execCommand('copy'));
-    else document.execCommand('copy');
-}
-
-async function showQr(canvas, text) {
-    canvas.hidden = true;
-    try { canvas.hidden = !(await drawQr(canvas, text)); } catch { /* QR is optional; the text code still works */ }
-}
-
-async function openAddPlayer(note = '') {
-    if (offer) offer.cancel();
-    offer = null;
-    show('manualHost');
-    $('mOffer').value = '';
-    $('mAnswer').value = '';
-    $('mQr').hidden = true;
-    $('mGo').disabled = true;
-    $('mStatus').classList.toggle('err', !!note);
-    $('mStatus').textContent = note || 'Making code (a few seconds)...';
-    try {
-        const o = await manualOffer();
-        if ($('manualHost').hidden) return o.cancel();
-        offer = o;
-        $('mOffer').value = o.code;
-        $('mGo').disabled = false;
-        if (!note) $('mStatus').textContent = '';
-        showQr($('mQr'), o.code);
-    } catch (err) {
-        $('mStatus').classList.add('err');
-        $('mStatus').textContent = err.message || String(err);
-    }
-}
-
-async function finishAddPlayer() {
-    const code = $('mAnswer').value.trim();
-    const status = $('mStatus');
-    if (!offer || !code) { status.classList.add('err'); status.textContent = 'Paste the answer code first.'; return; }
-    status.classList.remove('err');
-    status.textContent = 'Connecting...';
-    $('mGo').disabled = true;
-    const o = offer;
-    try {
-        const l = await o.finish(code);
-        if (offer !== o) return l.close();
-        offer = null;
-        onHostLink(l);
-        show('lobby');
-    } catch (err) {
-        if (offer === o) openAddPlayer(`${err.message || err} Here is a fresh code.`);
-    }
-}
-
-function cancelAddPlayer() {
-    if (offer) offer.cancel();
-    offer = null;
-    show('lobby');
-}
-
-async function makeAnswer() {
-    const status = $('kStatus');
-    const code = $('kOffer').value.trim();
-    status.classList.add('err');
-    if (!code) { status.textContent = "Paste the host's code first."; return; }
-    settings.name = cleanName($('kName').value);
-    saveSettings();
-    status.classList.remove('err');
-    status.textContent = 'Making answer (a few seconds)...';
-    $('kGo').disabled = true;
-    if (answerSess) answerSess.cancel();
-    let a;
-    try {
-        a = answerSess = await manualAnswer(code);
-        $('kAnswer').value = a.code;
-        showQr($('kQr'), a.code);
-        status.textContent = 'Send this answer to the host. Waiting for them to connect...';
-        const l = await a.link;
-        if (answerSess !== a || $('joinManual').hidden) return l.close();
-        answerSess = null;
-        enterClientLobby(l, '');
-    } catch (err) {
-        if (a && answerSess !== a) return;
-        $('kGo').disabled = false;
-        status.classList.add('err');
-        status.textContent = err.message || String(err);
-    }
-}
-
-function cancelJoinManual() {
-    if (answerSess) answerSess.cancel();
-    answerSess = null;
-    $('kGo').disabled = false;
-    $('kStatus').textContent = '';
-    show('menu');
-}
-
-function scanInto(target, back, then) {
-    show('scanScreen');
-    scanner = scanQr($('scanView'));
-    scanner.result.then((text) => {
-        show(back);
-        if (text) { target.value = text; then(); }
-    }).catch(() => {
-        show(back);
-        const st = back === 'manualHost' ? $('mStatus') : $('kStatus');
-        st.classList.add('err');
-        st.textContent = 'Could not use the camera. Paste the code instead.';
-    });
-}
-
 function hostGone(text) {
     leaveOnline(false);
     notice('Disconnected', text);
@@ -1127,7 +1435,7 @@ function stubPlayer(id, name, team, bot) {
         id, name, team, bot, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0,
         onGround: true, crouch: false, jumpHeld: false, hp: 0, alive: false, kills: 0, deaths: 0, ping: 0,
         slot: 0, reloadUntil: 0, switchUntil: 0, invulnUntil: 0, respawnAt: 0, money: 0, act: 0, actF: 0,
-        inv: ['rifle', 'pistol', 'shotgun'].map((w) => ({ id: w, mag: 0, reserve: 0 })),
+        aim: false, place: 0, inv: ['rifle', 'pistol', 'shotgun', 'sniper'].map((w) => ({ id: w, mag: 0, reserve: 0 })),
     };
 }
 
@@ -1150,7 +1458,10 @@ function syncRoster(r) {
 
 function startClientMatch(m) {
     clearMatch();
+    useMap(m.rules.map);
     world = createWorld(map, weapons, m.rules);
+    if (m.loot) world.loot = m.loot.map((a, id) => ({ id, kind: LOOT_KINDS[a[0]], x: a[1], y: a[2], z: a[3], taken: false }));
+    buildLoot();
     syncRoster(m.r);
     me = byId(m.you);
     pending.length = 0;
@@ -1198,6 +1509,11 @@ function onSnapshot(s) {
         p.onGround = !!(f & FLAG.ground);
         if (p !== me) interp.push(p.id, now, a[1], a[2], a[3], a[4], a[5]);
     }
+    if (s.zn) {
+        const z = s.zn;
+        world.zone = { x: z[0], z: z[1], r: z[2], tx: z[3], tz: z[4], tr: z[5], until: world.time + z[6], stage: z[7], shrinking: !!z[8], dps: z[9] };
+    }
+    if (s.lt && world.loot) for (const l of world.loot) l.taken = s.lt[l.id] === '1';
     const m = s.m;
     if (!m || !me) return;
     me.x = m[1]; me.y = m[2]; me.z = m[3];
@@ -1233,7 +1549,9 @@ function clientTick() {
     if (me.alive) {
         me.yaw = cmd.yaw;
         me.pitch = cmd.pitch;
-        stepPlayer(me, effectiveInput(world, me, cmd), map.boxes);
+        const eff = effectiveInput(world, me, cmd);
+        me.aim = !!eff.aim;
+        stepPlayer(me, eff, map.boxes);
     }
     world.time += TICK;
     jumpQueued = reloadQueued = false;
@@ -1316,7 +1634,7 @@ function doBuy(item) {
     wantSlot = 0;     // the new primary always sits in slot 0
 }
 
-const buyKey = (n) => { const item = ['rifle', 'shotgun'][n - 1]; if (item) doBuy(item); };
+const buyKey = (n) => { const item = ['rifle', 'shotgun', 'sniper'][n - 1]; if (item) doBuy(item); };
 
 for (const b of buyEl.querySelectorAll('button[data-item]')) b.addEventListener('click', () => doBuy(b.dataset.item));
 
@@ -1336,7 +1654,6 @@ let settingsReturn = 'menu';
 const screens = {
     menu: $('menu'), freeSetup: $('freeSetup'), pause: $('pause'), settings: $('settings'),
     joinScreen: $('joinScreen'), lobby: $('lobby'), notice: $('notice'),
-    manualHost: $('manualHost'), joinManual: $('joinManual'), scanScreen: $('scanScreen'),
 };
 
 function show(name) {
@@ -1345,10 +1662,10 @@ function show(name) {
 
 function updateLayers() {
     const playing = state === 'play';
-    document.body.classList.toggle('playing', state !== 'menu');
+    document.body.classList.toggle('playing', state !== 'menu' || editing);
     document.body.classList.toggle('touch', touchMode);
     $('hud').hidden = state === 'menu';
-    touchLayer.hidden = !(playing && touchMode);
+    touchLayer.hidden = !(playing && touchMode) && !editing;
 }
 
 function enterFullscreenLandscape() {
@@ -1363,7 +1680,7 @@ function pause() {
     if (state !== 'play') return;
     state = 'pause';
     keys.clear();
-    mouseFire = false;
+    mouseFire = mouseAim = false;
     resetTouch();
     show('pause');
     updateLayers();
@@ -1408,21 +1725,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Online menus.
-$('hostBtn').addEventListener('click', () => startHosting(true));
-$('hostManualBtn').addEventListener('click', () => startHosting(false));
-$('lAdd').addEventListener('click', () => openAddPlayer());
-$('mGo').addEventListener('click', finishAddPlayer);
-$('mCancel').addEventListener('click', cancelAddPlayer);
-$('mCopy').addEventListener('click', () => copyText($('mOffer')));
-$('mScan').addEventListener('click', () => scanInto($('mAnswer'), 'manualHost', finishAddPlayer));
-$('kGo').addEventListener('click', makeAnswer);
-$('kCancel').addEventListener('click', cancelJoinManual);
-$('kCopy').addEventListener('click', () => copyText($('kAnswer')));
-$('kScan').addEventListener('click', () => scanInto($('kOffer'), 'joinManual', makeAnswer));
-$('scanCancel').addEventListener('click', () => { if (scanner) scanner.stop(); });
-$('mScan').hidden = $('kScan').hidden = !canScan();
-$('kName').value = settings.name;
-$('kName').addEventListener('input', () => { settings.name = cleanName($('kName').value); saveSettings(); });
+$('hostBtn').addEventListener('click', startHosting);
 $('jGo').addEventListener('click', startJoining);
 $('jCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') startJoining(); });
 $('lStart').addEventListener('click', startMatch);
@@ -1451,6 +1754,7 @@ function bindRadios(name, key, numeric) {
     }
 }
 bindRadios('lmode', 'hostMode', false);
+bindRadios('lmap', 'hostMap', false);
 bindRadios('lrounds', 'hostRounds', true);
 bindRadios('lkills', 'hostKills', true);
 bindRadios('ltime', 'hostTime', true);
@@ -1503,11 +1807,27 @@ bindCheck('sLow', 'low', applyQuality);
 bindCheck('sFps', 'fps', () => { $('stats').hidden = !settings.fps; });
 bindRange('fEnemies', 'enemies', null, 0);
 bindRange('fAllies', 'allies', null, 0);
+bindRange('fBrBots', 'brBots', null, 0);
+function showFreeRows() {
+    const br = settings.freeMode === 'br';
+    $('fBrRow').hidden = !br;
+    $('fEnemiesRow').hidden = $('fAlliesRow').hidden = br;
+}
+for (const r of document.querySelectorAll('input[name="fmode"]')) {
+    r.checked = r.value === settings.freeMode;
+    r.addEventListener('change', () => { settings.freeMode = r.value; saveSettings(); showFreeRows(); });
+}
+showFreeRows();
 for (const r of document.querySelectorAll('input[name="diff"]')) {
     r.checked = r.value === settings.diff;
     r.addEventListener('change', () => { settings.diff = r.value; saveSettings(); });
 }
+for (const r of document.querySelectorAll('input[name="fmap"]')) {
+    r.checked = r.value === settings.map;
+    r.addEventListener('change', () => { settings.map = r.value; saveSettings(); useMap(r.value); });
+}
 applyTouchSize();
+applyTouchLayout();
 $('stats').hidden = !settings.fps;
 placeStickHome();
 addEventListener('resize', () => { if (stickId === null) placeStickHome(); });
@@ -1519,8 +1839,9 @@ const portrait = matchMedia('(orientation: portrait) and (pointer: coarse)');
 const hud = {
     hp: $('hp'), ammo: $('ammo'), dead: $('dead'), board: $('board'), mode: $('modeTag'),
     cross: $('crosshair'), vignette: $('vignette'),
-    money: $('money'), bomb: $('bombTag'), act: $('actbar'),
+    money: $('money'), bomb: $('bombTag'), act: $('actbar'), scope: $('scope'),
 };
+const mmss = (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
 const hitmarkEl = $('hitmark');
 const shown = {};   // last text written, to skip unchanged DOM updates
 let boardAt = 0;
@@ -1543,12 +1864,19 @@ function updateHud(dt) {
     const reserve = world.rules.infiniteAmmo ? '∞' : cur.reserve;
     const status = me.reloadUntil ? 'Reloading' : W.name;
     setText('ammo', hud.ammo, `${cur.mag} <small>/ ${reserve}<br>${status}</small>`);
-    const bomb = isBomb(world);
-    const mmss = (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
+    const bomb = isBomb(world), br = isBR(world);
     const limit = world.rules.timeLimit, left = limit ? Math.max(0, limit - world.time) : 0;
     const clock = limit ? ` · ${mmss(left)}` : '';
-    const result = world.over ? (world.over.winner ? `${world.over.winner === 't' ? 'Red' : 'Blue'} wins` : 'Draw') : '';
-    if (bomb && world.round) {
+    const champ = br && world.over && byId(world.over.winner);
+    const result = !world.over ? ''
+        : br ? (champ ? (champ === me ? 'You win' : `${escapeHtml(champ.name)} wins`) : 'Nobody survived')
+        : world.over.winner ? `${world.over.winner === 't' ? 'Red' : 'Blue'} wins` : 'Draw';
+    if (br) {
+        const alive = world.players.filter((p) => p.alive).length;
+        setText('mode', hud.mode, `${result ? result + ' · ' : ''}Alive ${alive} · Kills ${me.kills}`);
+        updateZoneHud();
+        hud.money.hidden = hud.act.hidden = true;
+    } else if (bomb && world.round) {
         const rd = world.round, rleft = Math.max(0, rd.until - world.time);
         const ph = rd.phase === 'buy' ? `BUY ${Math.ceil(rleft)}` : rd.phase === 'live' ? mmss(rleft) : 'END';
         setText('mode', hud.mode, `${result ? result + ' · ' : ''}Red ${world.score.t} : ${world.score.ct} Blue · R${rd.n} · ${ph}`);
@@ -1558,6 +1886,8 @@ function updateHud(dt) {
         hud.bomb.hidden = hud.money.hidden = hud.act.hidden = true;
     }
     touchLayer.classList.toggle('bomb', bomb);
+    touchLayer.classList.toggle('noscope', !W.scope);
+    if (!W.scope && touch.aim) setTouchAim(false);
     if (bannerT > 0 && (bannerT -= dt) <= 0) $('banner').hidden = true;
     if (buyOpen) { if (canBuy()) updateBuy(); else closeBuy(); }
     $('lockHint').hidden = touchMode || isLocked() || state !== 'play';
@@ -1565,7 +1895,8 @@ function updateHud(dt) {
     hud.dead.hidden = me.alive;
     if (!me.alive) {
         const who = killer && killer !== me ? `${escapeHtml(killer.name)} got you` : 'You died';
-        const wait = bomb ? 'Next round soon' : `Back in ${Math.max(0, Math.ceil(me.respawnAt - world.time))}`;
+        const wait = br ? `Placed #${me.place || '?'} of ${world.players.length}`
+            : bomb ? 'Next round soon' : `Back in ${Math.max(0, Math.ceil(me.respawnAt - world.time))}`;
         setText('dead', hud.dead, `${who}<br><small>${wait}</small>`);
     }
 
@@ -1573,7 +1904,7 @@ function updateHud(dt) {
     const focal = innerHeight / 2 / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     const gap = clamp(3 + Math.tan(spreadOf(me, W)) * focal, 3, 90);
     hud.cross.style.setProperty('--gap', `${gap.toFixed(1)}px`);
-    hud.cross.style.display = me.alive ? '' : 'none';
+    hud.cross.style.display = me.alive && aimK < 0.5 ? '' : 'none';
 
     const boardOpen = keys.has('Tab') || touch.board || !!world.over;
     hud.board.hidden = !boardOpen;
@@ -1581,6 +1912,20 @@ function updateHud(dt) {
         boardAt = performance.now() + 250;
         renderBoard();
     }
+}
+
+// Battle royale: where the zone is going and how long until it moves.
+function updateZoneHud() {
+    const zn = world.zone;
+    hud.bomb.hidden = !zn;
+    if (!zn) return;
+    const out = me.alive && outsideZone(zn, me);
+    const left = Math.max(0, zn.until - world.time);
+    const text = out ? `Outside the zone · -${zn.dps} HP/s`
+        : zn.stage >= ZONE.length ? 'Final zone'
+        : zn.shrinking ? `Zone closing · ${mmss(left)}` : `Zone shrinks in ${mmss(left)}`;
+    hud.bomb.classList.toggle('hot', out);
+    setText('bombTag', hud.bomb, text);
 }
 
 function updateBombHud(rd) {
@@ -1613,6 +1958,16 @@ function updateBombHud(rd) {
 
 function renderBoard() {
     const net = role !== 'solo';
+    hud.board.classList.toggle('one', isBR(world));
+    if (isBR(world)) {
+        const alive = world.players.filter((p) => p.alive).length;
+        const rows = world.players.slice()
+            .sort((a, b) => (b.alive - a.alive) || (a.place || 99) - (b.place || 99) || b.kills - a.kills)
+            .map((p) => `<tr class="${p === me ? 'me' : ''}"><td class="${p.alive ? '' : 'out'}">${escapeHtml(p.name)}${p.bot ? ' <small>BOT</small>' : ''}</td><td>${p.kills}</td><td>${p.alive ? '-' : '#' + (p.place || '?')}</td></tr>`)
+            .join('');
+        setText('board', hud.board, `<table><tr><th>Battle royale · ${alive} left</th><th>K</th><th>#</th></tr>${rows}</table>`);
+        return;
+    }
     const table = (team, label) => {
         const rows = world.players
             .filter((p) => p.team === team)
@@ -1630,7 +1985,15 @@ function escapeHtml(s) {
 
 // ---------- main loop ----------
 let last = performance.now(), acc = 0, orbit = 0, eyeH = PLAYER.eye, frameNo = 0;
-let fpsFrames = 0, fpsTime = 0;
+let fpsFrames = 0, fpsTime = 0, vmHidden = false;
+
+function setZoom(z) {
+    zoomNow = z;
+    const fov = 75 / z;
+    if (Math.abs(camera.fov - fov) < 1e-3) return;
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+}
 const statsEl = $('stats');
 
 // Online, the match keeps running while the menu is open (you are just standing still).
@@ -1638,7 +2001,7 @@ function advance(dt) {
     const running = (state === 'play' || (state === 'pause' && role !== 'solo')) && world && !portrait.matches;
     if (!running) { acc = 0; return; }
     acc += dt;
-    for (let n = 0; acc >= TICK && n < 80; n++) {
+    for (let n = 0; acc >= TICK && n < 80 && world; n++) {
         tick();
         acc -= TICK;
     }
@@ -1697,14 +2060,28 @@ function frame(now) {
         vm.show(cur.id);
         const reload = me.reloadUntil ? 1 - (me.reloadUntil - world.time) / W.reload : 0;
         const raise = Math.min(1, 1 - (me.switchUntil - world.time) / 0.35);
-        vm.update(live ? dt : 0, Math.hypot(me.vx, me.vz), me.onGround, reload, raise);
+
+        // Scope: ease in, zoom the camera, then the overlay replaces the gun (red dot keeps it).
+        const sc = W.scope;
+        const want = sc && input.aim && canAim(world, me) ? 1 : 0;
+        aimK = sc ? aimK + (want - aimK) * Math.min(1, dt * 14) : 0;
+        if (aimK < 0.005) aimK = 0;
+        setZoom(sc ? 1 + (sc.zoom - 1) * aimK : 1);
+        hud.scope.className = sc ? sc.type : '';
+        hud.scope.style.opacity = sc ? clamp((aimK - 0.55) / 0.35, 0, 1) : 0;
+        vmHidden = !!sc && sc.type !== 'reddot' && aimK > 0.75;
+
+        vm.update(live ? dt : 0, Math.hypot(me.vx, me.vz), me.onGround, reload, raise, aimK);
         updateHud(dt);
     } else {
+        setZoom(1);
         // Menu backdrop: slow orbit over the map.
         orbit += dt * 0.06;
         camera.position.set(Math.cos(orbit) * 48, 30, Math.sin(orbit) * 48);
         camera.lookAt(0, 0, 0);
     }
+
+    updateZoneAndLoot(now);
 
     const bb = world && world.bomb;
     if (bb && (bb.state === 'dropped' || bb.state === 'planted')) {
@@ -1720,7 +2097,7 @@ function frame(now) {
 
     renderer.clear();
     renderer.render(scene, camera);
-    if (me && me.alive) {
+    if (me && me.alive && !vmHidden) {
         renderer.clearDepth();
         renderer.render(vm.scene, vmCamera);
     }
