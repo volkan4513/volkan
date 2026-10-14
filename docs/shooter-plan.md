@@ -1,6 +1,6 @@
-# 4v4 Low-Poly Shooter — Plan (projects/08)
+# 4v4 Low-Poly Shooter — Low-Poly Strike (projects/08)
 
-Status: **planning only, no code written yet.**
+Status: **built.** All 6 build phases are done. Section 8 lists what is tested and what is not, and section 9 lists the known issues.
 Goal: a CS-1.x-style 4v4 shooter that runs entirely on GitHub Pages, in the browser, on desktop and mobile (landscape), with no backend of our own.
 
 ---
@@ -8,184 +8,235 @@ Goal: a CS-1.x-style 4v4 shooter that runs entirely on GitHub Pages, in the brow
 ## 1. Requirements
 
 ### Functional
-- 8 players max: 4 per team, plus bots to fill empty slots (host option).
+- 8 players max: 4 per team, plus bots to fill empty slots (host option, on by default).
 - Three modes, chosen in the menu:
-  1. **Team Deathmatch (TDM)**: respawns, kill limit and time limit.
-  2. **Bomb Plant/Defuse**: attackers plant at site A or B, defenders defuse. No respawn within a round, buy phase with money, first to N rounds wins.
+  1. **Team Deathmatch (TDM)**: 3 s respawn with a 1.5 s spawn shield, kill limit and time limit (host picks; defaults 20 kills / 600 s). Infinite reserve ammo.
+  2. **Bomb Plant/Defuse**: attackers plant at site A or B, defenders defuse. No respawn within a round, buy phase with money, first to 4, 6 or 8 rounds wins (default 6), halftime side swap.
   3. **Free Area (bots)**: solo practice, no network, bot count and difficulty selectable.
 - Two connection methods, chosen by the user in the lobby:
-  - **A. Room code**: free public signaling service, 5-character code.
-  - **B. Manual handshake**: copy/paste (or QR) offer and answer codes, no third party.
+  - **A. Room code**: PeerJS cloud signaling, 5-character code.
+  - **B. Manual handshake**: copy/paste (or QR) offer and answer codes, no signaling service.
 - One player's browser tab is the **host/server**. The other 7 connect to it.
-- Desktop controls: pointer lock, WASD, mouse, 1-3 weapons, R reload, B buy, Tab scoreboard, E plant/defuse.
-- Mobile: **landscape only**. In portrait show a full-screen "Rotate your phone" overlay and block play. Touch controls appear only when touch is detected.
+- Desktop controls: pointer lock, WASD, mouse, Space jump, **C crouch**, Shift walk, 1-3 weapons, Q last weapon, R reload, B buy, Tab scoreboard, E plant/defuse.
+- Mobile: **landscape only**. In portrait a full-screen "Rotate your phone" overlay blocks play. Touch controls appear the first time a finger touches the screen.
 - Look: stylized low-poly, matching the portfolio (palette, fonts, thick outlines, hard shadows).
 
 ### Non-functional
-- Total game payload **under about 5 MB** (the site is already about 720 MB, and the GitHub Pages soft limit is about 1 GB). No big models, procedural or box geometry only.
-- 60 fps target on mid-range phones: merged static geometry, no real-time shadows, capped pixel ratio, low-quality toggle.
-- Everything static (map, weapons, assets, Three.js) is cached by the existing service worker. Only dynamic state travels over the network.
-- Works offline for Free Area mode.
+- Game payload is about **1.1 MB** (Three.js 656 KB, PeerJS 92 KB, QR 56 KB, thumbnail 52 KB, the rest is our code and data). The budget was 5 MB.
+- 60 fps target on mid-range phones: merged static geometry, no real-time shadows, pixel ratio capped at 1.5, and a low-quality toggle (pixel ratio 0.7).
+- Every static file is cached by the existing service worker. Only dynamic state travels over the network.
+- Free Area works offline.
 
 ---
 
 ## 2. Architecture
 
 ```
-            Option A: public signaling (room code)
+            Option A: PeerJS cloud signaling (room code)
  Joiner ───────────────► signaling service ◄─────────────── Host
    │                     (handshake only)                     │
    └────────────── WebRTC DataChannels (JSON) ────────────────┘
             Option B: copy/paste or QR (no service)
 
- Host tab  = authoritative simulation (sim.js) + bots (bots.js) + its own player
+ Host tab   = authoritative simulation (sim.js) + bots (bots.js) + its own player
  Client tab = input sender + prediction + interpolation + renderer
 ```
 
-- **Star topology**: host with 7 links, not a 28-link mesh.
-- **Host is authoritative**: movement validation, hitscan, health, rounds, bomb, economy.
-- If the host leaves, the match ends (no host migration in v1).
-- Both signaling methods end in the same `RTCPeerConnection`, so `sim.js` and `game.js` don't know which was used.
+- **Star topology**: host with up to 7 links.
+- **Host is authoritative**: movement, hitscan, health, rounds, bomb, economy.
+- If the host leaves, the match ends ("Host left" screen). No host migration.
+- Both signaling methods end in the same `Link` object (`net.js`), so `sim.js` and `game.js` don't know which was used.
 
 ### Channels per peer
 | Channel | Mode | Carries |
 |---|---|---|
-| `fast` | unordered, `maxRetransmits: 0` | inputs (client to host), snapshots (host to client) |
-| `rel` | ordered, reliable | hit/kill events, round state, buy, chat, bomb events |
+| `fast` | unordered, `maxRetransmits: 0` | inputs (client to host, about 30 Hz), snapshots (host to client, 20 Hz) |
+| `rel` | ordered, reliable | hello/welcome, lobby, roster, start, events, buy, team switch, heartbeat, bye |
 
-### Message format (compact JSON, arrays instead of objects where possible)
+The joiner opens `fast` once `rel` is up. If `fast` never opens, everything falls back to `rel`, which only costs latency.
+
+### Message format (compact JSON, arrays instead of objects)
 ```jsonc
-// client → host, ~30 Hz
-{"t":"in","seq":812,"mv":[0,1],"yaw":1.57,"pitch":-0.1,"fire":1,"jump":0}
+// client → host on fast: the last few unacked inputs ride in every packet,
+// so a lost packet costs nothing. [seq, mx, mz, bits, yaw, pitch, slot]
+// bits = jump|crouch|walk|fire|reload|use
+{"t":"in","c":[[812,0,1,9,1.571,-0.1,1], ...]}
 
-// host → clients, ~20 Hz
-{"t":"s","tick":4021,"p":[[id,x,y,z,yaw,pitch,hp,weapon,flags],...],"bomb":[x,y,z,state,t]}
+// host → each client on fast, 20 Hz
+{"t":"s","k":4021,"tm":67.017,"sc":[2,1],
+ "p":[[id,x,y,z,yaw,pitch,hp,slot,flags,kills,deaths], ...],   // flags = alive|crouch|reload|shield|ground
+ "rd":[phase,n,timeLeft,attIsCt],                                // bomb mode only
+ "bm":[state,x,y,z,site,fuseLeft,carrier,defuseFrac],            // bomb mode only, when a bomb exists
+ ...}  // plus a per-client block: ack seq, own position/velocity, timers, money, ammo
 
-// reliable events
-{"t":"hit","by":3,"tgt":6,"dmg":27,"hs":1}
-{"t":"kill","by":3,"tgt":6,"w":"rifle"}
-{"t":"round","n":4,"phase":"buy","t":15,"score":[2,1]}
-{"t":"buy","id":3,"item":"rifle"}
+// host → clients on rel
+{"t":"ev","e":[{"t":"shot",...},{"t":"hit",...},{"t":"kill",...},{"t":"round",...},
+               {"t":"plant",...},{"t":"defuse",...},{"t":"explode",...},{"t":"spawn",...},{"t":"over",...}]}
+{"t":"lobby",...} {"t":"roster","r":[...]} {"t":"start","you":3,"rules":{...},"r":[...]}
+
+// client → host on rel
+{"t":"hello","name":"..."} {"t":"buy","item":"rifle"} {"t":"team"} {"t":"bye"}
 ```
-Round numbers to 2 decimals. Expected load is about 8 KB/s per client, and the host uploads about 50 KB/s.
+Positions are rounded to 2 decimals (3 for the client's own state and angles).
 
 ### Feel
-- Client-side prediction for the local player, reconciled by `seq`.
-- Remote players interpolated about 100 ms in the past.
-- Hitscan on the host. Optional lag compensation: keep about 200 ms of position history and rewind to the shooter's fire time.
+- Client-side prediction for the local player, reconciled by input `seq`.
+- Remote players interpolated 100 ms in the past. A jump over 6 m (respawn) snaps instead of sliding.
+- Hitscan on the host. **No lag compensation** (see section 9).
 - Tracers, muzzle flash and hit markers are local effects driven by events.
+
+### Host input queue
+One client input per host tick (60 Hz). Short gaps repeat the last input. A long gap (tab hidden, link stalled) stops movement and fire. Bursts over 8 queued inputs are trimmed to the newest 3.
 
 ---
 
 ## 3. Connection methods
 
-### A. Room code (public signaling)
-1. Host clicks **Host, Room code**. The app registers a peer id and shows a 5-character code.
-2. Joiner enters the code. Signaling exchanges offer/answer/ICE. DataChannels open.
-3. Library: PeerJS cloud (or Trystero over public Nostr/MQTT relays). Pin the version and self-host the script if licensing allows, since the signaling service itself stays third-party.
-4. STUN: free public servers. TURN is not included, so strict NATs may fail, and the UI must say so clearly.
+### A. Room code (PeerJS)
+1. Host clicks **Host, Room code**. The app registers the peer id `lpstrike-<CODE>` and shows the 5-character code (no I, L, O, 0, 1).
+2. Joiner enters the code. PeerJS exchanges offer/answer/ICE. DataChannels open.
+3. Library: **PeerJS 1.5.4 (MIT)**, local copy `peerjs.min.js`, loaded on demand. The signaling server is PeerJS cloud (third-party), which also hands out its own free TURN servers, so strict NATs have a fallback.
+4. If signaling does not answer within 10 s, the UI says so.
 
 ### B. Manual handshake (serverless)
-1. Host clicks **Add player** and gets an offer code (JSON then `CompressionStream` deflate then base64url), with a copy button and a QR code.
-2. Joiner pastes or scans it and gets an answer code back.
-3. Host pastes the answer. The slot turns green.
-4. Repeat for each player (up to 7). The lobby shows 7 slots: empty, waiting, connected, ready, with ping.
-5. Use `iceGatheringState === 'complete'` (non-trickle ICE) so a code is a single blob. Add a gathering timeout of about 4 s.
-6. QR scanning uses `BarcodeDetector` where available. Paste is the fallback.
+1. Host clicks **Add player** (`manualOffer`) and gets an offer code: JSON, then `CompressionStream('deflate-raw')`, then base64url (prefix `z`; prefix `p` = plain JSON when `CompressionStream` is missing). Copy button and QR code (`qrcode.js`).
+2. Joiner pastes or scans it (`manualAnswer`) and gets an answer code back.
+3. Host pastes the answer. The slot connects.
+4. Repeat for each player (up to 7).
+5. Non-trickle ICE: wait for gathering to finish, with a 4 s timeout, so a code is one blob. STUN: Google public servers only, no TURN.
+6. QR scanning uses `BarcodeDetector` with the camera where available. Paste is the fallback.
 
 ### Failure handling (both)
-- Heartbeat every 2 s. After 6 s with no packet the player is marked disconnected, then replaced by a bot or removed.
+- Heartbeat every 2 s. After 6 s with no packet the link closes. A lost client is replaced by a bot (when bot fill is on) or removed.
 - "Host left" screen returns everyone to the menu.
-- Show the connection error and suggest the other method.
+- Errors are shown and suggest the other method.
+
+### Test knobs
+`?lag=120` delays everything this tab sends by 120 ms. `?loss=5` drops 5% of `fast` packets. DevTools throttling does not affect WebRTC, so use these.
+
+### Debug hook
+`window.__lps` exposes `role`, `world`, `me`, `lobby`, `peers`, and a settable `fire` (used by headless tests, where pointer lock does not work).
 
 ---
 
 ## 4. Game logic
 
-### Shared rules (in `sim.js`, runs on host and in Free Area locally)
-- Fixed tick 60 Hz internally, snapshots sent at 20 Hz.
-- Player: capsule collider vs axis-aligned boxes from `map.json`, gravity, jump, crouch (optional).
-- Weapons from `weapons.json`: damage, fire rate, magazine, reload time, spread, range, price, headshot multiplier. v1: pistol, rifle, shotgun.
-- Hitscan: ray vs player capsules (head hit = multiplier) and map boxes (walls block).
+### Shared rules (`sim.js`, no DOM, runs on host and in Free Area)
+- Fixed tick 60 Hz, snapshots at 20 Hz.
+- Player: box collider vs axis-aligned boxes from `map.json`, gravity, jump, step-up, crouch (C), walk (Shift).
+- Weapons from `weapons.json`: damage, headshot multiplier, pellets, fire rate, auto, magazine, reserve, reload time, spread, move spread, range, price, slot.
+  | Weapon | Slot | Price | Damage | Notes |
+  |---|---|---|---|---|
+  | Pistol | 2 | free | 26 | semi-auto, 12 rounds |
+  | Rifle | 1 | $2700 | 34 | auto, 30 rounds |
+  | Shotgun | 1 | $1200 | 14 × 9 pellets | 7 rounds, range 25 m |
+- Hitscan: ray vs player boxes (head hit = multiplier) and map boxes (walls block).
+- Key exports: `stepWorld`, `startRound`, `buyItem`, `actKind`, `effectiveInput`, `castRay`.
+
+### Teams
+- Squads keep their colour for the whole match. `world.att` says which squad attacks. Halftime flips `world.att`; it does not recolour anyone.
 
 ### TDM
-- Spawn at team spawn points, respawn after about 3 s with brief invulnerability.
+- Spawn at team spawn points, respawn after 3 s with a 1.5 s spawn shield.
 - Ends at kill limit or time limit. Scoreboard shows kills, deaths and ping.
 
 ### Bomb mode
-- Phases: `buy (15 s)` → `live (about 105 s)` → `end (5 s)`.
-- Attackers get the bomb and plant it inside a site zone by holding E for about 3 s. The bomb timer is about 40 s. Defenders defuse by holding E for about 5 s.
+- Phases: `buy (15 s)` → `live (105 s)` → `end (5 s)`. **Players are frozen during the buy phase** (`effectiveInput`).
+- Attackers get the bomb and plant it inside a site zone by holding E for 3 s. The fuse is 40 s. Defenders defuse by holding E for 5 s within 2.2 m. A dropped bomb can be picked up.
 - Round ends on: all of a team dead, bomb exploded, bomb defused, or time out (defenders win).
-- Money: round win/loss, kills and plant/defuse bonuses, with a cap. The buy menu is only usable in the buy phase near spawn.
-- First to N rounds (for example 8) wins, with sides swapped at halftime.
+- Money (`ECON`): start $1600, win $3000, loss $1400 + $500 per extra loss in a row (up to 4), kill $300, plant $300, defuse $300, cap $9000. Buy menu (B, or the touch Buy button) only in the buy phase.
+- First to N rounds (4, 6 or 8) wins. Halftime after N − 1 rounds: sides swap, money and loss streaks reset.
 
 ### Bots (`bots.js`, host only, or local in Free Area)
-- Waypoint graph in `map.json`, line-of-sight checks, reaction delay and aim error scaled by difficulty.
+- Waypoint graph from `map.json` with A* paths, line-of-sight checks, reaction delay and aim error scaled by difficulty.
 - TDM: roam, engage, retreat when low HP.
-- Bomb: attackers path to a site, plant and guard. Defenders hold sites and defuse.
+- Bomb: attackers path to a site, plant and guard. Defenders hold sites and defuse. Bots auto-buy.
 - Bots are sent in snapshots like any other player.
 
 ### Mobile and rotation
-- Orientation check on `resize` and `orientationchange`. Portrait shows the overlay and pauses the loop.
-- Try `screen.orientation.lock('landscape')` after entering fullscreen (unsupported on iOS Safari, so the overlay remains the fallback).
-- Touch layout: left virtual joystick (move), right-side drag (look), buttons for fire, jump, reload, switch, buy, plant/defuse. Multi-touch safe, with sensitivity and size settings saved.
+- Orientation check on `resize` and `orientationchange`. Portrait shows the overlay and pauses.
+- `screen.orientation.lock('landscape')` after entering fullscreen (unsupported on iOS Safari, so the overlay stays the fallback).
+- Wake Lock API keeps the screen on during a match.
+- Touch layout: left virtual joystick (move), right-side drag (look), buttons for fire, jump, crouch (toggle), reload, switch, scoreboard (toggle), pause, Buy and Use (plant/defuse).
 
 ---
 
-## 5. File plan
+## 5. Files
 
 ```
 projects/08/
-  index.html       menu, lobby, HUD, rotate overlay, styles
-  game.js          main loop, renderer (Three.js), input (kb/mouse + touch), HUD
-  net.js           WebRTC, signaling A + B, snapshots, heartbeat
-  sim.js           authoritative rules: movement, hitscan, rounds, bomb, economy
-  bots.js          bot AI
-  map.json         boxes, spawns, bomb sites, waypoints
-  weapons.json     weapon table
-  three.min.js     pinned local copy (no CDN)
-  images/0.webp    card thumbnail (matches other projects)
+  index.html           menu, lobby, HUD, buy menu, rotate overlay, styles
+  game.js              main loop, renderer, input (kb/mouse + touch), HUD, lobby, host/client glue
+  net.js               WebRTC links, room code (PeerJS) + manual handshake, wire format, input queue, interpolation
+  sim.js               authoritative rules: movement, hitscan, rounds, bomb, economy
+  bots.js              bot AI
+  models.js            low-poly player and weapon models
+  map.json             boxes, spawns, bomb sites, waypoints
+  weapons.json         weapon table
+  three.module.min.js  pinned local copy of Three.js (no CDN)
+  peerjs.min.js        PeerJS 1.5.4, local copy
+  qrcode.js            QR code generator for manual handshake codes
+  images/0.webp        card thumbnail
 ```
 
 ---
 
-## 6. What to CHANGE
+## 6. Changes outside projects/08
 
 | File | Change |
 |---|---|
-| `projects/08/*` | **New**, the whole game. |
-| `site.json` | Add one object to `projects` (title, subtitle, tags, desc, `thumb`, `href: "projects/08/index.html"`, `color`, `sticker`). Same shape as the existing entries. |
-| `tools/build_offline_manifest.py` | Add the game's light files to `CORE` (`projects/08/*.html`, `*.js`, `*.json`, `images/*`). Do not add `projects/08/*` blindly if anything big is ever added. Note: `expand()` raises if a pattern matches nothing, so create the files first. |
-| `sw-manifest.js` | **Regenerate only** with `python tools/build_offline_manifest.py`. Never hand-edit (the header says so). |
-| `projects/08/index.html` | Include `../../pixel-transition.js` and `../../site-nav.js` (with `data-home="../../index.html"`) like the other project pages. |
+| `site.json` | One new `projects` entry (`href: "projects/08/index.html"`, `thumb: "projects/08/images/0.webp"`, colour red, sticker "Play it!"). |
+| `tools/build_offline_manifest.py` | `CORE` gets `projects/08/index.html`, `projects/08/*.js`, `projects/08/*.json`, `projects/08/images/0.webp`. `expand()` raises if a pattern matches nothing. |
+| `sw-manifest.js` | **Regenerated only** with `python tools/build_offline_manifest.py`. Never hand-edit. |
+| `projects/08/index.html` | Includes `../../pixel-transition.js` and `../../site-nav.js` (with `data-home="../../index.html"`) like the other project pages. |
 
 ## 7. What NOT to change
 
-- `index.html`, `page2.html`, `builder.html`, `offline.html`: the portfolio pages stay as they are. The card list is data-driven from `site.json`.
-- `sw.js`: no logic changes needed, since the manifest already drives caching.
+- `index.html`, `page2.html`, `builder.html`, `offline.html`: the card list is data-driven from `site.json`.
+- `sw.js`: the manifest drives caching.
 - `ambient.js`, `daily.js`, `miniplayer.js`, `collage-fun.js`, `offline.js`, `pixel-transition.js`, `site-nav.js`: reuse as is.
 - Existing `projects/01` to `07`, `images_to_use/`, `popup_random_images/`, `functions_to_work.json`, `tiles.json`.
 - `.nojekyll`: keep it, or Pages will process files with Jekyll.
-- No new heavy assets: stay far under the size budget.
 
 ---
 
 ## 8. Build order and testing
 
-1. **Free Area core**: renderer, map, movement, controls (desktop and touch), rotate overlay.
-2. Weapons, hitscan, bots, HUD. Offline Free Area is now playable.
-3. `net.js` with **option A**, host sim, TDM over the network, prediction and interpolation.
-4. **Option B**: compressed codes, QR, lobby slot UI.
-5. **Bomb mode**: economy, buy menu, plant/defuse, rounds, halftime.
+All six phases are done:
+1. Free Area core: renderer, map, movement, controls (desktop and touch), rotate overlay.
+2. Weapons, hitscan, bots, HUD.
+3. `net.js` option A, host sim, TDM over the network, prediction and interpolation.
+4. Option B: compressed codes, QR, lobby slot UI.
+5. Bomb mode: economy, buy menu, plant/defuse, rounds, halftime.
 6. Polish: quality toggle, settings persistence, offline cache entries, site card, thumbnail.
 
-Testing I can do locally: several browser tabs on one machine, and DevTools mobile emulation for touch and landscape. Testing that needs you: real phones, real networks across NATs, and the public signaling service's uptime.
+### How to test locally
+- Dev server from the repo root: `python -m http.server 8765 --bind 127.0.0.1`. Stop it by port (`Get-NetTCPConnection -LocalPort 8765`, then `Stop-Process` that PID). Never kill every `python.exe`.
+- Headless Chrome over CDP from a Node 22 script (global `WebSocket`). Flags: `--headless=new --remote-debugging-port=9333 --use-angle=swiftshader --enable-unsafe-swiftshader`.
+- Open pages with `Target.createTarget` and `newWindow: true`, because a hidden page is throttled.
+- Pointer lock does not work headless. Drive keys with `Input.dispatchKeyEvent` and fire with `__lps.fire = true`.
 
-## 9. Known limits and risks
+### Tested
+- Room-code host + client, including with `?lag` and `?loss`.
+- Manual handshake with QR.
+- A bomb round with plant and defuse over the network.
+- A bots-only bomb match in Node.
 
-- Strict or corporate NATs need TURN, which is not included. Show a clear error.
-- The public signaling service (option A) is third-party and can go down. Option B is the fallback.
-- A cheating host is possible because the host is authoritative. This is acceptable for friends-only play.
-- Mobile browsers throttle background tabs, so hosting from a phone is fragile. Recommend a PC host and use the Wake Lock API.
-- No host migration in v1.
+### Not tested yet
+- Real phone on mobile data.
+- QR camera scan.
+- Touch Use and Buy buttons.
+- Networked halftime.
+- Full networked bomb match with bots.
+- Offline cold load from the cache.
+
+## 9. Known limits and issues
+
+- The host input queue trims to 3 when more than 8 inputs pile up, so lag spikes can drop client inputs.
+- A hidden host tab gets bursty inputs (the browser throttles timers). Host from a visible PC tab.
+- No lag compensation on hitscan: high-ping clients must lead targets.
+- Manual handshake has STUN only, so strict NATs can fail. The room-code path has PeerJS's TURN.
+- PeerJS cloud signaling is third-party and can go down. Manual handshake is the fallback.
+- A cheating host is possible because the host is authoritative. Fine for friends-only play.
+- No host migration.
 - iOS Safari ignores the orientation lock, so the rotate overlay is required.

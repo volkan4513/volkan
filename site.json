@@ -97,6 +97,19 @@
             "href": "page2.html",
             "color": "yellow",
             "sticker": "Try this!"
+        },
+        {
+            "title": "Low-Poly Strike",
+            "subtitle": "4v4 shooter in the browser",
+            "tags": [
+                "Three.js",
+                "WebRTC"
+            ],
+            "desc": "Free Area against bots, or host a match for friends: Deathmatch and Bomb mode, no server needed. Plays on desktop and phones.",
+            "thumb": "projects/08/images/0.webp",
+            "href": "projects/08/index.html",
+            "color": "red",
+            "sticker": "Play it!"
         }
     ],
     "skills": [
@@ -163,6 +176,14 @@
                 "Python"
             ],
             "text": "Sliding-block puzzle with drag, tap and keyboard controls. A Python solver checks every level, works out its par, and hill-climbs new harder levels."
+        },
+        {
+            "title": "Low-Poly Strike",
+            "tools": [
+                "Three.js",
+                "WebRTC"
+            ],
+            "text": "A 4v4 shooter in plain JavaScript. One tab hosts the match and the others connect peer to peer, by room code or copy-paste. The same rules run offline against bots."
         }
     ],
     "lab": [

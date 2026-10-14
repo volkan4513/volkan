@@ -1,7 +1,7 @@
 // Bot AI. Runs only where the world sim runs (Free Area, or the host tab).
 // A bot is an ordinary player in the sim; this file just produces its input
 // each tick, the same shape a human's keyboard or touch input has.
-import { TICK, MOVE, playerHeight, eyeHeight, clearLine } from './sim.js';
+import { TICK, MOVE, playerHeight, eyeHeight, clearLine, isBomb, actKind } from './sim.js';
 
 const DIFFICULTY = {
     easy:   { react: 0.65, turn: 3.5, err: 0.05,  fov: 1.6, burst: 0.25, rest: 0.5,  strafe: false, head: 0,    engage: 22 },
@@ -100,6 +100,7 @@ export function createBrain(difficulty = 'normal') {
         burstUntil: 0, restUntil: 0,
         stuck: 0, lastX: 0, lastZ: 0,
         think: 0, wasAlive: false, wantSlot: 0,
+        round: 0, goalPos: null,
     };
 }
 
@@ -109,7 +110,7 @@ const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.4;
 
 export function botInput(world, p, brain, graph) {
     const t = world.time, d = brain.d;
-    const inp = { mx: 0, mz: 0, jump: false, crouch: false, walk: false, fire: false, reload: false, yaw: p.yaw, pitch: p.pitch, slot: null };
+    const inp = { mx: 0, mz: 0, jump: false, crouch: false, walk: false, fire: false, reload: false, use: false, yaw: p.yaw, pitch: p.pitch, slot: null };
 
     if (!p.alive) {
         brain.wasAlive = false;
@@ -122,6 +123,11 @@ export function botInput(world, p, brain, graph) {
         if (brain.wantSlot < 0) brain.wantSlot = 0;
     }
     if (p.slot !== brain.wantSlot) inp.slot = brain.wantSlot;
+    const rn = world.round ? world.round.n : 0;
+    if (brain.round !== rn) {
+        // New round: drop the old plan.
+        Object.assign(brain, { round: rn, path: [], target: null, lastSeen: null, goalPos: null });
+    }
 
     if (t >= brain.think) {
         brain.think = t + 0.1;
@@ -181,18 +187,27 @@ export function botInput(world, p, brain, graph) {
         }
         if (cur.mag === 0) inp.reload = true;
     } else {
-        if (!brain.path.length) plan(world, p, brain, graph);
-        let n = brain.path[0];
-        while (n && Math.hypot(n.x - p.x, n.z - p.z) < 1.1) {
-            brain.path.shift();
-            if (brain.lastSeen && !brain.path.length) brain.lastSeen = null;
-            n = brain.path[0];
-        }
-        if (n) {
-            const dx = n.x - p.x, dz = n.z - p.z, len = Math.hypot(dx, dz);
-            wx = dx / len;
-            wz = dz / len;
-            lookYaw = Math.atan2(-dx, -dz);
+        if (isBomb(world) && actKind(world, p)) {
+            inp.use = true;         // standing where the bomb can be planted or defused: hold E
+        } else {
+            if (!brain.path.length) plan(world, p, brain, graph);
+            let n = brain.path[0];
+            while (n && Math.hypot(n.x - p.x, n.z - p.z) < 1.1) {
+                brain.path.shift();
+                if (brain.lastSeen && !brain.path.length) brain.lastSeen = null;
+                n = brain.path[0];
+            }
+            // Path used up: walk the last stretch straight to the exact spot (bomb, site).
+            const g = !n && brain.goalPos;
+            if (g && Math.hypot(g[0] - p.x, g[1] - p.z) > 0.7) n = { x: g[0], z: g[1] };
+            if (n) {
+                const dx = n.x - p.x, dz = n.z - p.z, len = Math.hypot(dx, dz);
+                wx = dx / len;
+                wz = dz / len;
+                lookYaw = Math.atan2(-dx, -dz);
+            } else if (g) {
+                brain.goalPos = null;    // arrived with nothing to do: pick a new spot next time
+            }
         }
         if (cur.mag < world.weapons[cur.id].mag * 0.5) inp.reload = true;
     }
@@ -260,6 +275,10 @@ function plan(world, p, brain, graph) {
     let goal;
     if (brain.lastSeen) {
         goal = nearestNode(graph, world.boxes, brain.lastSeen.x, brain.lastSeen.y, brain.lastSeen.z);
+    } else if (isBomb(world) && world.bomb && world.round) {
+        const g = bombGoal(world, p);
+        brain.goalPos = g;
+        goal = nearestNode(graph, world.boxes, g[0], 0, g[1]);
     } else {
         // Wander, leaning toward the enemy's side of the map.
         const enemyTeam = p.team === 't' ? 'ct' : 't';
@@ -268,4 +287,24 @@ function plan(world, p, brain, graph) {
         goal = pool[Math.floor(Math.random() * pool.length)];
     }
     brain.path = start && goal ? findPath(start, goal) : [];
+}
+
+// Where a bomb-mode bot wants to be: attackers take the bomb to the chosen site and guard it,
+// defenders hold a site and rush the bomb once it is planted.
+function bombGoal(world, p) {
+    const b = world.bomb, sites = world.map.sites;
+    const inSite = (k) => {
+        const r = sites[k], m = 2;
+        return [r[0] + m + Math.random() * (r[2] - r[0] - m * 2), r[1] + m + Math.random() * (r[3] - r[1] - m * 2)];
+    };
+    if (p.team === world.att) {
+        if (b.state === 'dropped') return [b.x, b.z];
+        if (b.state === 'planted') {
+            const a = Math.random() * Math.PI * 2, r = 3 + Math.random() * 5;
+            return [b.x + Math.cos(a) * r, b.z + Math.sin(a) * r];
+        }
+        return inSite(world.plan.site);
+    }
+    if (b.state === 'planted') return [b.x, b.z];
+    return inSite(p.id % 2 ? 'A' : 'B');
 }
