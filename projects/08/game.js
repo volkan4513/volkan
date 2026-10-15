@@ -4,7 +4,7 @@ import * as THREE from './three.module.min.js';
 import {
     TICK, PLAYER, BOMB, createWorld, addPlayer, removePlayer, stepWorld, stepPlayer, playerHeight, spreadOf,
     startRound, buyItem, effectiveInput, actKind, isBomb, isBR, startBR, canAim, outsideZone, LOOT_KINDS, ZONE, BR,
-    solidsOf, clearLine,
+    solidsOf, clearLine, castRay,
 } from './sim.js';
 import { buildGraph, createBrain, botInput, BOT_NAMES } from './bots.js';
 import { createPlayerModel, updatePlayerModel, createViewModel, createEffects, createLootModel } from './models.js';
@@ -637,6 +637,7 @@ const prevPos = new Map();    // player id -> position at the previous tick, for
 const inputs = new Map();
 let lookYaw = 0, lookPitch = 0, wantSlot = 0, lastSlot = 1;
 let killer = null;
+let deathCam = null;     // set while you are dead, see deathCamera()
 
 const byId = (id) => world && world.players.find((p) => p.id === id);
 
@@ -681,7 +682,7 @@ function clearMatch() {
     brains.clear();
     prevPos.clear();
     feedEl.textContent = '';
-    world = me = killer = null;
+    world = me = killer = deathCam = null;
     buildLoot();
     aimK = 0;
     touch.aim = false;
@@ -773,7 +774,10 @@ function onEvent(e) {
         const tgt = byId(e.tgt);
         if (tgt && e.pl) tgt.place = e.pl;
         addFeed(e);
-        if (e.tgt === me.id) killer = byId(e.by) || null;
+        if (e.tgt === me.id) {
+            killer = byId(e.by) || null;
+            startDeathCam(e);
+        }
     } else if (e.t === 'loot') {
         const l = world.loot && world.loot[e.id];
         if (l) l.taken = true;
@@ -795,7 +799,7 @@ function onEvent(e) {
             lookPitch = 0;
             pending.length = 0;
             wantSlot = 0;
-            killer = null;
+            killer = deathCam = null;
         }
     }
 }
@@ -873,7 +877,10 @@ addEventListener('keydown', (e) => {
     if (state !== 'play') return;
     if (GAME_KEYS.includes(e.code)) e.preventDefault();
     if (e.repeat) return;
-    if (e.code === 'Space') jumpQueued = true;
+    if (e.code === 'Space') {
+        if (me && !me.alive) nextSpectate();
+        else jumpQueued = true;
+    }
     else if (e.code === 'KeyR') reloadQueued = true;
     else if (e.code === 'KeyQ') selectSlot(lastSlot);
     else if (e.code === 'KeyB') toggleBuy();
@@ -933,6 +940,7 @@ document.addEventListener('mousemove', (e) => {
 // Left button fires, right button holds the scope.
 document.addEventListener('mousedown', (e) => {
     if (state !== 'play' || !isLocked()) return;
+    if (e.button === 0 && me && !me.alive) nextSpectate();
     if (e.button === 0) mouseFire = true;
     else if (e.button === 2) mouseAim = true;
 });
@@ -1043,7 +1051,12 @@ function tapButton(el, fn) {
 }
 
 let fireX = 0, fireY = 0;
-holdButton(tFire, (e) => { touch.fire = true; fireX = e.clientX; fireY = e.clientY; }, () => { touch.fire = false; });
+holdButton(tFire, (e) => {
+    touch.fire = true;
+    fireX = e.clientX;
+    fireY = e.clientY;
+    if (me && !me.alive) nextSpectate();
+}, () => { touch.fire = false; });
 tFire.addEventListener('pointermove', (e) => {
     if (!touch.fire) return;
     const k = TOUCH_LOOK * settings.touchSens;
@@ -2039,16 +2052,32 @@ function updateHud(dt) {
     if (buyOpen) { if (canBuy()) updateBuy(); else closeBuy(); }
     $('lockHint').hidden = touchMode || isLocked() || state !== 'play';
 
-    const place = me.alive ? areaAt(me.x, me.y, me.z) : '';
+    const watched = me.alive ? me : deathCam && deathCam.mode === 'spec' ? byId(deathCam.spec) : null;
+    const place = watched ? areaAt(watched.x, watched.y, watched.z) : '';
     hud.area.hidden = !place;
     if (place) setText('area', hud.area, escapeHtml(place));
 
     hud.dead.hidden = me.alive;
     if (!me.alive) {
-        const who = killer && killer !== me ? `${escapeHtml(killer.name)} got you` : 'You died';
         const wait = br ? `Placed #${me.place || '?'} of ${world.players.length}`
             : bomb ? 'Next round soon' : `Back in ${Math.max(0, Math.ceil(me.respawnAt - world.time))}`;
-        setText('dead', hud.dead, `${who}<br><small>${wait}</small>`);
+        const dc = deathCam, spec = dc && dc.mode === 'spec' && byId(dc.spec);
+        let text;
+        if (spec) {
+            text = `Spectating ${escapeHtml(spec.name)}<br><small>${wait} · ${touchMode ? 'tap Fire' : 'click'} to switch</small>`;
+        } else {
+            const who = killer && killer !== me ? `${escapeHtml(killer.name)} got you` : 'You died';
+            const how = [];
+            if (dc && dc.w && weapons[dc.w]) how.push(weapons[dc.w].name + (dc.hs ? ' · headshot' : ''));
+            else if (dc && dc.w === 'fall') how.push('Fell');
+            else if (dc && dc.w === 'zone') how.push('Caught by the zone');
+            if (killer && killer !== me && killer.alive) {
+                how.push(`${Math.max(0, killer.hp)} HP left`);
+                how.push(`${Math.round(Math.hypot(killer.x - dc.x, killer.z - dc.z))} m`);
+            }
+            text = `${who}<br><small>${how.length ? how.join(' · ') + '<br>' : ''}${wait}</small>`;
+        }
+        setText('dead', hud.dead, text);
     }
 
     // Crosshair gap follows the real spread cone.
@@ -2188,6 +2217,112 @@ function stepSmooth(p, y, dt) {
     return s.out;
 }
 
+// ---------- death camera ----------
+// Fall: rise out of the head and pull back to watch your body drop. Kill cam: look at whoever got
+// you from where you died, zoomed in. Spectate: once that is over and you are still dead (bomb
+// rounds, battle royale), a chase camera behind a living teammate; click / tap Fire to switch.
+const DEATH = { fall: 0.7, killcam: 3.6, back: 3.2, up: 1.0 };
+
+function startDeathCam(e) {
+    const from = camera.position.clone(), dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    deathCam = {
+        t: 0, mode: 'fall', x: me.x, y: me.y, z: me.z, yaw: lookYaw,
+        killer: e && e.by !== me.id ? e.by : 0, w: e ? e.w : '', hs: e ? e.hs : 0,
+        spec: 0, cam: from, look: from.clone().add(dir.multiplyScalar(4)), zoom: 1,
+    };
+}
+
+function nextSpectate() {
+    const dc = deathCam;
+    if (!dc) return;
+    if (dc.mode !== 'spec') { dc.t = DEATH.killcam; return; }    // first press skips the kill cam
+    const list = spectateTargets();
+    if (!list.length) return;
+    const i = list.findIndex((p) => p.id === dc.spec);
+    dc.spec = list[(i + 1) % list.length].id;
+}
+
+// Teammates first, as in CS; in battle royale (or with no teammate left) anyone alive.
+function spectateTargets() {
+    const alive = world.players.filter((p) => p.alive && p !== me);
+    const mates = alive.filter((p) => !isBR(world) && p.team === me.team);
+    return mates.length ? mates : alive;
+}
+
+// Camera point from `from` toward `to`, stopped short of walls.
+function clipCam(from, to, skip) {
+    const d = [to.x - from.x, to.y - from.y, to.z - from.z], len = Math.hypot(d[0], d[1], d[2]);
+    if (len < 1e-3) return to.clone();
+    const hit = castRay(world, [from.x, from.y, from.z], d.map((v) => v / len), len, skip);
+    const t = Math.max(0.2, Math.min(len, hit.t - 0.3));
+    return new THREE.Vector3(from.x + d[0] / len * t, from.y + d[1] / len * t, from.z + d[2] / len * t);
+}
+
+const camTmp = new THREE.Vector3();
+function deathCamera(dt, lerp) {
+    const dc = deathCam;
+    dc.t += dt;
+    const k = byId(dc.killer);
+    if (dc.mode !== 'spec') dc.mode = dc.t < DEATH.fall ? 'fall' : dc.t < DEATH.killcam && k && k.alive ? 'kill' : 'spec';
+    const body = new THREE.Vector3(dc.x, dc.y, dc.z);
+    let cam, look, zoom = 1, rate = 6;
+
+    if (dc.mode === 'fall') {
+        // Up and back over the body, looking down at it.
+        const pivot = body.clone().add(new THREE.Vector3(0, 1.4, 0));
+        const want = pivot.clone().add(new THREE.Vector3(Math.sin(dc.yaw) * 2.6, 0.9, Math.cos(dc.yaw) * 2.6));
+        cam = clipCam(pivot, want, me);
+        look = body.clone().add(new THREE.Vector3(0, 0.3, 0));
+        rate = 5;
+    } else if (dc.mode === 'kill') {
+        // From just above where you died, framing the killer; zoom so they fill a good part of the screen.
+        const [kx, ky, kz] = lerp(k);
+        const head = new THREE.Vector3(kx, ky + playerHeight(k) - 0.35, kz);
+        const pivot = body.clone().add(new THREE.Vector3(0, 1.7, 0));
+        const toK = head.clone().sub(pivot), dist = toK.length();
+        cam = clipCam(pivot, pivot.clone().add(toK.multiplyScalar(Math.min(0.25, Math.max(0, dist - 4) / dist))), me);
+        if (!clearLine(world.boxes, [cam.x, cam.y, cam.z], [head.x, head.y, head.z])) {
+            // They walked out of sight: move in close, on the side you were facing them from.
+            const back = pivot.clone().sub(head).setY(0);
+            if (back.lengthSq() < 1e-4) back.set(Math.sin(k.yaw), 0, Math.cos(k.yaw));
+            back.normalize().multiplyScalar(4).add(new THREE.Vector3(0, 1, 0));
+            cam = clipCam(head, head.clone().add(back), k);
+        }
+        look = head.clone().setY(ky + 0.7);     // aim below the head: the killer sits above the death panel
+        const fovWant = THREE.MathUtils.radToDeg(2 * Math.atan(2.6 / Math.max(1, cam.distanceTo(head))));
+        zoom = clamp(75 / fovWant, 1, 3.5);
+        rate = 4;
+    } else {
+        const list = spectateTargets();
+        let p = byId(dc.spec);
+        if (!p || !p.alive || !list.includes(p)) {
+            p = list.find((q) => q.id === dc.killer) || list[0] || null;
+            dc.spec = p ? p.id : 0;
+        }
+        if (p) {
+            // Chase camera behind the player, looking where they look.
+            const [px, py, pz] = lerp(p);
+            const pivot = new THREE.Vector3(px, py + playerHeight(p) - 0.2, pz);
+            const yaw = p === me ? lookYaw : p.yaw;
+            cam = clipCam(pivot, pivot.clone().add(new THREE.Vector3(Math.sin(yaw) * DEATH.back, DEATH.up, Math.cos(yaw) * DEATH.back)), p);
+            look = pivot.clone().add(new THREE.Vector3(-Math.sin(yaw) * 6, -0.6, -Math.cos(yaw) * 6));
+            rate = 10;
+        } else {
+            // Nobody left to watch: hang over your body.
+            const pivot = body.clone().add(new THREE.Vector3(0, 1.4, 0));
+            cam = clipCam(pivot, pivot.clone().add(new THREE.Vector3(Math.sin(dc.yaw) * 3, 2, Math.cos(dc.yaw) * 3)), me);
+            look = body;
+        }
+    }
+    const a = 1 - Math.exp(-dt * rate);
+    dc.cam.lerp(cam, a);
+    dc.look.lerp(look, a);
+    dc.zoom += (zoom - dc.zoom) * (1 - Math.exp(-dt * 3));
+    camera.position.copy(dc.cam);
+    camera.lookAt(camTmp.copy(dc.look));
+}
+
 function frame(now) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, role === 'host' ? 1 : 0.1);
@@ -2205,25 +2340,21 @@ function frame(now) {
 
     if (me) {
         const [x, y, z] = lerp(me);
-        // Dead: float up above the body and turn toward whoever got you.
-        const target = me.alive ? (me.crouch ? PLAYER.crouchEye : PLAYER.eye) : 3.2;
-        eyeH += (target - eyeH) * Math.min(1, dt * (me.alive ? 14 : 2));
-        camera.position.set(x, y + eyeH, z);
-        if (!me.alive && killer && killer.alive) {
-            const dx = killer.x - me.x, dz = killer.z - me.z;
-            const want = Math.atan2(-dx, -dz);
-            const wantPitch = Math.atan2(killer.y + 1.2 - (me.y + eyeH), Math.hypot(dx, dz));
-            const k = Math.min(1, dt * 3);
-            lookYaw += Math.atan2(Math.sin(want - lookYaw), Math.cos(want - lookYaw)) * k;
-            lookPitch += (wantPitch - lookPitch) * k;
+        if (me.alive) {
+            const target = me.crouch ? PLAYER.crouchEye : PLAYER.eye;
+            eyeH += (target - eyeH) * Math.min(1, dt * 14);
+            camera.position.set(x, y + eyeH, z);
+            camera.rotation.set(lookPitch, lookYaw, 0);
+        } else {
+            if (!deathCam) startDeathCam(null);
+            deathCamera(live ? dt : 0, lerp);
         }
-        camera.rotation.set(lookPitch, lookYaw, 0);
 
         for (const p of world.players) {
             const m = modelFor(p);
             const [px, py, pz] = lerp(p);
             updatePlayerModel(m, p, px, py, pz, live ? dt : 0);
-            if (p === me) m.root.visible = false;   // never draw your own body: the death camera sits right on it
+            if (p === me && me.alive) m.root.visible = false;   // your own body only shows on the death camera
             else if (p.alive && world.time < p.invulnUntil) m.root.visible = (frameNo >> 2) % 2 === 0;
         }
 
@@ -2237,9 +2368,9 @@ function frame(now) {
         const want = sc && input.aim && canAim(world, me) ? 1 : 0;
         aimK = sc ? aimK + (want - aimK) * Math.min(1, dt * 14) : 0;
         if (aimK < 0.005) aimK = 0;
-        setZoom(sc ? 1 + (sc.zoom - 1) * aimK : 1);
+        setZoom(deathCam ? deathCam.zoom : sc ? 1 + (sc.zoom - 1) * aimK : 1);
         hud.scope.className = sc ? sc.type : '';
-        hud.scope.style.opacity = sc ? clamp((aimK - 0.55) / 0.35, 0, 1) : 0;
+        hud.scope.style.opacity = sc && !deathCam ? clamp((aimK - 0.55) / 0.35, 0, 1) : 0;
         vmHidden = !!sc && sc.type !== 'reddot' && aimK > 0.75;
 
         vm.update(live ? dt : 0, Math.hypot(me.vx, me.vz), me.onGround, reload, raise, aimK);
