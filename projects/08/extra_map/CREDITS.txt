@@ -1,0 +1,11 @@
+de_dust2_-_cs_map.glb (the "Dust II" map, map3.json)
+
+    "de_dust2 - CS map" by vrchris
+    https://sketchfab.com/3d-models/de-dust2-cs-map-056008d59eb849a29c0ab6884c0c3d87
+    Licensed under CC BY 4.0: http://creativecommons.org/licenses/by/4.0/
+
+Changes: the model is drawn unmodified, scaled to 0.025 m per Hammer unit. Collision boxes,
+player clips, spawns, bombsites, callout areas and bot waypoints were generated from it for
+this game (see tools/build_dust2.mjs and tools/dust2_meta.mjs).
+
+Rebuild map3.json with: node tools/build_dust2.mjs

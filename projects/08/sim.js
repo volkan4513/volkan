@@ -10,7 +10,7 @@ export const PLAYER = {
     crouchHeight: 1.2,
     eye: 1.65,
     crouchEye: 1.05,
-    step: 0.45,          // highest ledge you walk up without jumping
+    step: 0.5,           // highest ledge you walk up without jumping (CS: 18 units, plus float room)
 };
 
 export const MOVE = {
@@ -141,9 +141,10 @@ function slide(p, axis, d, h, boxes) {
 // Moves along one axis and pushes out of any box it ends up inside.
 // Returns true when something was hit.
 function moveAxis(p, axis, d, h, boxes) {
+    const x0 = p.x, z0 = p.z;
     p[axis] += d;
     let hit = false;
-    for (const b of boxes) {
+    for (const b of near(boxes, Math.min(x0, p.x) - PLAYER.half, Math.min(z0, p.z) - PLAYER.half, Math.max(x0, p.x) + PLAYER.half, Math.max(z0, p.z) + PLAYER.half)) {
         if (!overlaps(p, h, b)) continue;
         hit = true;
         if (axis === 'x') p.x = d > 0 ? b[0] - PLAYER.half - EPS : b[3] + PLAYER.half + EPS;
@@ -154,8 +155,109 @@ function moveAxis(p, axis, d, h, boxes) {
 }
 
 export function collides(p, h, boxes) {
-    for (const b of boxes) if (overlaps(p, h, b)) return true;
+    for (const b of near(boxes, p.x - PLAYER.half, p.z - PLAYER.half, p.x + PLAYER.half, p.z + PLAYER.half)) if (overlaps(p, h, b)) return true;
     return false;
+}
+
+// ---------- box grid ----------
+// Big maps have thousands of boxes, so each box list gets a 4 m grid over x/z (built on first use).
+// Lookups return boxes in list order, so results match a plain loop over the list exactly.
+const CELL = 4;
+const grids = new WeakMap();
+
+function gridOf(boxes) {
+    let g = grids.get(boxes);
+    if (g) return g;
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    for (const b of boxes) {
+        x0 = Math.min(x0, b[0]); z0 = Math.min(z0, b[2]);
+        x1 = Math.max(x1, b[3]); z1 = Math.max(z1, b[5]);
+    }
+    const nx = Math.max(1, Math.ceil((x1 - x0) / CELL)), nz = Math.max(1, Math.ceil((z1 - z0) / CELL));
+    g = { x0, z0, nx, nz, cells: Array.from({ length: nx * nz }, () => []), mark: new Uint32Array(boxes.length), stamp: 0 };
+    boxes.forEach((b, i) => {
+        for (let cz = cellOf(g, b[2], 'z'); cz <= cellOf(g, b[5], 'z'); cz++)
+            for (let cx = cellOf(g, b[0], 'x'); cx <= cellOf(g, b[3], 'x'); cx++) g.cells[cz * nx + cx].push(i);
+    });
+    grids.set(boxes, g);
+    return g;
+}
+
+function cellOf(g, v, axis) {
+    const c = Math.floor((v - (axis === 'x' ? g.x0 : g.z0)) / CELL);
+    return Math.max(0, Math.min((axis === 'x' ? g.nx : g.nz) - 1, c));
+}
+
+// Boxes whose x/z footprint may touch the rectangle, in list order.
+function near(boxes, x0, z0, x1, z1) {
+    if (boxes.length < 64) return boxes;
+    const g = gridOf(boxes);
+    const cx0 = cellOf(g, x0, 'x'), cx1 = cellOf(g, x1, 'x'), cz0 = cellOf(g, z0, 'z'), cz1 = cellOf(g, z1, 'z');
+    if (cx0 === cx1 && cz0 === cz1) return g.cells[cz0 * g.nx + cx0].map((i) => boxes[i]);
+    const stamp = ++g.stamp, ids = [];
+    for (let cz = cz0; cz <= cz1; cz++) for (let cx = cx0; cx <= cx1; cx++) {
+        for (const i of g.cells[cz * g.nx + cx]) if (g.mark[i] !== stamp) { g.mark[i] = stamp; ids.push(i); }
+    }
+    return ids.sort((a, b) => a - b).map((i) => boxes[i]);
+}
+
+// Distance to the nearest box along a ray (Infinity when nothing within max). Walks the grid
+// cells the ray crosses, nearest first, and stops once a hit is closer than the next cell.
+// any: return the first hit found instead of the nearest.
+function rayBoxes(boxes, o, d, max, any = false) {
+    let best = max;
+    if (boxes.length < 64) {
+        for (const b of boxes) {
+            const t = rayBox(o, d, b, best);
+            if (t < best) { best = t; if (any) break; }
+        }
+        return best < max ? best : Infinity;
+    }
+    const g = gridOf(boxes), stamp = ++g.stamp;
+    // Clip the ray to the grid's x/z rectangle.
+    let t = 0, tEnd = max;
+    for (const [k, lo, n] of [[0, g.x0, g.nx], [2, g.z0, g.nz]]) {
+        const hi = lo + n * CELL;
+        if (Math.abs(d[k]) < 1e-12) {
+            if (o[k] < lo || o[k] > hi) return Infinity;
+            continue;
+        }
+        let ta = (lo - o[k]) / d[k], tb = (hi - o[k]) / d[k];
+        if (ta > tb) [ta, tb] = [tb, ta];
+        t = Math.max(t, ta);
+        tEnd = Math.min(tEnd, tb);
+    }
+    if (t > tEnd) return Infinity;
+    let cx = cellOf(g, o[0] + d[0] * t, 'x'), cz = cellOf(g, o[2] + d[2] * t, 'z');
+    const sx = Math.abs(d[0]) < 1e-12 ? 0 : Math.sign(d[0]), sz = Math.abs(d[2]) < 1e-12 ? 0 : Math.sign(d[2]);
+    const dtx = sx ? CELL / Math.abs(d[0]) : Infinity, dtz = sz ? CELL / Math.abs(d[2]) : Infinity;
+    let tx = sx ? (g.x0 + (cx + (sx > 0 ? 1 : 0)) * CELL - o[0]) / d[0] : Infinity;
+    let tz = sz ? (g.z0 + (cz + (sz > 0 ? 1 : 0)) * CELL - o[2]) / d[2] : Infinity;
+    while (t <= best) {
+        for (const i of g.cells[cz * g.nx + cx]) {
+            if (g.mark[i] === stamp) continue;
+            g.mark[i] = stamp;
+            const tb = rayBox(o, d, boxes[i], best);
+            if (tb < best) {
+                best = tb;
+                if (any) return best;
+            }
+        }
+        if (tx < tz) {
+            t = tx; tx += dtx; cx += sx;
+            if (cx < 0 || cx >= g.nx) break;
+        } else {
+            t = tz; tz += dtz; cz += sz;
+            if (cz < 0 || cz >= g.nz) break;
+        }
+    }
+    return best < max ? best : Infinity;
+}
+
+// Everything that blocks movement: map boxes plus player-only clips.
+export function solidsOf(map) {
+    if (!map.solids) map.solids = map.clips && map.clips.length ? map.boxes.concat(map.clips) : map.boxes;
+    return map.solids;
 }
 
 function overlaps(p, h, b) {
@@ -182,6 +284,7 @@ export function createWorld(map, weapons, rules = {}) {
     return {
         map, weapons,
         boxes: map.boxes,
+        solids: solidsOf(map),
         rules: { mode: 'tdm', rounds: 6, respawn: 3, killLimit: 0, timeLimit: 0, infiniteAmmo: false, ...rules },
         players: [],
         att: 't',                       // bomb mode: the squad (team) attacking right now
@@ -234,7 +337,7 @@ function respawn(world, p, spot = null) {
     if (!best && isBR(world)) {
         // Drop in from the sky over the open-air waypoint farthest from everyone else.
         const others = world.players.filter((e) => e.alive && e !== p);
-        const covered = (s) => world.boxes.some((b) => b[1] > 1 && s[0] > b[0] && s[0] < b[3] && s[1] > b[2] && s[1] < b[5]);
+        const covered = (s) => world.boxes.some((b) => b[1] > (s[2] ?? 0) + 1 && s[0] > b[0] && s[0] < b[3] && s[1] > b[2] && s[1] < b[5]);
         let pt = null, bestD = -1;
         for (const s of shuffled(world.map.waypoints)) {
             if (covered(s)) continue;
@@ -243,7 +346,7 @@ function respawn(world, p, spot = null) {
             if (d > bestD) { bestD = d; pt = s; }
         }
         best = [pt[0], pt[1], Math.random() * Math.PI * 2];
-        y = groundAt(world.boxes, pt[0], pt[1]) + BR.drop;
+        y = (pt[2] ?? groundAt(world.boxes, pt[0], pt[1])) + BR.drop;
     } else if (!best) {
         const enemies = world.players.filter((e) => e.alive && e.team !== p.team);
         const mates = world.players.filter((e) => e.alive && e !== p);
@@ -260,7 +363,7 @@ function respawn(world, p, spot = null) {
     }
     const keep = isBomb(world) && p.keepInv && p.inv;
     const money = p.money, act = 0;
-    Object.assign(p, createPlayer(best[0], best[1], best[2], y), {
+    Object.assign(p, createPlayer(best[0], best[1], best[2], best[3] ?? y), {    // spawns: [x, z, yaw, y?]
         hp: 100, alive: true,
         invulnUntil: isBomb(world) ? 0 : world.time + (isBR(world) ? BR.shield : SPAWN_SHIELD),
         inv: keep || p.loadout.map((id) => ({ id, mag: world.weapons[id].mag, reserve: world.weapons[id].reserve })),
@@ -287,7 +390,7 @@ export function stepWorld(world, inputs) {
         if (inp.yaw !== undefined) p.yaw = inp.yaw;
         if (inp.pitch !== undefined) p.pitch = Math.max(-1.55, Math.min(1.55, inp.pitch));
         p.aim = !!inp.aim;
-        stepPlayer(p, inp, world.boxes);
+        stepPlayer(p, inp, world.solids);
         if (p.y < -30) { killPlayer(world, p, null, 'fall', false); continue; }
         updateWeapon(world, p, inp);
         if (isBomb(world) && world.round) bombActions(world, p, raw);
@@ -481,14 +584,15 @@ export const ZONE = [[20, 15, 0.52, 2], [15, 12, 0.29, 4], [12, 10, 0.15, 7], [1
 // Highest walkable surface (top at most 1.5 m) under a point.
 export function groundAt(boxes, x, z) {
     let y = 0;
-    for (const b of boxes) {
+    for (const b of near(boxes, x, z, x, z)) {
         if (x > b[0] && x < b[3] && z > b[2] && z < b[5] && b[4] <= 1.5) y = Math.max(y, b[4]);
     }
     return y;
 }
 
-// Floor extent [x0, z0, x1, z1]: every box whose top sits at ground level.
+// Floor extent [x0, z0, x1, z1]: map.bounds, else every box whose top sits at ground level.
 function mapBounds(map) {
+    if (map.bounds) return map.bounds;
     const b = [Infinity, Infinity, -Infinity, -Infinity];
     for (const f of map.boxes) {
         if (Math.abs(f[4]) > 0.01) continue;
@@ -691,7 +795,7 @@ export function startRound(world, fresh = false) {
     world.bomb = { state: c ? 'carried' : 'dropped', carrier: c ? c.id : 0, x: 0, y: 0, z: 0, site: '', fuseAt: 0 };
     if (!c) {
         const s = world.map.spawns.t[0];
-        Object.assign(world.bomb, { x: s[0], y: 0, z: s[1] });
+        Object.assign(world.bomb, { x: s[0], y: s[3] ?? 0, z: s[1] });
     }
     world.events.push({ t: 'round', phase: 'buy', n, att: world.att, sc: [world.score.t, world.score.ct], half: fresh && n > 1 });
 }
@@ -771,10 +875,8 @@ function stepRound(world) {
 // Nearest hit along a ray: map boxes and every living player except `skip`.
 export function castRay(world, o, d, max, skip) {
     let best = { t: max, player: null, head: false, wall: false };
-    for (const b of world.boxes) {
-        const t = rayBox(o, d, b, best.t);
-        if (t < best.t) best = { t, player: null, head: false, wall: true };
-    }
+    const tw = rayBoxes(world.boxes, o, d, max);
+    if (tw < max) best = { t: tw, player: null, head: false, wall: true };
     for (const p of world.players) {
         if (p === skip || !p.alive) continue;
         const h = playerHeight(p), s = HITBOX.head, top = p.y + h;
@@ -794,8 +896,7 @@ export function clearLine(boxes, a, b) {
     const len = Math.hypot(d[0], d[1], d[2]);
     if (len < 1e-6) return true;
     for (let k = 0; k < 3; k++) d[k] /= len;
-    for (const box of boxes) if (rayBox(a, d, box, len) < len) return false;
-    return true;
+    return rayBoxes(boxes, a, d, len, true) === Infinity;
 }
 
 // Slab test. Returns the entry distance, or Infinity when the ray misses within max.

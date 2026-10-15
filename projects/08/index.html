@@ -371,6 +371,10 @@
         #money { left: max(14px, env(safe-area-inset-left)); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 64px); color: #1d7a2a; }
         body.touch #money { bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 100px); left: max(10px, env(safe-area-inset-left)); font-size: 18px; }
         #bombTag { top: calc(max(10px, env(safe-area-inset-top)) + 34px); left: 50%; transform: translateX(-50%); white-space: nowrap; }
+        #areaTag { top: max(10px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); white-space: nowrap; font-size: 11px; opacity: 0.85; }
+        body.touch #areaTag { top: calc(max(10px, env(safe-area-inset-top)) + 62px); left: 50%; transform: translateX(-50%); }
+        .credit { margin-top: 10px; font-size: 12px; line-height: 1.4; letter-spacing: 0.3px; color: #555; }
+        .credit a { color: inherit; }
         #bombTag.hot { background: var(--r); color: #fff; }
         body.touch #bombTag { top: calc(max(10px, env(safe-area-inset-top)) + 32px); }
         #actbar {
@@ -517,6 +521,7 @@
         <div id="board" hidden></div>
         <div id="money" class="big" hidden>$0</div>
         <div id="bombTag" class="tag" hidden></div>
+        <div id="areaTag" class="tag" hidden></div>
         <div id="actbar" hidden><span id="actLabel"></span><i></i></div>
         <div id="banner" class="big" hidden></div>
         <div id="lockHint" class="tag" hidden>Click to capture the mouse</div>
@@ -587,8 +592,10 @@
                 <div class="seg" role="radiogroup" aria-label="Map">
                     <label><input type="radio" name="fmap" value="yard"><span>Yard</span></label>
                     <label><input type="radio" name="fmap" value="dust"><span>Dust</span></label>
+                    <label><input type="radio" name="fmap" value="dust2"><span>Dust II</span></label>
                 </div>
             </div>
+            <p id="fCredit" class="credit" hidden></p>
             <button id="playFree" class="btn" type="button">Start</button>
             <button class="btn alt" type="button" data-back>Back</button>
         </div>
@@ -600,6 +607,7 @@
             <button id="resume" class="btn" type="button">Resume</button>
             <button class="btn alt" type="button" data-open="settings">Settings</button>
             <button id="quit" class="btn alt" type="button">Quit to menu</button>
+            <p id="pCredit" class="credit" hidden></p>
         </div>
     </section>
 
@@ -636,12 +644,14 @@
                 <div><h3 class="t">Red</h3><div id="lRed"></div></div>
                 <div><h3 class="ct">Blue</h3><div id="lBlue"></div></div>
             </div>
+            <p id="lCredit" class="credit" hidden></p>
             <div id="lHost">
                 <label class="row">Your name <input id="lName" class="txt" maxlength="14" autocomplete="off" spellcheck="false"></label>
                 <div class="row">Map
                     <div class="seg" role="radiogroup" aria-label="Map">
                         <label><input type="radio" name="lmap" value="yard"><span>Yard</span></label>
                         <label><input type="radio" name="lmap" value="dust"><span>Dust</span></label>
+                        <label><input type="radio" name="lmap" value="dust2"><span>Dust II</span></label>
                     </div>
                 </div>
                 <div class="row">Mode

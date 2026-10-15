@@ -4,6 +4,7 @@ import * as THREE from './three.module.min.js';
 import {
     TICK, PLAYER, BOMB, createWorld, addPlayer, removePlayer, stepWorld, stepPlayer, playerHeight, spreadOf,
     startRound, buyItem, effectiveInput, actKind, isBomb, isBR, startBR, canAim, outsideZone, LOOT_KINDS, ZONE, BR,
+    solidsOf, clearLine,
 } from './sim.js';
 import { buildGraph, createBrain, botInput, BOT_NAMES } from './bots.js';
 import { createPlayerModel, updatePlayerModel, createViewModel, createEffects, createLootModel } from './models.js';
@@ -32,10 +33,13 @@ function saveSettings() {
 }
 
 const fetchJson = async (url) => (await fetch(url)).json();
-const MAP_FILES = { yard: 'map.json', dust: 'map2.json' };
+const MAP_FILES = { yard: 'map.json', dust: 'map2.json', dust2: 'map3.json' };
 const [weapons, ...mapList] = await Promise.all([fetchJson('weapons.json'), ...Object.values(MAP_FILES).map(fetchJson)]);
 const MAPS = Object.fromEntries(Object.keys(MAP_FILES).map((id, i) => [id, mapList[i]]));
-for (const id in MAPS) MAPS[id].graph = buildGraph(MAPS[id]);
+for (const id in MAPS) {
+    MAPS[id].graph = buildGraph(MAPS[id]);
+    for (const list of [MAPS[id].boxes, solidsOf(MAPS[id])]) clearLine(list, [0, 1, 0], [1, 1, 1]);   // builds the box grids now, not on the first tick
+}
 let map = MAPS.yard, graph = map.graph;
 if (!settings.name) { settings.name = 'Player' + (100 + Math.floor(Math.random() * 900)); saveSettings(); }
 const WEAPON_IDS = Object.keys(weapons);
@@ -189,8 +193,30 @@ function siteDecal(letter, r, color) {
         new THREE.PlaneGeometry(r[2] - r[0], r[3] - r[1]).rotateX(-Math.PI / 2),
         new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, fog: true, ...decalOffset }),
     );
-    mesh.position.set((r[0] + r[2]) / 2, map.style === 'cs' ? 0.05 : 0.02, (r[1] + r[3]) / 2);   // CS maps: above the cobblestone
+    // CS maps: above the cobblestone. Model maps give the site's floor height as r[4].
+    mesh.position.set((r[0] + r[2]) / 2, r[4] !== undefined ? r[4] + 0.03 : map.style === 'cs' ? 0.05 : 0.02, (r[1] + r[3]) / 2);
     return mesh;
+}
+
+// Big site letter floating over a model map's bombsite, seen from across the map.
+function siteSign(letter, r, color) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d');
+    g.font = '700 110px Oswald, Arial Narrow, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.lineWidth = 10;
+    g.strokeStyle = '#111';
+    g.strokeText(letter, 64, 70);
+    g.fillStyle = color;
+    g.fillText(letter, 64, 70);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, fog: false }));
+    sprite.scale.setScalar(2.2);
+    sprite.position.set((r[0] + r[2]) / 2, (r[4] || 0) + 4.5, (r[1] + r[3]) / 2);
+    return sprite;
 }
 
 const decalOffset = { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 };
@@ -334,7 +360,92 @@ function buildDeco(deco = []) {
     return { extras, boxes };
 }
 
+// ---------- model maps (map.model: a .glb drawn as is; map.boxes stay invisible) ----------
+// Small GLB reader: triangle meshes with an optional base colour texture, which is all a map needs.
+const mapModels = new Map();     // src -> Promise<THREE.Group>, kept across map switches
+
+function loadMapModel(src) {
+    if (!mapModels.has(src)) mapModels.set(src, fetch(src).then((r) => r.arrayBuffer()).then(parseGlb));
+    return mapModels.get(src);
+}
+
+async function parseGlb(buf) {
+    const dv = new DataView(buf), jsonLen = dv.getUint32(12, true);
+    const json = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 20, jsonLen)));
+    const bin = 20 + jsonLen + 8;
+    const TYPES = { 5126: Float32Array, 5125: Uint32Array, 5123: Uint16Array, 5121: Uint8Array };
+    const SIZE = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 };
+    const accessor = (i) => {
+        const a = json.accessors[i], v = json.bufferViews[a.bufferView], T = TYPES[a.componentType], n = SIZE[a.type];
+        const start = bin + (v.byteOffset || 0) + (a.byteOffset || 0), size = T.BYTES_PER_ELEMENT;
+        if (!v.byteStride || v.byteStride === n * size) return new THREE.BufferAttribute(new T(buf.slice(start, start + a.count * n * size)), n);
+        const out = new T(a.count * n), bytes = new Uint8Array(buf), dst = new Uint8Array(out.buffer);
+        for (let k = 0; k < a.count; k++) dst.set(bytes.subarray(start + k * v.byteStride, start + k * v.byteStride + n * size), k * n * size);
+        return new THREE.BufferAttribute(out, n);
+    };
+    const textures = await Promise.all((json.textures || []).map(async (t) => {
+        const im = json.images[t.source], v = json.bufferViews[im.bufferView];
+        const blob = new Blob([new Uint8Array(buf, bin + (v.byteOffset || 0), v.byteLength)], { type: im.mimeType });
+        const tex = new THREE.Texture(await createImageBitmap(blob));
+        tex.flipY = false;                   // glTF UVs start at the top
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+        tex.needsUpdate = true;
+        return tex;
+    }));
+    const materials = (json.materials || []).map((m) => {
+        const ti = m.pbrMetallicRoughness?.baseColorTexture?.index;
+        return new THREE.MeshLambertMaterial({ map: ti !== undefined ? textures[ti] : null, side: m.doubleSided ? THREE.DoubleSide : THREE.FrontSide });
+    });
+    const node = (i) => {
+        const n = json.nodes[i], o = new THREE.Group();
+        if (n.matrix) o.applyMatrix4(new THREE.Matrix4().fromArray(n.matrix));
+        if (n.translation) o.position.fromArray(n.translation);
+        if (n.rotation) o.quaternion.fromArray(n.rotation);
+        if (n.scale) o.scale.fromArray(n.scale);
+        if (n.mesh !== undefined) {
+            for (const p of json.meshes[n.mesh].primitives) {
+                if ((p.mode ?? 4) !== 4) continue;
+                const g = new THREE.BufferGeometry();
+                g.setAttribute('position', accessor(p.attributes.POSITION));
+                if (p.attributes.NORMAL !== undefined) g.setAttribute('normal', accessor(p.attributes.NORMAL));
+                else g.computeVertexNormals();
+                if (p.attributes.TEXCOORD_0 !== undefined) g.setAttribute('uv', accessor(p.attributes.TEXCOORD_0));
+                if (p.indices !== undefined) g.setIndex(accessor(p.indices));
+                o.add(new THREE.Mesh(g, materials[p.material] || new THREE.MeshLambertMaterial({ color: 0xc8a878 })));
+            }
+        }
+        for (const c of n.children || []) o.add(node(c));
+        return o;
+    };
+    const root = new THREE.Group();
+    for (const i of json.scenes[json.scene || 0].nodes) root.add(node(i));
+    return root;
+}
+
+function buildModelMap() {
+    const m = map, spec = m.model;
+    // The model has its own painted bombsite marks; a floating letter shows where each site is.
+    for (const [k, color] of [['A', m.palette.red], ['B', m.palette.blue]]) mapGroup.add(siteSign(k, m.sites[k], color));
+    loadMapModel(spec.src).then((model) => {
+        if (map !== m) return;          // switched maps while it loaded
+        const holder = new THREE.Group();
+        holder.userData.keep = true;    // cached model: never disposed
+        holder.scale.setScalar(spec.scale);
+        holder.position.fromArray(spec.offset);
+        holder.add(model);
+        holder.updateMatrixWorld(true);
+        holder.traverse((o) => { o.matrixAutoUpdate = false; });
+        mapGroup.add(holder);
+    }).catch((err) => console.error('map model failed to load', spec.src, err));
+}
+
 function buildMap() {
+    if (map.style === 'model') {
+        buildModelMap();
+        return;
+    }
     if (map.style === 'cs') {
         const deco = buildDeco(map.deco);
         buildTexturedMap(map.boxes.concat(deco.boxes), deco.extras);
@@ -407,10 +518,42 @@ function useMap(id) {
     [scene.fog.near, scene.fog.far] = map.fog || [45, 150];
     for (const o of mapGroup.children.slice()) {
         mapGroup.remove(o);
+        if (o.userData.keep) continue;
         o.traverse((n) => { if (n.geometry) n.geometry.dispose(); if (n.material) { if (n.material.map && !n.material.map.userData.shared) n.material.map.dispose(); n.material.dispose(); } });
     }
     buildMap();
     if (!map.sky) buildBackdrop();
+    const pc = $('pCredit');
+    pc.innerHTML = creditHtml(map);
+    pc.hidden = !pc.innerHTML;
+}
+
+// Credit line for maps made from someone else's model (map.credit), shown where the map is picked.
+function creditHtml(m) {
+    const c = m && m.credit;
+    if (!c) return '';
+    return `Map: "${escapeHtml(c.title)}" by <a href="${c.url}" target="_blank" rel="noopener">${escapeHtml(c.author)}</a>, `
+        + `<a href="${c.licenseUrl}" target="_blank" rel="noopener">${escapeHtml(c.license)}</a>. Scaled, with collision and callouts added.`;
+}
+
+// Under the map pickers (Free Area and the lobby). Not called before the lobby state exists.
+function showMapCredits() {
+    const set = (id, m) => {
+        const el = $(id);
+        el.innerHTML = creditHtml(m);
+        el.hidden = !el.innerHTML;
+    };
+    set('fCredit', MAPS[settings.map]);
+    set('lCredit', MAPS[role === 'host' || !lobby.s || !lobby.s.m ? settings.hostMap : lobby.s.m]);
+}
+
+// Callout under the player's feet, from map.areas ({ name, r: [x0, z0, x1, z1], y?: [min, max] }). First match wins.
+function areaAt(x, y, z) {
+    for (const a of map.areas || []) {
+        const r = a.r;
+        if (x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3] && (!a.y || (y >= a.y[0] && y <= a.y[1]))) return a.name;
+    }
+    return '';
 }
 
 const skies = new Map();
@@ -1076,7 +1219,7 @@ function notice(title, text) {
 }
 
 function lobbySettings() {
-    return { k: settings.hostKills, tm: settings.hostTime, bots: settings.fillBots, d: settings.hostDiff, mode: settings.hostMode, rounds: settings.hostRounds };
+    return { k: settings.hostKills, tm: settings.hostTime, bots: settings.fillBots, d: settings.hostDiff, mode: settings.hostMode, rounds: settings.hostRounds, m: settings.hostMap };
 }
 
 function renderLobby() {
@@ -1104,12 +1247,14 @@ function renderLobby() {
     $('lTimeRow').hidden = !tdmPick;
     $('lStart').hidden = !host;
     $('lTeam').hidden = (host ? settings.hostMode : s.mode) === 'br';
+    const on = s.m && MAPS[s.m] ? `${MAPS[s.m].name} · ` : '';
     $('lInfo').textContent = host
         ? 'Share the room code. Friends use Join game.'
         : !s.k ? 'Connected. Waiting for the host...'
-        : s.mode === 'bomb' ? `Bomb mode, first to ${s.rounds} rounds · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`
-        : s.mode === 'br' ? `Battle royale, last one standing · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`
-        : `First to ${s.k} kills or ${Math.round(s.tm / 60)} min · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`;
+        : s.mode === 'bomb' ? `${on}Bomb mode, first to ${s.rounds} rounds · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`
+        : s.mode === 'br' ? `${on}Battle royale, last one standing · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`
+        : `${on}First to ${s.k} kills or ${Math.round(s.tm / 60)} min · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`;
+    showMapCredits();
 }
 
 function pushLobby() {
@@ -1539,7 +1684,7 @@ function onSnapshot(s) {
     for (const c of pending) {
         me.yaw = c.yaw;
         me.pitch = c.pitch;
-        stepPlayer(me, effectiveInput(world, me, c), map.boxes);
+        stepPlayer(me, effectiveInput(world, me, c), solidsOf(map));
     }
 }
 
@@ -1551,7 +1696,7 @@ function clientTick() {
         me.pitch = cmd.pitch;
         const eff = effectiveInput(world, me, cmd);
         me.aim = !!eff.aim;
-        stepPlayer(me, eff, map.boxes);
+        stepPlayer(me, eff, solidsOf(map));
     }
     world.time += TICK;
     jumpQueued = reloadQueued = false;
@@ -1824,8 +1969,10 @@ for (const r of document.querySelectorAll('input[name="diff"]')) {
 }
 for (const r of document.querySelectorAll('input[name="fmap"]')) {
     r.checked = r.value === settings.map;
-    r.addEventListener('change', () => { settings.map = r.value; saveSettings(); useMap(r.value); });
+    r.addEventListener('change', () => { settings.map = r.value; saveSettings(); useMap(r.value); showMapCredits(); });
 }
+for (const r of document.querySelectorAll('input[name="lmap"]')) r.addEventListener('change', showMapCredits);
+showMapCredits();
 applyTouchSize();
 applyTouchLayout();
 $('stats').hidden = !settings.fps;
@@ -1839,7 +1986,7 @@ const portrait = matchMedia('(orientation: portrait) and (pointer: coarse)');
 const hud = {
     hp: $('hp'), ammo: $('ammo'), dead: $('dead'), board: $('board'), mode: $('modeTag'),
     cross: $('crosshair'), vignette: $('vignette'),
-    money: $('money'), bomb: $('bombTag'), act: $('actbar'), scope: $('scope'),
+    money: $('money'), bomb: $('bombTag'), act: $('actbar'), scope: $('scope'), area: $('areaTag'),
 };
 const mmss = (v) => `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, '0')}`;
 const hitmarkEl = $('hitmark');
@@ -1891,6 +2038,10 @@ function updateHud(dt) {
     if (bannerT > 0 && (bannerT -= dt) <= 0) $('banner').hidden = true;
     if (buyOpen) { if (canBuy()) updateBuy(); else closeBuy(); }
     $('lockHint').hidden = touchMode || isLocked() || state !== 'play';
+
+    const place = me.alive ? areaAt(me.x, me.y, me.z) : '';
+    hud.area.hidden = !place;
+    if (place) setText('area', hud.area, escapeHtml(place));
 
     hud.dead.hidden = me.alive;
     if (!me.alive) {
@@ -2017,6 +2168,26 @@ setInterval(() => {
     advance(dt);
 }, 100);
 
+// Steps and ramps (ramps are fine stairs in the collision boxes) move a grounded player up or down
+// in one tick. Like CS, the view and body absorb that jump and ease to the real height, so walking
+// a slope looks smooth. Display only: the sim keeps the exact height.
+const steps = new Map();     // player id -> { frame, y (raw), out (shown), off, ground }
+function stepSmooth(p, y, dt) {
+    let s = steps.get(p.id);
+    if (s && s.frame === frameNo) return s.out;
+    if (!s || !p.alive) {
+        s = { frame: frameNo, y, out: y, off: 0, ground: p.onGround };
+        steps.set(p.id, s);
+        return y;
+    }
+    const dy = y - s.y;
+    if (p.onGround && s.ground && Math.abs(dy) > 1e-4 && Math.abs(dy) < 0.6) s.off -= dy;
+    s.off = Math.max(-0.6, Math.min(0.6, s.off)) * Math.exp(-dt * 12);
+    if (Math.abs(s.off) < 1e-3) s.off = 0;
+    Object.assign(s, { frame: frameNo, y, out: y + s.off, ground: p.onGround });
+    return s.out;
+}
+
 function frame(now) {
     requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, role === 'host' ? 1 : 0.1);
@@ -2029,7 +2200,7 @@ function frame(now) {
     const a = acc / TICK;
     const lerp = (p) => {
         const q = prevPos.get(p.id) || p;
-        return [q.x + (p.x - q.x) * a, q.y + (p.y - q.y) * a, q.z + (p.z - q.z) * a];
+        return [q.x + (p.x - q.x) * a, stepSmooth(p, q.y + (p.y - q.y) * a, live ? dt : 0), q.z + (p.z - q.z) * a];
     };
 
     if (me) {

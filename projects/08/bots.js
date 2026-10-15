@@ -13,9 +13,17 @@ export const BOT_NAMES = ['Pixel', 'Crate', 'Vertex', 'Bolt', 'Ink', 'Moss', 'Ri
 
 // ---------- waypoint graph ----------
 // Waypoints are [x, z] or [x, z, y] in map.json. Without y, height comes from the floor under them, and
-// two points are linked when a player-sized line between them is clear.
+// two points are linked when a player-sized line between them is clear. Maps built by a tool
+// can list the links instead ([a, b] waypoint indices), already checked for floor and headroom.
 export function buildGraph(map) {
     const nodes = map.waypoints.map(([x, z, y], i) => ({ i, x, z, y: y ?? groundY(map.boxes, x, z), links: [] }));
+    if (map.links) {
+        for (const [a, b] of map.links) {
+            nodes[a].links.push(nodes[b]);
+            nodes[b].links.push(nodes[a]);
+        }
+        return nodes;
+    }
     for (let a = 0; a < nodes.length; a++) {
         for (let b = a + 1; b < nodes.length; b++) {
             const A = nodes[a], B = nodes[b];
@@ -49,8 +57,16 @@ function walkable(boxes, A, B) {
     return true;
 }
 
+// y = null: the height is unknown, so take the nearest node across.
 function nearestNode(graph, boxes, x, y, z) {
     let best = null, bestD = Infinity;
+    if (y == null) {
+        for (const n of graph) {
+            const d = Math.hypot(n.x - x, n.z - z);
+            if (d < bestD) { bestD = d; best = n; }
+        }
+        return best;
+    }
     for (const n of graph) {
         const d = Math.hypot(n.x - x, (n.y - y) * 3, n.z - z);
         if (d < bestD && clearLine(boxes, [x, y + 1, z], [n.x, n.y + 1, n.z])) { bestD = d; best = n; }
@@ -309,11 +325,11 @@ function plan(world, p, brain, graph) {
     } else if (world.zone) {
         const g = brGoal(world, p, brain);
         brain.goalPos = g;
-        goal = nearestNode(graph, world.boxes, g[0], 0, g[1]);
+        goal = nearestNode(graph, world.boxes, g[0], g[2] ?? flatY(world), g[1]);
     } else if (isBomb(world) && world.bomb && world.round) {
         const g = bombGoal(world, p);
         brain.goalPos = g;
-        goal = nearestNode(graph, world.boxes, g[0], 0, g[1]);
+        goal = nearestNode(graph, world.boxes, g[0], g[2] ?? flatY(world), g[1]);
     } else {
         // Wander, leaning toward the enemy's side of the map.
         const enemyTeam = p.team === 't' ? 'ct' : 't';
@@ -324,23 +340,26 @@ function plan(world, p, brain, graph) {
     brain.path = start && goal ? findPath(start, goal) : [];
 }
 
+// Goal height when a goal has none: 0 on flat maps, unknown (null) on maps with floor heights.
+const flatY = (world) => (world.map.links ? null : 0);
+
 // Where a bomb-mode bot wants to be: attackers take the bomb to the chosen site and guard it,
 // defenders hold a site and rush the bomb once it is planted.
 function bombGoal(world, p) {
     const b = world.bomb, sites = world.map.sites;
     const inSite = (k) => {
         const r = sites[k], m = 2;
-        return [r[0] + m + Math.random() * (r[2] - r[0] - m * 2), r[1] + m + Math.random() * (r[3] - r[1] - m * 2)];
+        return [r[0] + m + Math.random() * (r[2] - r[0] - m * 2), r[1] + m + Math.random() * (r[3] - r[1] - m * 2), r[4]];
     };
     if (p.team === world.att) {
-        if (b.state === 'dropped') return [b.x, b.z];
+        if (b.state === 'dropped') return [b.x, b.z, b.y];
         if (b.state === 'planted') {
             const a = Math.random() * Math.PI * 2, r = 3 + Math.random() * 5;
             return [b.x + Math.cos(a) * r, b.z + Math.sin(a) * r];
         }
         return inSite(world.plan.site);
     }
-    if (b.state === 'planted') return [b.x, b.z];
+    if (b.state === 'planted') return [b.x, b.z, b.y];
     return inSite(p.id % 2 ? 'A' : 'B');
 }
 
@@ -382,7 +401,7 @@ function brGoal(world, p, brain) {
         if (d < bestD) { bestD = d; best = l; }
     }
     brain.lootId = best ? best.id : -1;
-    if (best) return [best.x, best.z];
+    if (best) return [best.x, best.z, best.y];
     const spots = world.map.waypoints.filter(([x, z]) => safe(x, z));
     return spots.length ? spots[Math.floor(Math.random() * spots.length)] : [cx, cz];
 }
