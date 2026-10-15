@@ -373,7 +373,10 @@
         #money { left: max(14px, env(safe-area-inset-left)); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 64px); color: #1d7a2a; }
         body.touch #money { bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 100px); left: max(10px, env(safe-area-inset-left)); font-size: 18px; }
         #bombTag { top: calc(max(10px, env(safe-area-inset-top)) + 34px); left: 50%; transform: translateX(-50%); white-space: nowrap; }
-        #areaTag { top: max(10px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); white-space: nowrap; font-size: 11px; opacity: 0.85; }
+        #radar { position: absolute; top: max(10px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); width: 184px; height: 184px; }
+        body.touch #radar { left: auto; top: calc(max(10px, env(safe-area-inset-top)) + 96px); right: max(10px, env(safe-area-inset-right)); width: 108px; height: 108px; }
+        body.touch #feed { top: calc(max(10px, env(safe-area-inset-top)) + 214px); }
+        #areaTag { top: calc(max(10px, env(safe-area-inset-top)) + 192px); left: max(14px, env(safe-area-inset-left)); width: 184px; box-sizing: border-box; text-align: center; white-space: nowrap; font-size: 11px; opacity: 0.85; }
         body.touch #areaTag { top: calc(max(10px, env(safe-area-inset-top)) + 62px); left: 50%; transform: translateX(-50%); }
         .credit { margin-top: 10px; font-size: 12px; line-height: 1.4; letter-spacing: 0.3px; color: #555; }
         .credit a { color: inherit; }
@@ -524,6 +527,7 @@
         <div id="money" class="big" hidden>$0</div>
         <div id="bombTag" class="tag" hidden></div>
         <div id="areaTag" class="tag" hidden></div>
+        <canvas id="radar"></canvas>
         <div id="actbar" hidden><span id="actLabel"></span><i></i></div>
         <div id="banner" class="big" hidden></div>
         <div id="lockHint" class="tag" hidden>Click to capture the mouse</div>
@@ -620,6 +624,7 @@
             <label class="row">Touch sens <input id="sTouch" type="range" min="0.2" max="3" step="0.05"><output for="sTouch"></output></label>
             <button id="sTouchEdit" class="btn alt" type="button">Customize touch controls <small>drag &amp; resize</small></button>
             <label class="row">Touch button size <input id="sSize" type="range" min="0.7" max="1.5" step="0.05"><output for="sSize"></output></label>
+            <label class="row">Volume <input id="sVolume" type="range" min="0" max="1" step="0.05"><output for="sVolume"></output></label>
             <label class="row">Low quality <input id="sLow" type="checkbox"></label>
             <label class="row">Show FPS <input id="sFps" type="checkbox"></label>
             <button id="settingsBack" class="btn" type="button">Back</button>

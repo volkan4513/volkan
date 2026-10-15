@@ -120,7 +120,9 @@ export function materialTextures(g) {
     });
 }
 
-export function writePng(path, w, h, rgb) {
+// rgb: w*h*3 bytes, or w*h*4 with alpha = true.
+export function writePng(path, w, h, rgb, alpha = false) {
+    const ch = alpha ? 4 : 3;
     const crcT = new Int32Array(256).map((_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c; });
     const crc = (b) => { let c = -1; for (const x of b) c = crcT[(c ^ x) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; };
     const chunk = (type, data) => {
@@ -129,9 +131,9 @@ export function writePng(path, w, h, rgb) {
         c.writeUInt32BE(crc(td));
         return Buffer.concat([len, td, c]);
     };
-    const raw = Buffer.alloc((w * 3 + 1) * h);
-    for (let y = 0; y < h; y++) Buffer.from(rgb.buffer, rgb.byteOffset + y * w * 3, w * 3).copy(raw, y * (w * 3 + 1) + 1);
+    const raw = Buffer.alloc((w * ch + 1) * h);
+    for (let y = 0; y < h; y++) Buffer.from(rgb.buffer, rgb.byteOffset + y * w * ch, w * ch).copy(raw, y * (w * ch + 1) + 1);
     const ihdr = Buffer.alloc(13);
-    ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
-    fs.writeFileSync(path, Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]));
+    ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = alpha ? 6 : 2;
+    fs.writeFileSync(path, Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]));
 }

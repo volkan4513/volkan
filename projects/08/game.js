@@ -4,10 +4,12 @@ import * as THREE from './three.module.min.js';
 import {
     TICK, PLAYER, BOMB, createWorld, addPlayer, removePlayer, stepWorld, stepPlayer, playerHeight, spreadOf,
     startRound, buyItem, effectiveInput, actKind, isBomb, isBR, startBR, canAim, outsideZone, LOOT_KINDS, ZONE, BR,
-    solidsOf, clearLine, castRay,
+    solidsOf, clearLine, castRay, MOVE,
 } from './sim.js';
 import { buildGraph, createBrain, botInput, BOT_NAMES } from './bots.js';
 import { createPlayerModel, updatePlayerModel, createViewModel, createEffects, createLootModel } from './models.js';
+import { createAudio } from './audio.js';
+import { createRadar } from './radar.js';
 import {
     hostRoom, joinRoom, cleanCode, quantiseInput, packInputs, InputQueue, Interp, FLAG, r2, r3, netStats, SIM_NET,
 } from './net.js';
@@ -19,7 +21,7 @@ const SETTINGS_KEY = 'lp-strike-settings';
 const settings = {
     mouseSens: 1, touchSens: 1, touchSize: 1, low: false, fps: false,
     enemies: 4, allies: 3, diff: 'normal', freeMode: 'tdm', brBots: 9,
-    touchLayout: null, touchAlpha: 1,       // touch editor: { id: { x, y, s } } as screen fractions, and button opacity
+    touchLayout: null, touchAlpha: 1, volume: 0.7,       // touch editor: { id: { x, y, s } } as screen fractions, and button opacity
     map: 'yard', hostMap: 'yard', name: '', hostKills: 20, hostTime: 600, fillBots: true, hostDiff: 'normal', hostMode: 'tdm', hostRounds: 6,
     ...loadSettings(),
 };
@@ -509,6 +511,8 @@ function buildBackdrop() {
 const mapGroup = new THREE.Group();
 scene.add(mapGroup);
 
+const radar = createRadar($('radar'));
+
 function useMap(id) {
     map = MAPS[id] || MAPS.yard;
     graph = map.graph;
@@ -523,6 +527,7 @@ function useMap(id) {
     }
     buildMap();
     if (!map.sky) buildBackdrop();
+    radar.setMap(map);
     const pc = $('pCredit');
     pc.innerHTML = creditHtml(map);
     pc.hidden = !pc.innerHTML;
@@ -569,6 +574,133 @@ function skyTexture(url) {
 useMap(settings.map);
 
 const fx = createEffects(scene);
+
+// ---------- sound ----------
+const sfx = createAudio();
+sfx.setVolume(settings.volume);
+// Browsers only allow audio after a gesture: any click, tap or key starts it.
+for (const ev of ['pointerdown', 'keydown']) addEventListener(ev, () => sfx.unlock(), true);
+
+// A world sound at a point, muffled when a wall is between it and the camera.
+function heard(x, y, z) {
+    const c = camera.position;
+    return { at: [x, y, z], muffled: !clearLine(world.boxes, [c.x, c.y, c.z], [x, y, z]) };
+}
+const heardFrom = (p) => heard(p.x, p.y + 1.4, p.z);
+const lastShot = new Map();     // player id -> time of their last shot (performance.now), for the radar
+
+function soundFor(e) {
+    if (e.t === 'shot') {
+        const p = byId(e.by);
+        if (!p) return;
+        lastShot.set(p.id, performance.now());
+        if (e.w) sfx.gun(e.w, p === me ? null : heardFrom(p));
+    } else if (e.t === 'hit') {
+        if (e.by === me.id && e.tgt !== me.id) sfx.hit(e.hs);
+        if (e.tgt === me.id) sfx.hurt();
+    } else if (e.t === 'kill') {
+        if (e.by === me.id && e.tgt !== me.id) sfx.kill();
+    } else if (e.t === 'reload') {
+        const p = byId(e.id);
+        const W = p && p.inv && p.inv[p.slot] && weapons[p.inv[p.slot].id];
+        if (p) sfx.reload(p === me ? null : heardFrom(p), W ? W.reload : 2);
+    } else if (e.t === 'plant') {
+        const p = byId(e.by);
+        if (p) sfx.plant(p === me ? null : heardFrom(p));
+    } else if (e.t === 'defuse') {
+        sfx.defuse();
+    } else if (e.t === 'explode') {
+        sfx.explode(heard(e.x, e.y + 0.5, e.z));
+    } else if (e.t === 'round') {
+        if (e.phase === 'live') sfx.ui('go');
+        else if (e.phase === 'end') sfx.ui(e.winner === me.team ? 'win' : 'lose');
+    } else if (e.t === 'over') {
+        sfx.ui((isBR(world) ? e.winner === me.id : e.winner === me.team) ? 'win' : 'lose');
+    } else if ((e.t === 'buy' && e.id === me.id) || (e.t === 'loot' && e.by === me.id)) {
+        sfx.ui(e.t === 'buy' ? 'buy' : 'pickup');
+    }
+}
+
+// Footsteps for anyone running on the ground (walking and crouching are silent, as in CS),
+// and a thud when landing from a real drop.
+const feet = new Map();     // player id -> { x, z, y, acc, air, peak }
+function stepSounds(dt) {
+    if (!dt) return;
+    const c = camera.position;
+    for (const p of world.players) {
+        let f = feet.get(p.id);
+        if (!f || !p.alive) {
+            feet.set(p.id, { x: p.x, z: p.z, y: p.y, acc: 0, air: false, peak: p.y });
+            continue;
+        }
+        const d = Math.hypot(p.x - f.x, p.z - f.z);
+        const near = Math.hypot(p.x - c.x, p.z - c.z) < 45;
+        if (p.onGround) {
+            if (f.air && f.peak - p.y > 0.8 && near) sfx.land(p === me ? null : heardFrom(p));
+            f.air = false;
+            if (d / dt > MOVE.walk + 0.4 && d < 1) {
+                f.acc += d;
+                if (f.acc > 2.1) {
+                    f.acc = 0;
+                    if (near) sfx.step(p === me ? null : heard(p.x, p.y + 0.1, p.z));
+                }
+            }
+        } else {
+            if (!f.air) f.peak = p.y;
+            f.air = true;
+            f.peak = Math.max(f.peak, p.y);
+        }
+        Object.assign(f, { x: p.x, z: p.z, y: p.y });
+    }
+}
+
+// ---------- radar ----------
+const TEAM_COLOR = { t: '#ff6050', ct: '#00a5ff' };
+const spotted = new Map();     // enemy id -> time last seen by your side
+let spotAt = 0;
+
+// Enemies show while you or a teammate can see them, and briefly after they fire nearby.
+function updateSpotted(now) {
+    if (now < spotAt) return;
+    spotAt = now + 200;
+    const br = isBR(world);
+    const eyes = world.players.filter((p) => p.alive && (p === me || (!br && p.team === me.team)));
+    for (const e of world.players) {
+        if (!e.alive || e === me || (!br && e.team === me.team)) continue;
+        const seen = eyes.some((s) => Math.hypot(s.x - e.x, s.z - e.z) < 70
+            && clearLine(world.boxes, [s.x, s.y + 1.6, s.z], [e.x, e.y + 1.2, e.z]));
+        const shot = now - (lastShot.get(e.id) || -1e9) < 700 && Math.hypot(e.x - camera.position.x, e.z - camera.position.z) < 30;
+        if (seen || shot) spotted.set(e.id, now);
+    }
+}
+
+function drawRadar(now) {
+    updateSpotted(now);
+    const br = isBR(world), dc = deathCam;
+    const watch = me.alive ? me : dc && dc.mode === 'spec' ? byId(dc.spec) : null;
+    const dir = new THREE.Vector3();
+    camera.getWorldDirection(dir);
+    const view = {
+        x: watch ? watch.x : camera.position.x, z: watch ? watch.z : camera.position.z, y: watch ? watch.y : me.y,
+        yaw: me.alive ? lookYaw : Math.atan2(-dir.x, -dir.z),
+        players: [], sites: [], bomb: null, zone: world.zone,
+    };
+    for (const p of world.players) {
+        if (!p.alive || p === watch) continue;
+        const mate = !br && p.team === me.team;
+        if (!mate && !(now - (spotted.get(p.id) || -1e9) < 1000)) continue;
+        view.players.push({ x: p.x, z: p.z, y: p.y, yaw: p.yaw, color: br ? '#ffd23f' : TEAM_COLOR[p.team] || '#fff' });
+    }
+    if (!br && map.sites) {
+        for (const [k, color] of [['A', map.palette.red], ['B', map.palette.blue]]) {
+            const r = map.sites[k];
+            if (r) view.sites.push({ name: k, x: (r[0] + r[2]) / 2, z: (r[1] + r[3]) / 2, color });
+        }
+    }
+    const b = world.bomb;
+    if (b && (b.state === 'planted' || (b.state === 'dropped' && me.team === world.att))) view.bomb = { x: b.x, z: b.z, planted: b.state === 'planted' };
+    radar.draw(view);
+}
 
 // Battle royale: the zone wall, a ring where it shrinks to next, and the loot on the floor.
 const zoneWall = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 60, 72, 1, true), new THREE.MeshBasicMaterial({
@@ -733,6 +865,7 @@ function drainEvents(send = true) {
 }
 
 function onEvent(e) {
+    soundFor(e);
     if (e.t === 'shot') {
         const p = byId(e.by);
         if (!p) return;
@@ -1963,6 +2096,7 @@ bindRange('sTouch', 'touchSens');
 bindRange('sSize', 'touchSize', applyTouchSize);
 bindCheck('sLow', 'low', applyQuality);
 bindCheck('sFps', 'fps', () => { $('stats').hidden = !settings.fps; });
+bindRange('sVolume', 'volume', () => sfx.setVolume(settings.volume));
 bindRange('fEnemies', 'enemies', null, 0);
 bindRange('fAllies', 'allies', null, 0);
 bindRange('fBrBots', 'brBots', null, 0);
@@ -2375,6 +2509,11 @@ function frame(now) {
 
         vm.update(live ? dt : 0, Math.hypot(me.vx, me.vz), me.onGround, reload, raise, aimK);
         updateHud(dt);
+        const look = new THREE.Vector3();
+        camera.getWorldDirection(look);
+        sfx.setListener(camera.position.x, camera.position.y, camera.position.z, Math.atan2(-look.x, -look.z), Math.asin(clamp(look.y, -1, 1)));
+        stepSounds(live ? dt : 0);
+        drawRadar(now);
     } else {
         setZoom(1);
         // Menu backdrop: slow orbit over the map.
@@ -2390,7 +2529,9 @@ function frame(now) {
         bombMesh.visible = true;
         bombMesh.position.set(bb.x, bb.y + 0.1, bb.z);
         const period = bb.state === 'planted' ? Math.max(0.15, (bb.fuseAt - world.time) / 40) : 1;
-        bombLight.visible = (now / 1000) % period < period * 0.5;
+        const on = (now / 1000) % period < period * 0.5;
+        if (on && !bombLight.visible && bb.state === 'planted' && live) sfx.beep(heard(bb.x, bb.y + 0.3, bb.z));
+        bombLight.visible = on;
     } else {
         bombMesh.visible = false;
     }

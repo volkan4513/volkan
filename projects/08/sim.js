@@ -487,7 +487,11 @@ function fire(world, p, W, weaponId, view) {
         const d = [-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch)];
         const res = castRay(world, o, d, W.range, p);
         const end = o.map((v, k) => round2(v + d[k] * res.t));
-        world.events.push({ t: 'shot', by: p.id, to: end, hit: res.player ? (sameSide(world, res.player, p) ? 'm' : 'p') : res.wall ? 'w' : '' });
+        // w (weapon) only on the first pellet: one gunshot sound per trigger pull.
+        world.events.push({
+            t: 'shot', by: p.id, to: end, hit: res.player ? (sameSide(world, res.player, p) ? 'm' : 'p') : res.wall ? 'w' : '',
+            ...(i === 0 ? { w: weaponId } : {}),
+        });
         if (res.player) {
             const h = hits.get(res.player) || { dmg: 0, hs: false };
             h.dmg += W.damage * (res.head ? W.headshot : 1);

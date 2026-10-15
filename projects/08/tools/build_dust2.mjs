@@ -333,6 +333,38 @@ const finalLinks = links.filter(([a, b]) => keep[a] && keep[b]).map(([a, b]) => 
 console.log('waypoints', wps.length, '-> kept', waypoints.length, 'links', finalLinks.length);
 
 // ---------- write ----------
+// ---------- radar image ----------
+// Every floor a player can walk to, shaded by height (higher is lighter), with dark edges along
+// walls and lighter-to-darker lines on ledges. Everything else is transparent.
+const RADAR_SRC = 'extra_map/dust2_radar.png';
+{
+    const W = NX, H = NZ, img = new Uint8Array(W * H * 4), top = new Float32Array(W * H).fill(NaN);
+    for (let k = 0; k < NZ; k++) for (let i = 0; i < NX; i++) {
+        floors[k * NX + i].forEach((f, n) => {
+            const c = k * NX + i;
+            if (walkSet.has(c * 64 + n) && !(top[c] >= f.y)) top[c] = f.y;
+        });
+    }
+    for (let k = 0; k < NZ; k++) for (let i = 0; i < NX; i++) {
+        const c = k * NX + i, y = top[c];
+        if (Number.isNaN(y)) continue;
+        const h = Math.min(1, Math.max(0, y / 9));
+        let col = [118 + 108 * h, 108 + 104 * h, 90 + 92 * h];
+        let edge = false, ledge = false;
+        for (const [di, dk] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const ni = i + di, nk = k + dk;
+            const ny = ni >= 0 && nk >= 0 && ni < NX && nk < NZ ? top[nk * NX + ni] : NaN;
+            if (Number.isNaN(ny)) edge = true;
+            else if (ny - y > STEP + 0.1) ledge = true;
+        }
+        if (edge) col = [34, 31, 27];
+        else if (ledge) col = col.map((v) => v * 0.62);
+        img.set([...col.map(Math.round), 235], c * 4);
+    }
+    writePng(path.join(ROOT, RADAR_SRC), W, H, img, true);
+    console.log('wrote', RADAR_SRC, (fs.statSync(path.join(ROOT, RADAR_SRC)).size / 1024).toFixed(0), 'KB');
+}
+
 const map = {
     name: META.name,
     style: 'model',
@@ -344,6 +376,7 @@ const map = {
     bounds: META.bounds,
     sites,
     areas: META.areas,
+    radar: { src: RADAR_SRC, bounds: [X0, Z0, r2(X0 + NX * RES), r2(Z0 + NZ * RES)] },
     spawns,
     waypoints,
     links: finalLinks,
