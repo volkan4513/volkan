@@ -1,0 +1,39 @@
+[remap]
+
+importer="texture"
+type="CompressedTexture2D"
+uid="uid://cqd2jeri67fbx"
+path.s3tc="res://.godot/imported/garage_2_Image_17.jpg-d09042db77aa35a90e2eba8fee4de22a.s3tc.ctex"
+path.etc2="res://.godot/imported/garage_2_Image_17.jpg-d09042db77aa35a90e2eba8fee4de22a.etc2.ctex"
+metadata={
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
+}
+generator_parameters={
+"md5": "7aa977441d7f77c99d4a88ef48851d0e"
+}
+
+[deps]
+
+source_file="res://BMW_M3_GTR_FILES/garage2/garage_2_Image_17.jpg"
+dest_files=["res://.godot/imported/garage_2_Image_17.jpg-d09042db77aa35a90e2eba8fee4de22a.s3tc.ctex", "res://.godot/imported/garage_2_Image_17.jpg-d09042db77aa35a90e2eba8fee4de22a.etc2.ctex"]
+
+[params]
+
+compress/mode=2
+compress/high_quality=false
+compress/lossy_quality=0.7
+compress/hdr_compression=1
+compress/normal_map=0
+compress/channel_pack=0
+mipmaps/generate=true
+mipmaps/limit=-1
+roughness/mode=0
+roughness/src_normal=""
+process/fix_alpha_border=true
+process/premult_alpha=false
+process/normal_map_invert_y=false
+process/hdr_as_srgb=false
+process/hdr_clamp_exposure=false
+process/size_limit=0
+detect_3d/compress_to=0
