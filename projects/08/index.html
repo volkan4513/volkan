@@ -236,6 +236,7 @@
         #feed div.me { background: rgba(17, 17, 17, 0.9); border-left-color: var(--r); }
         #feed .t { color: #ff8a7c; }
         #feed .ct { color: #6cc8ff; }
+        #feed b { color: var(--y); font-weight: 700; }
 
         #dead {
             bottom: calc(max(14px, env(safe-area-inset-bottom)) + 64px);
@@ -291,6 +292,27 @@
         body.touch #hint { display: none; }
 
         body.playing .site-home-btn { display: none !important; }
+        /* Sub-screens: the back arrow takes the top-left corner, the portfolio button moves right. */
+        body.sub .site-home-btn { left: auto !important; right: max(10px, env(safe-area-inset-right)) !important; }
+
+        #backBtn {
+            position: fixed;
+            z-index: 25;
+            top: max(10px, env(safe-area-inset-top));
+            left: max(10px, env(safe-area-inset-left));
+            width: 44px;
+            height: 40px;
+            padding: 0;
+            font: 700 24px/1 var(--font);
+            color: var(--ink);
+            background: var(--paper);
+            border: 3px solid var(--ink);
+            box-shadow: 3px 3px 0 var(--ink);
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        #backBtn:hover { background: var(--y); }
+        #backBtn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
 
         /* ---------- touch controls ---------- */
         #touch { position: fixed; inset: 0; z-index: 12; touch-action: none; }
@@ -350,8 +372,8 @@
         #tReload { right: calc(var(--R) + var(--u) * 1.35); bottom: calc(var(--B) + var(--u) * 1.05); width: calc(var(--u) * 0.7); height: calc(var(--u) * 0.7); font-size: 11px; }
         #tSwap { right: calc(var(--R) + var(--u) * 0.15); bottom: calc(var(--B) + var(--u) * 2.35); width: calc(var(--u) * 0.7); height: calc(var(--u) * 0.7); font-size: 11px; }
         #tPause, #tBoard { top: max(10px, env(safe-area-inset-top)); width: 44px; height: 44px; border-radius: 0; font-size: 16px; }
-        #tPause { left: max(10px, env(safe-area-inset-left)); }
-        #tBoard { left: calc(max(10px, env(safe-area-inset-left)) + 56px); font-size: 12px; }
+        #tPause { left: calc(max(10px, env(safe-area-inset-left)) + 56px); }
+        #tBoard { left: calc(max(10px, env(safe-area-inset-left)) + 112px); font-size: 12px; }
 
         .seg { display: flex; gap: 6px; }
         .seg label { position: relative; }
@@ -373,10 +395,10 @@
         #money { left: max(14px, env(safe-area-inset-left)); bottom: calc(max(14px, env(safe-area-inset-bottom)) + 64px); color: #1d7a2a; }
         body.touch #money { bottom: auto; top: calc(max(10px, env(safe-area-inset-top)) + 100px); left: max(10px, env(safe-area-inset-left)); font-size: 18px; }
         #bombTag { top: calc(max(10px, env(safe-area-inset-top)) + 34px); left: 50%; transform: translateX(-50%); white-space: nowrap; }
-        #radar { position: absolute; top: max(10px, env(safe-area-inset-top)); left: max(14px, env(safe-area-inset-left)); width: 184px; height: 184px; }
+        #radar { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 52px); left: max(14px, env(safe-area-inset-left)); width: 184px; height: 184px; }
         body.touch #radar { left: auto; top: calc(max(10px, env(safe-area-inset-top)) + 96px); right: max(10px, env(safe-area-inset-right)); width: 108px; height: 108px; }
         body.touch #feed { top: calc(max(10px, env(safe-area-inset-top)) + 214px); }
-        #areaTag { top: calc(max(10px, env(safe-area-inset-top)) + 192px); left: max(14px, env(safe-area-inset-left)); width: 184px; box-sizing: border-box; text-align: center; white-space: nowrap; font-size: 11px; opacity: 0.85; }
+        #areaTag { top: calc(max(10px, env(safe-area-inset-top)) + 244px); left: max(14px, env(safe-area-inset-left)); width: 184px; box-sizing: border-box; text-align: center; white-space: nowrap; font-size: 11px; opacity: 0.85; }
         body.touch #areaTag { top: calc(max(10px, env(safe-area-inset-top)) + 62px); left: 50%; transform: translateX(-50%); }
         .credit { margin-top: 10px; font-size: 12px; line-height: 1.4; letter-spacing: 0.3px; color: #555; }
         .credit a { color: inherit; }
@@ -564,6 +586,8 @@
         <p>B closes · buy phase only</p>
     </div>
 
+    <button id="backBtn" type="button" aria-label="Back" title="Back" hidden>&larr;</button>
+
     <section id="menu" class="screen">
         <div class="card">
             <h1>Low-Poly <span>Strike</span></h1>
@@ -608,10 +632,20 @@
         </div>
     </section>
 
+    <section id="over" class="screen" hidden>
+        <div class="card">
+            <h2 id="oTitle">Match over</h2>
+            <p id="oText" class="sub"></p>
+            <button id="oAgain" class="btn" type="button">Play again</button>
+            <button id="oMenu" class="btn alt" type="button">Menu</button>
+        </div>
+    </section>
+
     <section id="pause" class="screen" hidden>
         <div class="card">
             <h2>Paused</h2>
             <button id="resume" class="btn" type="button">Resume</button>
+            <button id="restart" class="btn alt" type="button">Restart</button>
             <button class="btn alt" type="button" data-open="settings">Settings</button>
             <button id="quit" class="btn alt" type="button">Quit to menu</button>
             <p id="pCredit" class="credit" hidden></p>

@@ -849,9 +849,9 @@ function tick() {
     drainEvents();
     if (role === 'host') hostAfterTick();
     else if (world.over && isBR(world)) {
-        // Free Area battle royale: show the result for a few seconds, then back to the menu.
-        if (!overAt) overAt = performance.now() + 8000;
-        else if (performance.now() >= overAt) { overAt = 0; quit(); }
+        // Free Area battle royale: show the result for a few seconds, then offer a rematch.
+        if (!overAt) overAt = performance.now() + 3000;
+        else if (performance.now() >= overAt) { overAt = 0; showOver(); }
     }
 }
 
@@ -976,6 +976,12 @@ function addFeed(e) {
     };
     if (by && by !== tgt) row.append(name(by), ` [${weapons[e.w] ? weapons[e.w].name : e.w}${e.hs ? ' HS' : ''}] `, name(tgt));
     else row.append(name(tgt), e.w === 'zone' ? ' was caught by the zone' : ' fell');
+    // Battle royale: e.pl is the place the dead player got, so one fewer is still standing.
+    if (isBR(world) && e.pl > 1) {
+        const left = document.createElement('b');
+        left.textContent = ` · ${e.pl - 1} left`;
+        row.append(left);
+    }
     feedEl.prepend(row);
     while (feedEl.children.length > 5) feedEl.lastChild.remove();
     setTimeout(() => row.remove(), 5000);
@@ -1946,12 +1952,30 @@ let state = 'menu';            // 'menu' | 'play' | 'pause'
 let settingsReturn = 'menu';
 const screens = {
     menu: $('menu'), freeSetup: $('freeSetup'), pause: $('pause'), settings: $('settings'),
-    joinScreen: $('joinScreen'), lobby: $('lobby'), notice: $('notice'),
+    joinScreen: $('joinScreen'), lobby: $('lobby'), notice: $('notice'), over: $('over'),
 };
+let current = 'menu';          // the screen on top, null while playing
 
 function show(name) {
+    current = name;
     for (const [k, el] of Object.entries(screens)) el.hidden = k !== name;
+    updateBack();
 }
+
+// Top-left arrow: one step back from any screen but the main menu, and out of a match while in one.
+const backBtn = $('backBtn');
+function updateBack() {
+    backBtn.hidden = current === 'menu' || editing;
+    document.body.classList.toggle('sub', current !== 'menu' && current !== null);
+}
+
+function goBack() {
+    if (current === 'settings') show(settingsReturn);
+    else if (current === 'lobby') { leaveOnline(); show('menu'); }
+    else if (current === 'over' || ((current === null || current === 'pause') && state !== 'menu')) quit();
+    else show('menu');
+}
+backBtn.addEventListener('click', goBack);
 
 function updateLayers() {
     const playing = state === 'play';
@@ -1975,6 +1999,7 @@ function pause() {
     keys.clear();
     mouseFire = mouseAim = false;
     resetTouch();
+    $('restart').hidden = role !== 'solo';
     show('pause');
     updateLayers();
     if (isLocked()) document.exitPointerLock();
@@ -1985,6 +2010,25 @@ function resume() {
     show(null);
     updateLayers();
     if (!touchMode) lockPointer();
+}
+
+// Free Area: the match is done, ask whether to go again.
+function showOver() {
+    const w = byId(world.over.winner);
+    $('oTitle').textContent = w === me ? 'Winner! #1' : `Placed #${me.place || '?'}`;
+    $('oText').textContent = `${w && w !== me ? `${w.name} won · ` : ''}${me.kills} kill${me.kills === 1 ? '' : 's'} · ${world.players.length} players`;
+    state = 'pause';
+    keys.clear();
+    mouseFire = mouseAim = false;
+    resetTouch();
+    show('over');
+    updateLayers();
+    if (isLocked()) document.exitPointerLock();
+}
+
+// Same Free Area settings, fresh match.
+function restart() {
+    if (role === 'solo') startFreeArea();
 }
 
 function quit() {
@@ -2001,6 +2045,9 @@ function quit() {
 
 $('playFree').addEventListener('click', startFreeArea);
 $('resume').addEventListener('click', resume);
+$('restart').addEventListener('click', restart);
+$('oAgain').addEventListener('click', restart);
+$('oMenu').addEventListener('click', quit);
 $('quit').addEventListener('click', quit);
 for (const b of document.querySelectorAll('[data-open]')) {
     b.addEventListener('click', () => {
@@ -2225,7 +2272,7 @@ function updateHud(dt) {
     hud.cross.style.setProperty('--gap', `${gap.toFixed(1)}px`);
     hud.cross.style.display = me.alive && aimK < 0.5 ? '' : 'none';
 
-    const boardOpen = keys.has('Tab') || touch.board || !!world.over;
+    const boardOpen = keys.has('Tab') || touch.board || (!!world.over && current !== 'over');
     hud.board.hidden = !boardOpen;
     if (boardOpen && performance.now() > boardAt) {
         boardAt = performance.now() + 250;
