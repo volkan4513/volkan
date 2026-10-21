@@ -26,6 +26,7 @@
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_woi3r"]
 shader = ExtResource("4_ht41j")
 shader_parameter/scan_line_size = 1000.0
+shader_parameter/strength = 1.0
 shader_parameter/opacity = 1.0
 
 [sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_fwkga"]

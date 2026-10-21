@@ -70,6 +70,8 @@ void fragment() {
 }
 """
 const STRIPE_STYLES := [["ORIGINAL"], ["NONE"], ["CENTRE"], ["DUAL"], ["ORIGINAL+CENTRE"]]
+# Strength of the scene's CRT look (1 = full). Set in crt.gdshader's `strength`.
+const CRT_STRENGTH: float = 0.4
 const FILTERS := [["CRT"], ["OFF"], ["NOIR"], ["WARM"], ["CINEMA"], ["VIVID"]]
 const FILTER_SHADER := """
 shader_type canvas_item;
@@ -169,6 +171,7 @@ func _ready() -> void:
 		camera = get_viewport().get_camera_3d() as OrbitCameraScript
 	_build_ui()
 	_apply_theme()
+	_soften_crt()
 	_setup_front_wheels()
 	_build_hotspots()
 	_hide_startup_hitch()
@@ -470,6 +473,13 @@ func _apply_theme() -> void:
 func _toggle_theme() -> void:
 	_light_theme = not _light_theme
 	_apply_theme()
+
+
+func _soften_crt() -> void:
+	var crt := get_node_or_null("../CanvasLayer/ColorRect") as CanvasItem
+	if crt and crt.material is ShaderMaterial:
+		(crt.material as ShaderMaterial).set_shader_parameter("opacity", 1.0)
+		(crt.material as ShaderMaterial).set_shader_parameter("strength", CRT_STRENGTH)
 
 
 # Filters other than CRT are a full-screen overlay at the bottom of the HUD, so

@@ -6,6 +6,10 @@ uniform sampler2D SCREEN_TEXTURE : hint_screen_texture, filter_linear;
 
 uniform float scan_line_size = 500.0;
 
+// How strong the CRT look is: 0 = plain image, 1 = full effect.
+// Scales each effect instead of blending a second copy of the screen on top.
+uniform float strength : hint_range(0.0, 1.0) = 1.0;
+
 // ✅ Added opacity uniform
 uniform float opacity : hint_range(0.0, 1.0) = 0.25;
 
@@ -26,8 +30,8 @@ void fragment()
 {
 	vec2 iResolution = vec2(1.0);
 	vec2 q = SCREEN_UV.xy / iResolution.xy;
-	vec2 uv = q;
-	uv = curve(uv);
+	vec2 uv = mix(q, curve(q), strength);
+	vec3 plain = texture(SCREEN_TEXTURE, uv).rgb;
 	vec3 col;
 
 	float x = sin(0.3 * TIME + uv.y * 21.0) * sin(0.7 * TIME + uv.y * 29.0) * sin(0.3 + 0.33 * TIME + uv.y * 31.0) * 0.0017;
@@ -53,12 +57,14 @@ void fragment()
 	col = col * vec3(0.4 + 0.7 * s);
 
 	col *= 1.0 + 0.01 * sin(110.0 * TIME);
+	col *= 1.0 - 0.65 * vec3(clamp((mod(SCREEN_UV.x * scan_line_size, 2.0) - 1.0) * 2.0, 0.0, 1.0));
+
+	col = mix(plain, col, strength);
+
 	if (uv.x < 0.0 || uv.x > 1.0)
 		col *= 0.0;
 	if (uv.y < 0.0 || uv.y > 1.0)
 		col *= 0.0;
-
-	col *= 1.0 - 0.65 * vec3(clamp((mod(SCREEN_UV.x * scan_line_size, 2.0) - 1.0) * 2.0, 0.0, 1.0));
 
 	// ✅ Apply opacity here
 	COLOR = vec4(col, opacity);
