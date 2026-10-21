@@ -285,7 +285,7 @@ export function createWorld(map, weapons, rules = {}) {
         map, weapons,
         boxes: map.boxes,
         solids: solidsOf(map),
-        rules: { mode: 'tdm', rounds: 6, respawn: 3, killLimit: 0, timeLimit: 0, infiniteAmmo: false, ...rules },
+        rules: { mode: 'tdm', rounds: 6, respawn: 3, killLimit: 0, timeLimit: 0, infiniteAmmo: false, zone: true, ...rules },
         players: [],
         att: 't',                       // bomb mode: the squad (team) attacking right now
         round: null,                    // bomb mode: { n, phase: 'buy' | 'live' | 'end', until, winner, reason }
@@ -584,6 +584,7 @@ const LOOT_ODDS = [0.3, 0.25, 0.15, 0.3];
 export const BR = { drop: 18, shield: 3, pickup: 1.2, med: 50, fill: 10 };
 // Zone stages: [wait s, shrink s, radius after shrinking as a share of the first circle, damage per second outside].
 export const ZONE = [[20, 15, 0.52, 2], [15, 12, 0.29, 4], [12, 10, 0.15, 7], [10, 8, 0.05, 12], [8, 10, 0, 20]];
+const ZONE_OFF_R = 1e4;           // zone turned off: a circle far bigger than any map
 
 // Highest walkable surface (top at most 1.5 m) under a point.
 export function groundAt(boxes, x, z) {
@@ -607,11 +608,16 @@ function mapBounds(map) {
 }
 
 // Call once all players are added: scatters loot and starts the zone.
+// With rules.zone off the zone still exists (it marks the match as running) but never shrinks or hurts.
 export function startBR(world) {
     const b = mapBounds(world.map);
     const x = (b[0] + b[2]) / 2, z = (b[1] + b[3]) / 2, r0 = Math.hypot(b[2] - b[0], b[3] - b[1]) / 2 + 2;    // covers the corners
-    world.zone = { x, z, r: r0, r0, fx: x, fz: z, fr: r0, tx: x, tz: z, tr: r0, stage: 0, shrinking: false, until: world.time + ZONE[0][0], dps: ZONE[0][3] };
-    nextZoneTarget(world);
+    if (world.rules.zone === false) {
+        world.zone = { x, z, r: ZONE_OFF_R, r0, fx: x, fz: z, fr: ZONE_OFF_R, tx: x, tz: z, tr: 0, stage: ZONE.length, shrinking: false, until: world.time, dps: 0, off: true };
+    } else {
+        world.zone = { x, z, r: r0, r0, fx: x, fz: z, fr: r0, tx: x, tz: z, tr: r0, stage: 0, shrinking: false, until: world.time + ZONE[0][0], dps: ZONE[0][3] };
+        nextZoneTarget(world);
+    }
     const spots = shuffled(world.map.waypoints);
     const n = Math.min(spots.length, Math.max(16, world.players.length * 2));
     world.loot = spots.slice(0, n).map(([lx, lz, ly], id) => {
@@ -657,7 +663,7 @@ export const outsideZone = (zn, p) => Math.hypot(p.x - zn.x, p.z - zn.z) > zn.r;
 
 // Outside the circle: damage in half-second chunks.
 function zoneDamage(world, p) {
-    if (!outsideZone(world.zone, p)) { p.zoneAt = 0; return; }
+    if (world.zone.off || !outsideZone(world.zone, p)) { p.zoneAt = 0; return; }
     if (!p.zoneAt) p.zoneAt = world.time + 0.5;
     if (world.time < p.zoneAt) return;
     p.zoneAt = world.time + 0.5;

@@ -82,7 +82,7 @@ export function createRadar(canvas) {
         }
 
         // Battle royale zone: the current circle and where it shrinks to.
-        if (view.zone) {
+        if (view.zone && !view.zone.off) {
             const zn = view.zone;
             g.lineWidth = 2 * dpr;
             for (const [x, z, r, col] of [[zn.x, zn.z, zn.r, '#4aa8ff'], [zn.tx, zn.tz, zn.tr, '#ffffff']]) {

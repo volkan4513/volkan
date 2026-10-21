@@ -23,6 +23,7 @@ const settings = {
     enemies: 4, allies: 3, diff: 'normal', freeMode: 'tdm', brBots: 9,
     touchLayout: null, touchAlpha: 1, volume: 0.7,       // touch editor: { id: { x, y, s } } as screen fractions, and button opacity
     map: 'yard', hostMap: 'yard', name: '', hostKills: 20, hostTime: 600, fillBots: true, hostDiff: 'normal', hostMode: 'tdm', hostRounds: 6,
+    brZone: true, hostZone: true,
     ...loadSettings(),
 };
 
@@ -732,7 +733,7 @@ function buildLoot() {
 
 function updateZoneAndLoot(now) {
     const zn = world && world.zone;
-    zoneWall.visible = !!zn && zn.r > 0.05;
+    zoneWall.visible = !!zn && !zn.off && zn.r > 0.05;
     zoneNext.visible = !!zn && zn.stage < ZONE.length && zn.tr > 0.05;
     if (zn) {
         zoneWall.position.x = zn.x;
@@ -778,7 +779,7 @@ function startFreeArea() {
     useMap(settings.map);
     const br = settings.freeMode === 'br';
     world = createWorld(map, weapons, br
-        ? { mode: 'br', respawn: -1, infiniteAmmo: false, map: settings.map }
+        ? { mode: 'br', respawn: -1, infiniteAmmo: false, zone: settings.brZone, map: settings.map }
         : { infiniteAmmo: true, map: settings.map });
     me = addPlayer(world, { name: 'You', team: 't' });
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
@@ -1365,7 +1366,7 @@ function notice(title, text) {
 }
 
 function lobbySettings() {
-    return { k: settings.hostKills, tm: settings.hostTime, bots: settings.fillBots, d: settings.hostDiff, mode: settings.hostMode, rounds: settings.hostRounds, m: settings.hostMap };
+    return { k: settings.hostKills, tm: settings.hostTime, bots: settings.fillBots, d: settings.hostDiff, mode: settings.hostMode, rounds: settings.hostRounds, m: settings.hostMap, zone: settings.hostZone };
 }
 
 function renderLobby() {
@@ -1391,6 +1392,7 @@ function renderLobby() {
     $('lRoundsRow').hidden = !bombPick;
     $('lKillsRow').hidden = !tdmPick;
     $('lTimeRow').hidden = !tdmPick;
+    $('lZoneRow').hidden = settings.hostMode !== 'br';
     $('lStart').hidden = !host;
     $('lTeam').hidden = (host ? settings.hostMode : s.mode) === 'br';
     const on = s.m && MAPS[s.m] ? `${MAPS[s.m].name} · ` : '';
@@ -1398,7 +1400,7 @@ function renderLobby() {
         ? 'Share the room code. Friends use Join game.'
         : !s.k ? 'Connected. Waiting for the host...'
         : s.mode === 'bomb' ? `${on}Bomb mode, first to ${s.rounds} rounds · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`
-        : s.mode === 'br' ? `${on}Battle royale, last one standing · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`
+        : s.mode === 'br' ? `${on}Battle royale, last one standing · zone ${s.zone === false ? 'off' : 'on'} · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`
         : `${on}First to ${s.k} kills or ${Math.round(s.tm / 60)} min · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`;
     showMapCredits();
 }
@@ -1555,7 +1557,7 @@ function startMatch() {
     const mode = settings.hostMode;
     world = createWorld(map, weapons, mode === 'bomb'
         ? { mode: 'bomb', rounds: settings.hostRounds, respawn: -1, infiniteAmmo: false, map: settings.hostMap }
-        : mode === 'br' ? { mode: 'br', respawn: -1, infiniteAmmo: false, map: settings.hostMap }
+        : mode === 'br' ? { mode: 'br', respawn: -1, infiniteAmmo: false, zone: settings.hostZone, map: settings.hostMap }
         : { respawn: 3, killLimit: settings.hostKills, timeLimit: settings.hostTime, infiniteAmmo: true, map: settings.hostMap });
     for (const e of peers.values()) {
         const p = addPlayer(world, { name: e.name, team: e.team });
@@ -1636,7 +1638,7 @@ function sendSnapshots() {
     }
     const zn = world.zone;
     if (zn) {
-        base.zn = [r2(zn.x), r2(zn.z), r2(zn.r), r2(zn.tx), r2(zn.tz), r2(zn.tr), r2(Math.max(0, zn.until - world.time)), zn.stage, zn.shrinking ? 1 : 0, zn.dps];
+        base.zn = [r2(zn.x), r2(zn.z), r2(zn.r), r2(zn.tx), r2(zn.tz), r2(zn.tr), r2(Math.max(0, zn.until - world.time)), zn.stage, zn.shrinking ? 1 : 0, zn.dps, zn.off ? 1 : 0];
         base.lt = world.loot.map((l) => (l.taken ? 1 : 0)).join('');
     }
     for (const e of peers.values()) {
@@ -1802,7 +1804,7 @@ function onSnapshot(s) {
     }
     if (s.zn) {
         const z = s.zn;
-        world.zone = { x: z[0], z: z[1], r: z[2], tx: z[3], tz: z[4], tr: z[5], until: world.time + z[6], stage: z[7], shrinking: !!z[8], dps: z[9] };
+        world.zone = { x: z[0], z: z[1], r: z[2], tx: z[3], tz: z[4], tr: z[5], until: world.time + z[6], stage: z[7], shrinking: !!z[8], dps: z[9], off: !!z[10] };
     }
     if (s.lt && world.loot) for (const l of world.loot) l.taken = s.lt[l.id] === '1';
     const m = s.m;
@@ -2051,6 +2053,7 @@ bindRadios('lkills', 'hostKills', true);
 bindRadios('ltime', 'hostTime', true);
 bindRadios('ldiff', 'hostDiff', false);
 bindCheck('lBots', 'fillBots', pushLobby);
+bindCheck('lZone', 'hostZone', pushLobby);
 
 // Test and debugging hook: read-only views of the running game.
 window.__lps = {
@@ -2100,9 +2103,11 @@ bindRange('sVolume', 'volume', () => sfx.setVolume(settings.volume));
 bindRange('fEnemies', 'enemies', null, 0);
 bindRange('fAllies', 'allies', null, 0);
 bindRange('fBrBots', 'brBots', null, 0);
+bindCheck('fZone', 'brZone');
 function showFreeRows() {
     const br = settings.freeMode === 'br';
     $('fBrRow').hidden = !br;
+    $('fZoneRow').hidden = !br;
     $('fEnemiesRow').hidden = $('fAlliesRow').hidden = br;
 }
 for (const r of document.querySelectorAll('input[name="fmode"]')) {
@@ -2231,8 +2236,8 @@ function updateHud(dt) {
 // Battle royale: where the zone is going and how long until it moves.
 function updateZoneHud() {
     const zn = world.zone;
-    hud.bomb.hidden = !zn;
-    if (!zn) return;
+    hud.bomb.hidden = !zn || !!zn.off;
+    if (hud.bomb.hidden) return;
     const out = me.alive && outsideZone(zn, me);
     const left = Math.max(0, zn.until - world.time);
     const text = out ? `Outside the zone · -${zn.dps} HP/s`
