@@ -1,0 +1,24 @@
+nfs_shift_mobile_-_chicago.glb
+  "nfs shift mobile - chicago" by amogusstrikesback2
+  https://sketchfab.com/3d-models/nfs-shift-mobile-chicago-4e70d67846cb4326b1dad80c23368682
+  Licensed under CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+  Used unchanged apart from being drawn at 0.5 scale with unlit materials; textures may be
+  downscaled at runtime (Settings > Texture size).
+
+nfs_iii_hot_pursuit_-_country_woods.glb
+  "nfs iii hot pursuit - country woods" by amogusstrikesback2
+  https://sketchfab.com/3d-models/nfs-iii-hot-pursuit-country-woods-059ffef1c06f4f02aeafc529606b8dc9
+  Licensed under CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+
+nfs_iii_hot_pursuit_-_lost_canyons.glb
+  "nfs iii hot pursuit - lost canyons" by amogusstrikesback2
+  https://sketchfab.com/3d-models/nfs-iii-hot-pursuit-lost-canyons-3017b1c97c3e401eb7a744ce172df97d
+  Licensed under CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+
+nfs_iii_hot_pursuit_-_rocky_pass.glb
+  "nfs iii hot pursuit - rocky pass" by amogusstrikesback2
+  https://sketchfab.com/3d-models/nfs-iii-hot-pursuit-rocky-pass-c53cc28c9f5d4dbfa40c96d7a41d434b
+  Licensed under CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+
+The three NFS III tracks are used unchanged apart from being drawn at 0.6 scale, and all four
+maps show their credit in the menu and in-game whenever they are selected.
