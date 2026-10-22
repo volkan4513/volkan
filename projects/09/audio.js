@@ -1,7 +1,8 @@
 // Sound: everything is synthesised with WebAudio (no files, works offline).
-//   engines   one voice per car: two oscillators through a low-pass, pitch from a made-up gearbox.
+//   engines   one voice per car: three oscillators through a low-pass, pitch from a made-up gearbox.
+//             Each car has its own character (pitch, mix, brightness; see SOUND in cars.js).
 //             The player's is "in your head"; other cars are placed in the world, nearest few only.
-//   tyres     filtered noise from sideways slip
+//   tyres     filtered noise from sideways slip; wind noise that grows with speed
 //   bumps     a noise burst and a low thump
 //   beeps     countdown, laps, finish
 //   music     a looping synth track: pad + arpeggio + bass, with drums once a race is on
@@ -22,11 +23,13 @@ const BPM = 132, STEP = 60 / BPM / 4;   // a sixteenth note
 const BASS = [0, -1, 0, -1, 12, -1, 0, -1, 0, -1, 0, 12, -1, -1, 7, -1];   // semitones above the root; -1 = rest
 const ARP = [0, 1, 2, 1, 2, 1, 0, 1, 2, 1, 2, 1, 0, 1, 2, 1];
 
+const DEFAULT_SOUND = { pitch: 1, saw: 0.55, sq: 0.3, tri: 0.35, cut: 1, gain: 1 };
+
 export function createAudio({ sound = true, music = true, maxSpeed = 42 } = {}) {
     let ctx = null, master = null, sfxBus = null, musicBus = null, drumBus = null, noise = null;
     let soundOn = sound, musicOn = music, scene = 0, ducked = false;
     const voices = new Map();   // car id -> engine voice
-    let skid = null, lastBump = 0;
+    let skid = null, wind = null, lastBump = 0;
 
     function unlock() {
         if (!ctx) {
@@ -63,7 +66,7 @@ export function createAudio({ sound = true, music = true, maxSpeed = 42 } = {}) 
         if (!ctx) return;
         const t = ctx.currentTime, k = now ? 0.001 : 0.25;
         sfxBus.gain.setTargetAtTime(soundOn ? 1 : 0, t, k);
-        musicBus.gain.setTargetAtTime(musicOn ? (ducked ? 0.1 : scene ? 0.3 : 0.38) : 0, t, k);
+        musicBus.gain.setTargetAtTime(musicOn ? (ducked ? 0.18 : scene ? 0.62 : 0.5) : 0, t, k);
         drumBus.gain.setTargetAtTime(scene ? 1 : 0, t, 0.4);
     }
     const setSound = (on) => { soundOn = on; applyLevels(); };
@@ -139,11 +142,11 @@ export function createAudio({ sound = true, music = true, maxSpeed = 42 } = {}) 
     }
 
     // ---------- engines ----------
-    function makeVoice(local) {
+    function makeVoice(local, profile) {
         const o1 = ctx.createOscillator(), o2 = ctx.createOscillator(), o3 = ctx.createOscillator();
         o1.type = 'sawtooth'; o2.type = 'square'; o3.type = 'triangle';
         const m1 = ctx.createGain(), m2 = ctx.createGain(), m3 = ctx.createGain();
-        m1.gain.value = 0.55; m2.gain.value = 0.3; m3.gain.value = 0.35;
+        m1.gain.value = profile.saw; m2.gain.value = profile.sq; m3.gain.value = profile.tri;
         const lp = ctx.createBiquadFilter(), g = ctx.createGain();
         lp.type = 'lowpass';
         lp.Q.value = 1.2;
@@ -162,7 +165,7 @@ export function createAudio({ sound = true, music = true, maxSpeed = 42 } = {}) 
             g.connect(pan).connect(sfxBus);
         }
         o1.start(); o2.start(); o3.start();
-        return { o1, o2, o3, lp, g, pan, rpm: 0.18, gear: 0, local };
+        return { o1, o2, o3, lp, g, pan, rpm: 0.18, gear: 0, local, profile };
     }
     function dropVoice(id) {
         const v = voices.get(id);
@@ -174,18 +177,18 @@ export function createAudio({ sound = true, music = true, maxSpeed = 42 } = {}) 
         voices.delete(id);
     }
     function driveVoice(v, c, dt) {
-        const t = ctx.currentTime, sp = Math.abs(c.speed), band = maxSpeed / 5;
+        const t = ctx.currentTime, sp = Math.abs(c.speed), band = (c.maxSpeed || maxSpeed) / 5, pr = v.profile;
         const gear = Math.min(4, Math.floor(sp / band)), within = clamp((sp - gear * band) / band, 0, 1);
         const thr = clamp(c.throttle || 0, 0, 1);
         let target = sp < 0.6 ? 0.16 + thr * 0.3 : 0.3 + within * 0.62 + thr * 0.07;
         if (gear !== v.gear) { target -= 0.18; v.gear = gear; }   // the dip between gears
         v.rpm += (target - v.rpm) * (1 - Math.exp(-11 * dt));
-        const f = 34 + v.rpm * 128;
+        const f = (34 + v.rpm * 128) * pr.pitch;
         v.o1.frequency.setTargetAtTime(f, t, 0.03);
         v.o2.frequency.setTargetAtTime(f * 0.5, t, 0.03);
         v.o3.frequency.setTargetAtTime(f * 2.01, t, 0.03);
-        v.lp.frequency.setTargetAtTime(240 + v.rpm * 1500 + thr * 800, t, 0.05);
-        v.g.gain.setTargetAtTime((v.local ? 0.2 : 0.16) + thr * 0.1 + v.rpm * 0.05, t, 0.05);
+        v.lp.frequency.setTargetAtTime((240 + v.rpm * 1500 + thr * 800) * pr.cut, t, 0.05);
+        v.g.gain.setTargetAtTime(((v.local ? 0.16 : 0.13) + thr * 0.08 + v.rpm * 0.04) * pr.gain, t, 0.05);
         if (v.pan) {
             if (v.pan.positionX) {
                 v.pan.positionX.setTargetAtTime(c.x, t, 0.05);
@@ -226,7 +229,7 @@ export function createAudio({ sound = true, music = true, maxSpeed = 42 } = {}) 
         for (const id of [...voices.keys()]) if (!keep.has(id)) dropVoice(id);
         for (const c of me ? [me, ...near.slice(0, MAX_WORLD_VOICES).map((e) => e[1])] : near.slice(0, MAX_WORLD_VOICES).map((e) => e[1])) {
             let v = voices.get(c.id);
-            if (!v) voices.set(c.id, (v = makeVoice(!!c.local)));
+            if (!v) voices.set(c.id, (v = makeVoice(!!c.local, c.sound || DEFAULT_SOUND)));
             driveVoice(v, c, dt);
         }
         // tyre squeal follows my car's sideways slip
@@ -239,6 +242,23 @@ export function createAudio({ sound = true, music = true, maxSpeed = 42 } = {}) 
             s.connect(f).connect(g).connect(sfxBus);
             s.start();
             skid = { s, f, g };
+        }
+        // wind: rushing air, louder and brighter the faster my car goes
+        const kw = me ? clamp(Math.abs(me.speed) / (me.maxSpeed || maxSpeed), 0, 1) ** 2 : 0;
+        if (kw > 0.01 && !wind) {
+            const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+            s.buffer = noise; s.loop = true;
+            f.type = 'lowpass'; f.frequency.value = 500; f.Q.value = 0.5;
+            g.gain.value = 0;
+            s.connect(f).connect(g).connect(sfxBus);
+            s.start();
+            wind = { s, f, g };
+        }
+        if (wind) {
+            const t = ctx.currentTime;
+            wind.g.gain.setTargetAtTime(kw * 0.15, t, 0.1);
+            wind.f.frequency.setTargetAtTime(400 + kw * 2200, t, 0.1);
+            if (kw < 0.01 && wind.g.gain.value < 0.003) { wind.s.stop(); wind = null; }
         }
         if (skid) {
             const t = ctx.currentTime;

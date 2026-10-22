@@ -39,6 +39,36 @@ export const CARS = [
     { id: 'pixel', name: 'Pixel Car', file: 'low_poly_car_-_3d_pixel_art.glb', length: 4.3, wheels: 'extract', forward: '+z' },
 ];
 
+// How each car drives, as overrides of drive.js's TUNING: the Diablo is quick and grippy, the Charger
+// heavy and tail-happy, the STI sticks to the road, the compact is slow but nimble.
+const HANDLING = {
+    r32:     {},
+    m5:      { accel: 7.6, maxSpeed: 44, brake: 17, maxLat: 13.5, grip: 9, maxSteer: 0.56 },
+    diablo:  { accel: 9.6, maxSpeed: 48, brake: 20, maxLat: 15.6, grip: 10, maxSteer: 0.58 },
+    '993':   { accel: 8.6, maxSpeed: 43, brake: 19, maxLat: 14.6, grip: 9.5, driftGrip: 1.3 },
+    charger: { accel: 8.8, maxSpeed: 43, brake: 15, maxLat: 12.4, grip: 7.4, driftGrip: 1.4, maxSteer: 0.6 },
+    sti:     { accel: 8.6, maxSpeed: 41, brake: 19, maxLat: 15.2, grip: 11.5 },
+    sport:   { accel: 8.2, maxSpeed: 42, maxLat: 14.2 },
+    compact: { accel: 6.8, maxSpeed: 38, brake: 17, maxLat: 13.6, grip: 9.5, maxSteer: 0.66 },
+    pixel:   { accel: 7.4, maxSpeed: 40, maxLat: 14 },
+};
+// Engine voice per car for audio.js: pitch scale, how much of each oscillator, filter scale, loudness.
+const SOUND = {
+    r32:     { pitch: 1.0,  saw: 0.6,  sq: 0.25, tri: 0.3,  cut: 1.1,  gain: 1 },      // inline six: raspy
+    m5:      { pitch: 0.78, saw: 0.5,  sq: 0.45, tri: 0.3,  cut: 0.85, gain: 1.05 },   // V8: low and burbly
+    diablo:  { pitch: 1.3,  saw: 0.35, sq: 0.1,  tri: 0.55, cut: 1.3,  gain: 0.95 },   // V12: high and smooth
+    '993':   { pitch: 1.0,  saw: 0.55, sq: 0.2,  tri: 0.4,  cut: 1.0,  gain: 1 },      // flat six
+    charger: { pitch: 0.68, saw: 0.55, sq: 0.5,  tri: 0.2,  cut: 0.75, gain: 1.1 },    // big V8
+    sti:     { pitch: 0.92, saw: 0.5,  sq: 0.4,  tri: 0.25, cut: 0.95, gain: 1 },      // boxer
+    sport:   { pitch: 1.12, saw: 0.55, sq: 0.2,  tri: 0.35, cut: 1.05, gain: 0.95 },
+    compact: { pitch: 1.25, saw: 0.5,  sq: 0.15, tri: 0.35, cut: 1.1,  gain: 0.9 },    // small four
+    pixel:   { pitch: 1.15, saw: 0.5,  sq: 0.2,  tri: 0.35, cut: 1.05, gain: 0.95 },
+};
+for (const car of CARS) {
+    car.handling = HANDLING[car.id] || {};
+    car.sound = SOUND[car.id] || SOUND.r32;
+}
+
 const loader = new GLTFLoader();
 const cache = new Map();   // file -> Promise<gltf>
 

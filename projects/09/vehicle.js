@@ -7,7 +7,9 @@ import { createDrive, placeDrive, stepDrive, TUNING } from './drive.js';
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const damp = (k, dt) => 1 - Math.exp(-k * dt);
 
-export const GRASS = { ...TUNING, maxSpeed: 26, roll: 3, grip: 6 };
+// Off the road: slower and looser, whatever the car (see tuneFor)
+const grassOf = (t) => ({ ...t, maxSpeed: Math.min(t.maxSpeed, 26), roll: 3, grip: Math.min(t.grip, 6) });
+export const tuneFor = (car) => { const t = { ...TUNING, ...(car && car.def && car.def.handling) }; t.grass = grassOf(t); return t; };
 const STEP_UP = 0.9, MAX_DROP = 2.5;   // how far ground may rise / fall under a car in one step
 const STEP_DIST = 0.35;                // max metres per physics substep, well under a car's half-width
 
@@ -42,6 +44,7 @@ export function addShadow(car) {
 export function createVehicle() {
     return {
         car: null,
+        tune: tuneFor(null),           // handling for this car (from its definition)
         drive: createDrive(),
         y: 0,                          // ground height under the car
         tilt: { pitch: 0, roll: 0 },   // from the ground
@@ -53,6 +56,7 @@ export function createVehicle() {
 export function setVehicleCar(v, car) {
     if (v.car) v.car.root.removeFromParent();
     v.car = car;
+    v.tune = tuneFor(car);
     addShadow(car);
     for (const w of car.wheels) { w.angle = 0; w.shown = 0; }
 }
@@ -80,7 +84,7 @@ export function carCircles(x, z, yaw, size) {
 // others: [{ x, y, z, yaw, size }] for every other car, which this one is pushed out of.
 export function stepVehicle(v, map, input, dt, others = []) {
     const d = v.drive;
-    const tune = map.offRoad(d.x, d.z) ? GRASS : TUNING;
+    const tune = map.offRoad(d.x, d.z) ? v.tune.grass : v.tune;
     const n = clamp(Math.ceil((Math.hypot(d.vx, d.vz) * dt) / STEP_DIST), 1, 10);
     v.bump = 0;
     for (let i = 0; i < n; i++) {

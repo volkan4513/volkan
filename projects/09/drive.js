@@ -13,9 +13,9 @@ export const TUNING = {
     roll: 0.35,          // rolling resistance in m/s²: light, so the car coasts
     air: 0.0009,         // air drag, scales with v²
     maxSteer: 0.6,       // radians at the front wheels, at low speed
-    steerFalloff: 18,    // speed (m/s) at which the steering lock has halved
+    steerFalloff: 30,    // speed (m/s) at which the steering lock has halved: still plenty of lock at speed
     steerRate: 3.2,      // how fast keyboard steering winds on (rad/s)
-    maxLat: 11,          // m/s² of cornering the tyres allow: caps the turn rate at speed
+    maxLat: 14,          // m/s² of cornering the tyres allow: caps the turn rate at speed
     grip: 9,             // how quickly sideways sliding dies out
     driftGrip: 1.6,      // grip with the handbrake held
 };

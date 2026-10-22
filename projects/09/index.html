@@ -191,6 +191,9 @@
             #countdown { font-size: 32px; top: 18%; }
         }
 
+        #minimap { position: fixed; right: 10px; top: 92px; width: 150px; height: 150px; z-index: 30; border: 3px solid #111; box-shadow: 4px 4px 0 #111; pointer-events: none; image-rendering: auto; }
+        @media (max-width: 700px) { #minimap { width: 104px; height: 104px; top: 78px; } }
+        body.touch #minimap { width: 92px; height: 92px; top: 74px; }   /* clear of the pedals */
         #fps { position: fixed; left: 8px; bottom: 8px; z-index: 40; font-size: 9px; color: #fff; text-shadow: 1px 1px 0 #000; }
 
         #toast {
@@ -301,6 +304,7 @@
                 <button id="nextMap" class="btn arrow" type="button" aria-label="Next map">&gt;</button>
             </div>
             <div id="mapInfo" class="info"></div>
+            <div class="row small"><button id="lenBtn" class="btn" type="button">Route: half map</button></div>
             <div class="row small">
                 <button id="botsBtn" class="btn" type="button">Bots: 3</button>
                 <button id="lapsBtn" class="btn" type="button">Sprint</button>
@@ -364,12 +368,14 @@
             <div class="setting"><span>Wheel spin</span><button id="set_wheelStyle" class="btn" type="button"></button></div>
             <div class="setting"><span>Sound effects</span><button id="set_sound" class="btn" type="button"></button></div>
             <div class="setting"><span>Music</span><button id="set_music" class="btn" type="button"></button></div>
+            <div class="setting"><span>Rear mirror</span><button id="set_mirror" class="btn" type="button"></button></div>
             <div id="texMem" class="info"></div>
             <button id="settingsBack" class="btn go" type="button">BACK</button>
         </div>
     </div>
 
     <div id="hud" hidden>
+        <canvas id="minimap" width="200" height="200"></canvas>
         <div id="hudCar"></div>
         <div id="speedo"><span id="speed">0</span><span id="gear">N</span><br><small>KM/H</small></div>
         <div id="hudCredit" hidden></div>

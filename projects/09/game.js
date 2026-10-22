@@ -8,12 +8,15 @@ import { TUNING } from './drive.js';
 import { MAPS, loadMap } from './maps.js';
 import { createInput } from './input.js';
 import { TEXTURE_STEPS, resolveCap, applyTextures, textureMemoryMB } from './textures.js';
-import { createVehicle, setVehicleCar, placeVehicle, stepVehicle, poseVehicle, poseCar, addShadow } from './vehicle.js';
+import { createVehicle, setVehicleCar, placeVehicle, stepVehicle, poseVehicle, poseCar, addShadow, groundNear } from './vehicle.js';
 import { createBrain, botInput, obstacle, BOT_NAMES } from './bots.js';
 import { createSession, MAX_CHOICES } from './multiplayer.js';
 import { cleanCode } from './net.js';
 import { createRunner, stepRunner, rank, gridPose, formatTime } from './race.js';
 import { createAudio } from './audio.js';
+import { createEffects } from './effects.js';
+import { createBackdrop } from './backdrop.js';
+import { createMinimap } from './minimap.js';
 
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -25,7 +28,7 @@ const DEBUG = params.has('debug');
 const SETTINGS_KEY = 'pixel-racer-settings';
 const settings = {
     car: 0, map: 0, pixel: 1, camera: 0, wheelStyle: 'smooth', textures: 'auto', filter: 'smooth', anisotropy: 0, draw: 1,
-    bots: 3, name: '', maxPlayers: 4, laps: 1, sound: true, music: true,   // laps 1 is a sprint: one run from the grid to the line
+    bots: 3, name: '', maxPlayers: 4, laps: 1, sound: true, music: true, half: true, mirror: true,   // half: race over half the course; mirror: rear-view mirror   // laps 1 is a sprint: one run from the grid to the line
     ...loadSettings(),
 };
 function loadSettings() {
@@ -64,7 +67,47 @@ const anisotropy = () => settings.anisotropy || Math.min(8, MAX_ANISO);   // 0 =
 const DRAW = [{ name: 'Near', k: 0.6 }, { name: 'Normal', k: 1 }, { name: 'Far', k: 1.6 }];
 
 const scene = new THREE.Scene();
+const minimap = createMinimap($('minimap'));
+const fx = createEffects(scene);   // sparks and tyre marks
+let shake = 0, myHandbrake = false;   // camera shake (0..1) from hits
 const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 900);
+const backdrop = createBackdrop(scene, camera);
+
+// ---------- rear-view mirror ----------
+// A second camera looking back from the car, drawn into a strip at the top of the screen and
+// flipped left to right like a real mirror. The player's own car is hidden while it renders.
+const MIRROR_ASPECT = 3.4;
+const mirrorRT = new THREE.WebGLRenderTarget(544, 160);
+mirrorRT.texture.colorSpace = THREE.SRGBColorSpace;
+const mirrorCam = new THREE.PerspectiveCamera(48, MIRROR_ASPECT, 0.3, 600);
+const overlay = new THREE.Scene(), overlayCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const mirrorGeo = new THREE.PlaneGeometry(1, 1);
+{ const uv = mirrorGeo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i)); }   // the mirror flip
+const mirrorFrame = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: '#111', depthTest: false }));
+const mirrorQuad = new THREE.Mesh(mirrorGeo, new THREE.MeshBasicMaterial({ map: mirrorRT.texture, depthTest: false }));
+overlay.add(mirrorFrame, mirrorQuad);
+function placeMirror() {
+    const W = innerWidth, H = innerHeight, w = Math.min(W * (W < 700 ? 0.5 : 0.3), 420), h = w / MIRROR_ASPECT, top = W < 700 ? 34 : 30, bd = 3;
+    const sx = (w / W) * 2, sy = (h / H) * 2, cy = 1 - ((top + h / 2) / H) * 2;
+    mirrorQuad.scale.set(sx, sy, 1);
+    mirrorQuad.position.set(0, cy, 0);
+    mirrorFrame.scale.set(sx + (bd * 4) / W, sy + (bd * 4) / H, 1);
+    mirrorFrame.position.set((bd * 2) / W, cy - (bd * 2) / H, -0.1);   // offset: the paper-box shadow look
+}
+addEventListener('resize', placeMirror);
+placeMirror();
+function renderMirror() {
+    const fx = Math.sin(drive.yaw), fz = Math.cos(drive.yaw), h = me.car.size.y * 0.85;
+    mirrorCam.position.set(drive.x + fx * 0.3, me.y + h, drive.z + fz * 0.3);
+    mirrorCam.lookAt(drive.x - fx * 30, me.y + h - 0.6, drive.z - fz * 30);
+    mirrorCam.far = camera.far;
+    mirrorCam.updateProjectionMatrix();
+    me.car.root.visible = false;
+    renderer.setRenderTarget(mirrorRT);
+    renderer.render(scene, mirrorCam);
+    renderer.setRenderTarget(null);
+    me.car.root.visible = true;
+}   // sky, ground and distant scenery beyond the map
 scene.add(new THREE.HemisphereLight('#dff1ff', '#4c7a3a', 1.6));
 const sun = new THREE.DirectionalLight('#fff4dc', 2.2);
 sun.position.set(60, 120, 40);
@@ -125,11 +168,13 @@ async function selectMap(i, fromHost = false) {
         return;
     }
     if (token !== mapToken) return;
+    fx.clearMarks();
     if (map) scene.remove(map.group);
     map = next;
     scene.add(map.group);
     beginRace(0, 0, performance.now());   // a new map starts in free roam, everyone on the grid
     applyDraw();
+    backdrop.set(map, map.backdrop || {}, map.minY);
     applyTextureSettings();
     showCredit(map.credit);
     $('mapInfo').textContent = def.info || 'circuit · hills and walls';
@@ -292,7 +337,7 @@ function obstacles() {
     if (me.car) list.push({ who: 'me', ...obstacle(me) });
     for (const b of bots) list.push({ who: b.id, ...obstacle(b.v) });
     for (const [id, p] of puppets) {
-        if (p.car && p.pose) list.push({ who: id, x: p.pose.x, y: p.pose.y, z: p.pose.z, yaw: p.pose.yaw, size: p.car.size });
+        if (p.car && p.pose) list.push({ who: id, x: p.pose.x, y: p.pose.y, z: p.pose.z, yaw: p.pose.yaw, size: p.car.size, speed: p.pose.speed || 0 });
     }
     return list;
 }
@@ -304,7 +349,7 @@ function obstacles() {
 // on solo or the host) counts its own laps; on the host, clients' laps come in over the network.
 const LAP_CHOICES = [1, 2, 3, 5, 0];   // 1 = sprint, 0 = free roam
 // A sprint-only map (an open road) is always one run; a circuit takes the setting.
-const raceLaps = () => (map && map.track && !map.track.closed ? 1 : settings.laps);
+const raceLaps = () => (map && map.fullTrack && !map.fullTrack.closed ? 1 : settings.laps);
 const COUNTDOWN_MS = 3600;
 const HOLD = { throttle: 0, brake: 0, steer: 0, handbrake: true, analog: true };   // on the grid
 const race = { id: 0, laps: 0, goAt: 0, pausedAt: 0, standings: [] };
@@ -315,7 +360,20 @@ const onGrid = (now) => racing() && now < race.goAt;
 const raceTime = (now) => ((race.pausedAt || now) - race.goAt) / 1000;
 
 // Reset lap counting for a race (or free roam, id 0) and, unless told not to, line everyone up.
+// Which course a race runs on: the half route (a sprint over half the map) or the full one.
+function useRoute(half) {
+    if (!map || !map.fullTrack) return;
+    map.track = half ? map.halfTrack : map.fullTrack;
+    map.halfGate.visible = half;
+    // on a sprint map the full route's finish isn't the finish any more
+    if (!map.fullTrack.closed) map.fullGate.visible = !half;
+}
+const halfRoute = () => !!(settings.half && map && map.fullTrack && raceLaps() === 1);
+
 function beginRace(id, laps, goAt, place = true) {
+    const half = laps < 0;
+    laps = Math.abs(laps);
+    useRoute(half);
     const track = map && map.track;
     Object.assign(race, { id: track ? id : 0, laps: track ? laps : 0, goAt, pausedAt: 0, standings: [] });
     myRunner = track ? createRunner(track) : null;
@@ -334,12 +392,13 @@ function beginRace(id, laps, goAt, place = true) {
 
 // Solo and host: a new race with the laps setting, or free roam when it's off.
 function startRace() {
+    fx.clearMarks();
     if (session.role === 'client') return;
     const laps = map && map.track ? raceLaps() : 0;
     const was = racing();
-    if (laps) beginRace(++raceCount, laps, performance.now() + COUNTDOWN_MS);
+    if (laps) beginRace(++raceCount, halfRoute() ? -1 : laps, performance.now() + COUNTDOWN_MS);
     else beginRace(0, 0, performance.now());
-    if (laps || was) session.sendRace(race.id, laps, COUNTDOWN_MS);
+    if (laps || was) session.sendRace(race.id, halfRoute() && laps ? -1 : laps, COUNTDOWN_MS);
 }
 
 // Client: the host started a race (or called it off, id 0: carry on driving where you are).
@@ -563,6 +622,8 @@ function updateMpUI() {
     const track = !!(map && map.track);
     const sprintOnly = track && !map.track.closed, laps = raceLaps();
     $('lapsBtn').disabled = role === 'client' || !track || sprintOnly;
+    $('lenBtn').disabled = role === 'client' || !track || laps !== 1;
+    $('lenBtn').textContent = !track ? 'Route: -' : role === 'client' ? 'Route: host' : laps !== 1 ? 'Route: full (laps)' : settings.half ? 'Route: half map' : 'Route: full map';
     $('lapsBtn').textContent = !track ? 'No race' : role === 'client' ? 'Race: host' : laps === 1 ? 'Sprint' : laps ? `Laps: ${laps}` : 'Free roam';
 }
 
@@ -578,6 +639,18 @@ const lookAt = new THREE.Vector3();
 const inMenu = () => state === 'menu' || state === 'settings' || state === 'mp';
 
 function updateCamera(dt) {
+    placeCamera(dt);
+    if (shake > 0.01 && state === 'play') {
+        const k = shake * shake;   // small knocks barely register, big ones really shake
+        camera.position.x += (Math.random() - 0.5) * 0.5 * k;
+        camera.position.y += (Math.random() - 0.5) * 0.4 * k;
+        camera.position.z += (Math.random() - 0.5) * 0.5 * k;
+        camera.rotateZ((Math.random() - 0.5) * 0.06 * k);
+    }
+    shake *= Math.exp(-6 * dt);
+}
+
+function placeCamera(dt) {
     const car = me.car;
     if (!car) return;
     const scale = car.def.length / 4.5, carY = me.y;
@@ -666,6 +739,7 @@ const OPTIONS = {
     wheelStyle: ['smooth', 'stepped'],
     sound: [true, false],
     music: [true, false],
+    mirror: [true, false],
 };
 const labels = {
     pixel: () => (settings.pixel === 1 ? 'Off (sharp)' : `${settings.pixel}x`),
@@ -679,11 +753,13 @@ const labels = {
     wheelStyle: () => (settings.wheelStyle === 'smooth' ? 'Smooth' : 'Stepped'),
     sound: () => (settings.sound ? 'On' : 'Off'),
     music: () => (settings.music ? 'On' : 'Off'),
+    mirror: () => (settings.mirror ? 'On' : 'Off'),
 };
 const APPLY = {
     pixel: resize, textures: applyTextureSettings, filter: applyTextureSettings, anisotropy: applyTextureSettings,
     draw: applyDraw, wheelStyle: () => {},
     sound: () => audio.setSound(settings.sound), music: () => audio.setMusic(settings.music),
+    mirror: () => {},
 };
 
 function cycle(key) {
@@ -789,6 +865,11 @@ $('resume').addEventListener('click', resume);
 $('restart').addEventListener('click', () => { resume(); startRace(); });
 $('resAgain').addEventListener('click', startRace);
 $('resGarage').addEventListener('click', toMenu);
+$('lenBtn').addEventListener('click', () => {
+    settings.half = !settings.half;
+    saveSettings();
+    updateMpUI();
+});
 $('lapsBtn').addEventListener('click', () => {
     settings.laps = LAP_CHOICES[(LAP_CHOICES.indexOf(settings.laps) + 1) % LAP_CHOICES.length];
     saveSettings();
@@ -875,7 +956,13 @@ function frame(now) {
                 const ctl = grid ? HOLD : myRunner && myRunner.finish && racing() ? botInput(me, autopilot, map, others('me'), dt) : keys;
                 stepVehicle(me, map, ctl, dt, others('me'));
                 myThrottle = ctl.throttle || 0;
+                myHandbrake = !!ctl.handbrake;
                 if (me.bump > 2) audio.bump(me.bump);
+                if (me.bump > 1.2) {
+                    fx.sparks(drive.x + Math.sin(drive.yaw) * 1.2, me.y, drive.z + Math.cos(drive.yaw) * 1.2, drive.vx, drive.vz, me.bump);
+                    shake = Math.max(shake, clamp(me.bump / 16, 0.1, 1));
+                    if (me.bump > 6 && input.touchMode && navigator.vibrate) navigator.vibrate(Math.min(80, 20 + me.bump * 4));
+                }
                 dropCrumbs(dt, now);
                 poseVehicle(me, map, dt, settings.wheelStyle);
             } else if (inMenu()) {
@@ -889,9 +976,14 @@ function frame(now) {
         for (const b of bots) {
             const near = others(b.id);
             if (!stop) {
+                // rubber band: a bot well behind the player speeds up a little, one far ahead eases off
+                b.brain.rubber = racing() && myRunner && !myRunner.finish && b.runner ? clamp(1 + (myRunner.prog - b.runner.prog) * 0.0004, 0.92, 1.12) : 1;
                 const ctl = grid ? HOLD : botInput(b.v, b.brain, map, near, dt);
                 b.thr = ctl.throttle || 0;
                 stepVehicle(b.v, map, ctl, dt, near);
+                if (b.v.bump > 3 && (b.v.drive.x - camera.position.x) ** 2 + (b.v.drive.z - camera.position.z) ** 2 < 6400) {
+                    fx.sparks(b.v.drive.x + Math.sin(b.v.drive.yaw) * 1.2, b.v.y, b.v.drive.z + Math.cos(b.v.drive.yaw) * 1.2, b.v.drive.vx, b.v.drive.vz, b.v.bump);
+                }
             }
             poseVehicle(b.v, map, dt, settings.wheelStyle);
         }
@@ -914,17 +1006,44 @@ function frame(now) {
         $('hudRoom').textContent = `ROOM ${session.code} · ${session.players}/${session.max}${ping}`;
     }
 
+    if (!topCam) backdrop.update();
+    $('minimap').hidden = !(map && map.track && state === 'play');
+    if (map && map.track && state === 'play') {
+        const dots = [{ x: drive.x, z: drive.z, yaw: drive.yaw, kind: 'me' }];
+        for (const b of bots) dots.push({ x: b.v.drive.x, z: b.v.drive.z, kind: 'bot' });
+        for (const [, p] of puppets) if (p.pose) dots.push({ x: p.pose.x, z: p.pose.z, kind: p.bot ? 'bot' : 'player' });
+        minimap.draw(map.track, map.fullTrack, dots);
+    }
+
+    // tyre marks and sparks
+    if (map && state !== 'pause') {
+        const marks = [];
+        const skid = (v, hard) => Math.abs(v.drive.speed) > 5 && (Math.abs(v.drive.slip) > 2.4 || hard);
+        if (me.car && state === 'play') marks.push({ id: 'me', car: me.car, skidding: skid(me, (myHandbrake && Math.abs(drive.speed) > 8) || drive.accLong < -15), ground: (x, z) => groundNear(map, x, z, me.y) });
+        for (const b of bots) if (b.v.car) marks.push({ id: `b${b.id}`, car: b.v.car, skidding: skid(b.v, false), ground: (x, z) => groundNear(map, x, z, b.v.y) });
+        fx.skids(marks);
+    }
+    fx.update(dt);
+
     // sound: the race music and engines only while driving; the menu gets the quiet music
     audio.setScene(state === 'play' ? 1 : 0, state === 'pause' || (state === 'settings' && settingsFrom === 'pause'));
     const voices = [];
     if (map && me.car && state === 'play') {
-        voices.push({ id: 'me', local: true, x: drive.x, y: me.y, z: drive.z, speed: drive.speed, slip: drive.slip, throttle: myThrottle });
-        for (const b of bots) voices.push({ id: `b${b.id}`, x: b.v.drive.x, y: b.v.y, z: b.v.drive.z, speed: b.v.drive.speed, throttle: b.thr || 0 });
-        for (const [id, p] of puppets) if (p.pose) voices.push({ id: `p${id}`, x: p.pose.x, y: p.pose.y, z: p.pose.z, speed: p.pose.speed || 0, throttle: Math.abs(p.pose.speed || 0) > 1 ? 0.6 : 0 });
+        voices.push({ id: 'me', local: true, x: drive.x, y: me.y, z: drive.z, speed: drive.speed, slip: drive.slip, throttle: myThrottle, sound: me.car.def.sound, maxSpeed: me.tune.maxSpeed });
+        for (const b of bots) voices.push({ id: `b${b.id}`, x: b.v.drive.x, y: b.v.y, z: b.v.drive.z, speed: b.v.drive.speed, throttle: b.thr || 0, sound: b.v.car && b.v.car.def.sound, maxSpeed: b.v.tune.maxSpeed });
+        for (const [id, p] of puppets) if (p.pose) voices.push({ id: `p${id}`, x: p.pose.x, y: p.pose.y, z: p.pose.z, speed: p.pose.speed || 0, throttle: Math.abs(p.pose.speed || 0) > 1 ? 0.6 : 0, sound: (CARS[p.carIndex] || CARS[0]).sound, maxSpeed: (CARS[p.carIndex] || CARS[0]).handling.maxSpeed || TUNING.maxSpeed });
     }
     audio.update(dt, { x: camera.position.x, y: camera.position.y, z: camera.position.z, yaw: cam.yaw }, voices);
 
+    const mirror = settings.mirror && state === 'play' && map && me.car && !topCam;
+    if (mirror) renderMirror();
     renderer.render(scene, topCam || camera);
+    if (mirror) {
+        renderer.autoClear = false;
+        renderer.clearDepth();
+        renderer.render(overlay, overlayCam);
+        renderer.autoClear = true;
+    }
 
     if (DEBUG) {
         fpsN++;
@@ -954,6 +1073,6 @@ requestAnimationFrame(frame);
 window.__game = {
     drive, me, get car() { return me.car; }, get map() { return map; }, get bots() { return bots; }, puppets, session,
     race, get runner() { return myRunner; }, startRace,
-    camera, cam, selectCar, selectMap, settings, renderer, topView, audio, hostGame, joinGame, leaveGame,
+    camera, cam, selectCar, selectMap, settings, renderer, topView, audio, fx, scene, hostGame, joinGame, leaveGame,
     placeCar: (p) => { placeVehicle(me, map, p); cam.snap = true; },
 };

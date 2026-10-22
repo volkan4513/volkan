@@ -5,7 +5,7 @@
 // with every other car in it. Remote cars are drawn ~110 ms in the past, between two snapshots.
 // Cars only push themselves out of each other, so nobody waits on anybody.
 //
-// Races: the host starts them (race { id, laps, in: ms until the lights go green }). Each player
+// Races: the host starts them (race { id, laps, in: ms until the lights go green }; laps -1 is a sprint over the half route). Each player
 // counts their own laps and reports them with their car state; the host ranks everyone, bots
 // included, and sends the order out with every snapshot. Late joiners sit the race out.
 //

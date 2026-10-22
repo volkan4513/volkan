@@ -88,6 +88,59 @@ export function createTrack(def) {
     return track;
 }
 
+// ---------- racing line ----------
+// The centre line is where the road goes; a driver takes a smoother path through it, wide into a
+// corner, clipping the inside, wide out. buildRacingLine finds each point's room to the left and
+// right (clear(x, z, y) says whether a car fits there), then relaxes the line toward a straight
+// path between its neighbours, never closer to either edge than the margin. The result is a lateral
+// offset (m, + = left) per point; raceAt gives the position and heading on the line.
+export function buildRacingLine(track, clear, maxOff = 6, halfCar = 1.0, margin = 1.4) {
+    const n = track.count, closed = track.closed, { xs, ys, zs } = track;
+    const prev = (i) => (closed ? (i + n - 1) % n : Math.max(0, i - 1)), next = (i) => (closed ? (i + 1) % n : Math.min(n - 1, i + 1));
+    const nx = new Float32Array(n), nz = new Float32Array(n), lo = new Float32Array(n), hi = new Float32Array(n), off = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+        const tx = xs[next(i)] - xs[prev(i)], tz = zs[next(i)] - zs[prev(i)], l = Math.hypot(tx, tz) || 1;
+        nx[i] = tz / l;    // left of travel: heading is (sin yaw, cos yaw), left is (cos yaw, -sin yaw)
+        nz[i] = -tx / l;
+        const room = (side) => {
+            let d = 0;
+            while (d < 14 && clear(xs[i] + nx[i] * side * (d + 0.75), zs[i] + nz[i] * side * (d + 0.75), ys[i])) d += 0.75;
+            return d;
+        };
+        const left = room(1), right = room(-1), keep = halfCar + margin;
+        hi[i] = clamp(left - keep, 0, maxOff);
+        lo[i] = -clamp(right - keep, 0, maxOff);
+    }
+    const px = (i) => xs[i] + nx[i] * off[i], pz = (i) => zs[i] + nz[i] * off[i];
+    for (let pass = 0; pass < 400; pass++) {
+        for (let i = closed ? 0 : 1; i < (closed ? n : n - 1); i++) {
+            const p = prev(i), q = next(i);
+            const target = ((px(p) + px(q)) / 2 - xs[i]) * nx[i] + ((pz(p) + pz(q)) / 2 - zs[i]) * nz[i];
+            off[i] = clamp(off[i] + 0.6 * (target - off[i]), lo[i], hi[i]);
+        }
+    }
+    track.race = { off, lo, hi };
+    return track.race;
+}
+
+// Position and heading on the racing line at distance s (the centre line if there isn't one).
+export function raceAt(track, s, out = {}) {
+    const c = track.at(s, out);
+    if (!track.race) return c;
+    const place = (d, o) => {
+        const a = track.at(d, o), f = (track.closed ? ((d % track.length) + track.length) % track.length : clamp(d, 0, track.length)) / track.step;
+        const i = Math.min(Math.floor(f), track.count - 1), j = track.closed ? (i + 1) % track.count : Math.min(i + 1, track.count - 1), t = f - i;
+        const off = track.race.off[i] + (track.race.off[j] - track.race.off[i]) * t;
+        o.x = a.x + Math.cos(a.yaw) * off;
+        o.z = a.z - Math.sin(a.yaw) * off;
+        o.yaw = a.yaw;
+        return o;
+    };
+    const here = place(s, out), a = place(s - 2, {}), b = place(s + 2, {});
+    here.yaw = Math.atan2(b.x - a.x, b.z - a.z);
+    return here;
+}
+
 // Starting grid: two abreast, 8 m between rows, left lane first. On a circuit the front row is
 // just behind the line; on a sprint the grid sits at the start of the line, with room for 8 rows.
 export const GRID_ROWS = 8;

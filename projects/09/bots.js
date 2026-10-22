@@ -9,14 +9,14 @@
 // Without one they prefer straight ahead. A bot that keeps getting stuck on a track map is put back
 // on the line where it was, the way R does it for the player.
 import { groundNear, placeVehicle } from './vehicle.js';
-import { TUNING } from './drive.js';
+import { raceAt } from './race.js';
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const RAYS = [-0.9, -0.6, -0.35, -0.15, 0, 0.15, 0.35, 0.6, 0.9];   // radians off the nose (+ = left)
 const STEP = 2;
 const THINK = 0.1;   // seconds between looks; steering is smoothed in between
-const CORNER_G = TUNING.maxLat * 0.7;   // m/s² of cornering a bot plans on
-const BRAKE_PLAN = 9;                   // m/s² of braking a bot plans on (the car can do twice that)
+const CORNER_FRAC = 0.74;   // share of the car's cornering grip a bot plans on
+const BRAKE_FRAC = 0.5;     // share of its braking a bot plans on
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export const BOT_NAMES = ['Ace', 'Blitz', 'Comet', 'Dash', 'Echo', 'Flux', 'Gale'];
@@ -26,8 +26,12 @@ export function createBrain(seed) {
         t: Math.random() * THINK,
         steer: 0, target: 0, want: 10,
         stuck: 0, backing: 0, backSteer: 0, commit: 0, seg: -1, fails: [], clock: 0,
-        topSpeed: 24 + (seed % 3) * 3,   // m/s: a little spread so they don't drive as a train
-        bias: ((seed % 5) - 2) * 0.04,   // each one prefers a slightly different line
+        skill: 0.72 + (seed % 4) * 0.05,   // share of the car's top speed it will use: a spread, so they don't drive as a train
+        topSpeed: null,                    // m/s: an absolute cap instead, if set
+        lane: ((seed % 5) - 2) * 0.35,     // metres off the racing line each one prefers
+        bias: ((seed % 5) - 2) * 0.02,     // and a hair of steering preference
+        rubber: 1,                         // speed factor from the game: more when behind the player, less when far ahead
+        pass: 0, passT: 0, extra: 0,       // overtaking: side (+ left), time left, current sideways shift (m)
     };
 }
 
@@ -57,7 +61,9 @@ export function botInput(v, brain, map, others, dt) {
     if (brain.t <= 0) {
         brain.t = THINK;
         const len = clamp(14 + Math.abs(d.speed) * 1.6, 14, 70);
-        const road = map.track ? followTrack(v, brain, map.track) : null;
+        const tune = v.tune, top = (brain.topSpeed ?? tune.maxSpeed * brain.skill) * brain.rubber;
+        const traffic = watchTraffic(v, brain, others, top);
+        const road = map.track ? followTrack(v, brain, map.track, tune, brain.lane + brain.extra) : null;
         const aim = road ? road.aim : 0, pull = road ? 30 : 10;
         let best = 0, bestScore = -Infinity, bestFree = 0, ahead = len;
         for (const a of RAYS) {
@@ -69,7 +75,7 @@ export function botInput(v, brain, map, others, dt) {
         brain.target = clamp(-best / 0.55, -1, 1);   // steer input: + is right, ray angles + are left
         // speed for the way it's going (so it commits to passing a slow car), but no faster than
         // the room straight ahead allows plus some, since it still has to turn into the gap
-        brain.want = clamp(Math.min(bestFree * 0.55, ahead * 0.55 + 8, road ? road.speed : Infinity), 6, brain.topSpeed);
+        brain.want = clamp(Math.min(bestFree * 0.55, ahead * 0.55 + 8, road ? road.speed * (1 + (brain.rubber - 1) * 0.6) : Infinity, traffic), 6, top);
         // Not moving while trying to: back out, turning the other way, then pull away on full lock.
         // With a track, "the way" is where the road goes; nose-first into a bank on a hairpin the
         // rays can't tell which way round to turn.
@@ -115,25 +121,56 @@ function rescue(v, brain, map) {
     return true;
 }
 
-// Which way the road goes from here (radians off the nose, + = left, aimed at a point further
-// along the line) and how fast the bot can go and still make every corner in the next 80 m.
-function followTrack(v, brain, track) {
+// Which way to head to follow the racing line (radians off the nose, + = left, aimed at a point
+// further along it, shifted sideways by `shift` metres) and how fast the bot can go and still make
+// every corner in the next 80 m, with this car's grip and brakes.
+function followTrack(v, brain, track, tune, shift) {
     const d = v.drive, speed = Math.abs(d.speed);
     const p = track.project(d.x, v.y, d.z, brain.seg);
     brain.seg = p.seg;
-    const to = track.at(p.s + clamp(10 + speed * 0.7, 10, 34));
-    const aim = clamp(wrap(Math.atan2(to.x - d.x, to.z - d.z) - d.yaw), -1.2, 1.2);
+    const to = raceAt(track, p.s + clamp(10 + speed * 0.7, 10, 34));
+    const tx = to.x + Math.cos(to.yaw) * shift, tz = to.z - Math.sin(to.yaw) * shift;
+    const aim = clamp(wrap(Math.atan2(tx - d.x, tz - d.z) - d.yaw), -1.2, 1.2);
+    const cornerG = tune.maxLat * CORNER_FRAC, brakePlan = tune.brake * BRAKE_FRAC;
     let limit = Infinity;
     for (const k of [6, 18, 32, 50, 80]) {
-        const turn = Math.abs(wrap(track.at(p.s + k + 10).yaw - track.at(p.s + k - 10).yaw));
-        const corner = Math.sqrt(CORNER_G * (20 / Math.max(turn, 1e-3)));   // v = sqrt(a r), r = arc / angle
-        limit = Math.min(limit, Math.sqrt(corner * corner + 2 * BRAKE_PLAN * k));
+        const turn = Math.abs(wrap(raceAt(track, p.s + k + 10).yaw - raceAt(track, p.s + k - 10).yaw));
+        const corner = Math.sqrt(cornerG * (20 / Math.max(turn, 1e-3)));   // v = sqrt(a r), r = arc / angle
+        limit = Math.min(limit, Math.sqrt(corner * corner + 2 * brakePlan * k));
     }
     return { aim, speed: limit };
 }
 
+// Other cars on the road ahead: don't drive into the back of one (follow at its speed), and when
+// this car is quicker, pull out and go round it. Sets brain.extra (the sideways shift that
+// followTrack aims for) and returns a speed cap.
+function watchTraffic(v, brain, others, top) {
+    const d = v.drive, sin = Math.sin(d.yaw), cos = Math.cos(d.yaw);
+    let cap = Infinity, ahead = null, alongside = false;
+    for (const o of others) {
+        if (Math.abs(o.y - v.y) > 3) continue;
+        const dx = o.x - d.x, dz = o.z - d.z, f = dx * sin + dz * cos, l = dx * cos - dz * sin;   // + f ahead, + l left
+        if (f > 1.5 && f < 32 && Math.abs(l) < 2.8 && (!ahead || f < ahead.f)) ahead = { f, l, speed: o.speed ?? d.speed * 0.6 };
+        if (f > -6 && f <= 1.5 && Math.abs(l) < 3.4) alongside = true;
+    }
+    if (ahead) {
+        // close behind a slower car: slow to its pace, unless there is room to go round
+        if (ahead.f < 16) cap = ahead.speed * 0.97 + Math.max(0, ahead.f - 8) * 0.7;
+        if (top > ahead.speed + 1.5 && ahead.f < 24) {
+            if (!brain.pass) brain.pass = Math.abs(ahead.l) < 0.4 ? (brain.lane >= 0 ? 1 : -1) : ahead.l > 0 ? -1 : 1;
+            brain.passT = 1.1;
+        }
+    } else if (alongside && brain.pass) brain.passT = 1.1;   // still level: hold the line out
+    else brain.passT -= THINK;
+    if (brain.passT <= 0) brain.pass = 0;
+    if (brain.pass && ahead && ahead.f < 9 && Math.abs(ahead.l) < 1.6) cap = Math.min(cap, ahead.speed * 0.97);   // not through the gap yet
+    if (brain.pass && alongside) cap = Infinity;
+    brain.extra += ((brain.pass ? brain.pass * 3.4 : 0) - brain.extra) * 0.35;
+    return cap;
+}
+
 // Other cars as the obstacles and collision partners one vehicle sees.
 export function obstacle(v) {
-    return { x: v.drive.x, y: v.y, z: v.drive.z, yaw: v.drive.yaw, size: v.car.size };
+    return { x: v.drive.x, y: v.y, z: v.drive.z, yaw: v.drive.yaw, size: v.car.size, speed: v.drive.speed };
 }
 
