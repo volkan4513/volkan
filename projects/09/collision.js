@@ -169,5 +169,56 @@ export function buildCollision(root) {
         return { x: px, z: pz, nx: px / d, nz: pz / d };
     }
 
-    return { groundAt, pushCircle, stats: { ground: ground.length / 9, walls: walls.length / 6, trimmed, dropped } };
+    // First thing a ray hits, as a fraction (0..1) of the way from (ox, oy, oz) to (tx, ty, tz), or
+    // null. Hits ground triangles from either side (so a tunnel roof or a bridge deck blocks it) and
+    // walls. Used to keep the camera out of the scenery.
+    const gseen = new Uint32Array(ground.length / 9);
+    let gstamp = 0;
+    function castRay(ox, oy, oz, tx, ty, tz) {
+        gstamp++;
+        stamp++;
+        const dx = tx - ox, dy = ty - oy, dz = tz - oz;
+        const len2 = Math.hypot(dx, dz), steps = Math.max(1, Math.ceil(len2 / (CELL / 2)));
+        let best = Infinity;
+        let lastKey = -1;
+        for (let k = 0; k <= steps; k++) {
+            const f = k / steps, ix = Math.floor((ox + dx * f) / CELL), iz = Math.floor((oz + dz * f) / CELL), ck = key(ix, iz);
+            if (ck === lastKey) continue;
+            lastKey = ck;
+            const gl = groundCells.get(ck);
+            if (gl) for (const id of gl) {
+                if (gseen[id] === gstamp) continue;
+                gseen[id] = gstamp;
+                const g = id * 9;
+                const e1x = ground[g + 3] - ground[g], e1y = ground[g + 4] - ground[g + 1], e1z = ground[g + 5] - ground[g + 2];
+                const e2x = ground[g + 6] - ground[g], e2y = ground[g + 7] - ground[g + 1], e2z = ground[g + 8] - ground[g + 2];
+                const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x;   // d x e2
+                const det = e1x * px + e1y * py + e1z * pz;
+                if (Math.abs(det) < 1e-9) continue;
+                const sx = ox - ground[g], sy = oy - ground[g + 1], sz = oz - ground[g + 2];
+                const u = (sx * px + sy * py + sz * pz) / det;
+                if (u < 0 || u > 1) continue;
+                const qx = sy * e1z - sz * e1y, qy = sz * e1x - sx * e1z, qz = sx * e1y - sy * e1x;   // s x e1
+                const v = (dx * qx + dy * qy + dz * qz) / det;
+                if (v < 0 || u + v > 1) continue;
+                const t = (e2x * qx + e2y * qy + e2z * qz) / det;
+                if (t > 0.01 && t < best) best = t;
+            }
+            const wl = wallCells.get(ck);
+            if (wl && len2 > 1e-6) for (const id of wl) {
+                if (seen[id] === stamp) continue;
+                seen[id] = stamp;
+                const w = id * 6, ax = walls[w], az = walls[w + 1], ex = walls[w + 2] - ax, ez = walls[w + 3] - az;
+                const den = dx * ez - dz * ex;
+                if (Math.abs(den) < 1e-9) continue;
+                const t = ((ax - ox) * ez - (az - oz) * ex) / den, s = ((ax - ox) * dz - (az - oz) * dx) / den;
+                if (t <= 0.01 || t >= best || s < 0 || s > 1) continue;
+                const y = oy + dy * t;
+                if (y >= walls[w + 4] && y <= walls[w + 5]) best = t;
+            }
+        }
+        return best <= 1 ? best : null;
+    }
+
+    return { groundAt, pushCircle, castRay, stats: { ground: ground.length / 9, walls: walls.length / 6, trimmed, dropped } };
 }

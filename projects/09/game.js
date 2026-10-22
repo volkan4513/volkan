@@ -24,7 +24,7 @@ const DEBUG = params.has('debug');
 const SETTINGS_KEY = 'pixel-racer-settings';
 const settings = {
     car: 0, map: 0, pixel: 1, camera: 0, wheelStyle: 'smooth', textures: 'auto', filter: 'smooth', anisotropy: 0, draw: 1,
-    bots: 3, name: '', maxPlayers: 4, laps: 3,
+    bots: 3, name: '', maxPlayers: 4, laps: 1,   // laps 1 is a sprint: one run from the grid to the line
     ...loadSettings(),
 };
 function loadSettings() {
@@ -34,6 +34,7 @@ function saveSettings() {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* private mode */ }
 }
 const pick = (list, id) => Math.max(0, list.findIndex((x) => x.id === id));
+if (settings.lapsV !== 2) { settings.laps = 1; settings.lapsV = 2; }   // sprint is the default now
 if (params.has('car')) settings.car = pick(CARS, params.get('car'));
 if (params.has('map')) settings.map = pick(MAPS, params.get('map'));
 if (params.has('laps')) settings.laps = clamp(Number(params.get('laps')) | 0, 0, 9);
@@ -125,7 +126,7 @@ async function selectMap(i, fromHost = false) {
     applyDraw();
     applyTextureSettings();
     showCredit(map.credit);
-    $('mapInfo').textContent = def.info || (def.file ? 'circuit · hills and walls' : 'closed loop');
+    $('mapInfo').textContent = def.info || 'circuit · hills and walls';
     $('play').disabled = false;
     updateMpUI();
     session.sendMap(mapIndex);
@@ -295,7 +296,9 @@ function obstacles() {
 // start races (DRIVE, Restart, Race again); a client follows the host's. Race time runs from the
 // green light; in solo it stops while paused. Every car that is simulated here (mine, and the bots
 // on solo or the host) counts its own laps; on the host, clients' laps come in over the network.
-const LAP_CHOICES = [0, 1, 2, 3, 5];
+const LAP_CHOICES = [1, 2, 3, 5, 0];   // 1 = sprint, 0 = free roam
+// A sprint-only map (an open road) is always one run; a circuit takes the setting.
+const raceLaps = () => (map && map.track && !map.track.closed ? 1 : settings.laps);
 const COUNTDOWN_MS = 3600;
 const HOLD = { throttle: 0, brake: 0, steer: 0, handbrake: true, analog: true };   // on the grid
 const race = { id: 0, laps: 0, goAt: 0, pausedAt: 0, standings: [] };
@@ -326,7 +329,7 @@ function beginRace(id, laps, goAt, place = true) {
 // Solo and host: a new race with the laps setting, or free roam when it's off.
 function startRace() {
     if (session.role === 'client') return;
-    const laps = map && map.track ? settings.laps : 0;
+    const laps = map && map.track ? raceLaps() : 0;
     const was = racing();
     if (laps) beginRace(++raceCount, laps, performance.now() + COUNTDOWN_MS);
     else beginRace(0, 0, performance.now());
@@ -548,8 +551,9 @@ function updateMpUI() {
     $('botsBtn').disabled = role === 'client';
     $('botsBtn').textContent = role === 'client' ? 'Bots: host' : `Bots: ${settings.bots}`;
     const track = !!(map && map.track);
-    $('lapsBtn').disabled = role === 'client' || !track;
-    $('lapsBtn').textContent = !track ? 'No laps' : role === 'client' ? 'Laps: host' : settings.laps ? `Laps: ${settings.laps}` : 'Free roam';
+    const sprintOnly = track && !map.track.closed, laps = raceLaps();
+    $('lapsBtn').disabled = role === 'client' || !track || sprintOnly;
+    $('lapsBtn').textContent = !track ? 'No race' : role === 'client' ? 'Race: host' : laps === 1 ? 'Sprint' : laps ? `Laps: ${laps}` : 'Free roam';
 }
 
 // ---------- camera ----------
@@ -559,7 +563,7 @@ const CAMERAS = [
     { name: 'Bumper', bumper: true },
     { name: 'Top', dist: 9, height: 22, look: 0, ahead: 0 },
 ];
-const cam = { yaw: 0, pos: new THREE.Vector3(), snap: true, orbit: 0, orbitSpeed: 0.35 };
+const cam = { yaw: 0, pos: new THREE.Vector3(), snap: true, open: 1, orbit: 0, orbitSpeed: 0.35 };
 const lookAt = new THREE.Vector3();
 const inMenu = () => state === 'menu' || state === 'settings' || state === 'mp';
 
@@ -601,6 +605,16 @@ function updateCamera(dt) {
     // on a downhill the road behind is higher than the car: stay above it
     const behind = map.groundAt(cam.pos.x, cam.pos.z, cam.pos.y + 6, 0);
     if (behind !== null) cam.pos.y = Math.max(cam.pos.y, behind + 1.2);
+    // tunnels, bridge decks, walls: if anything sits between the car and the camera, move the camera
+    // up to it. It moves in at once and eases back out once the way is clear.
+    if (map.walls && map.walls.castRay) {
+        const hx = drive.x, hy = carY + 1.3 * scale, hz = drive.z;
+        const len = Math.hypot(cam.pos.x - hx, cam.pos.y - hy, cam.pos.z - hz);
+        const hit = map.walls.castRay(hx, hy, hz, cam.pos.x, cam.pos.y, cam.pos.z);
+        const open = hit === null ? 1 : clamp((hit * len - 0.5) / len, 0.2, 1);
+        cam.open = cam.snap || open < cam.open ? open : cam.open + (open - cam.open) * damp(4, dt);
+        cam.pos.set(hx + (cam.pos.x - hx) * cam.open, hy + (cam.pos.y - hy) * cam.open, hz + (cam.pos.z - hz) * cam.open);
+    }
     camera.position.copy(cam.pos);
     lookAt.set(drive.x + fx * c.ahead * scale, carY + c.look * scale, drive.z + fz * c.ahead * scale);
     camera.lookAt(lookAt);
@@ -697,7 +711,7 @@ function pause() {
     state = 'pause';
     input.setEnabled(false);
     $('pauseRoom').textContent = session.role === 'solo' ? '' : `Room ${session.code} · the race goes on while you're paused`;
-    $('restart').hidden = session.role === 'client' || !(map && map.track && settings.laps);
+    $('restart').hidden = session.role === 'client' || !(map && map.track && raceLaps());
     show('pause');
     updateLayers();
 }

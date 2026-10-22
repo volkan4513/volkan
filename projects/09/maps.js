@@ -1,19 +1,18 @@
-// Maps. Every map, built here or loaded from a GLB, comes out with the same shape:
+// Maps: four imported GLB maps, each coming out with the same shape:
 //   { group, start: { x, z, yaw }, sky, fog: [near, far], groundAt(x, z, yRef?, up?) -> y | null,
 //     offRoad(x, z) -> bool, walls: { pushCircle } | null, textureRoots: [Object3D], credit?,
 //     track: race.js track | null }
-// A map gets a track (and with it laps and races) when it has a centre line: built-in maps make
-// their own, imported ones take it from tracks.js.
+// A map gets a track (and with it races) when tracks.js has a centre line for it.
 import * as THREE from './lib/three.module.min.js';
 import { GLTFLoader } from './lib/GLTFLoader.js';
 import { mergeGeometries } from './lib/BufferGeometryUtils.js';
-import { buildTestTrack } from './world.js';
+import { MeshoptDecoder } from './lib/meshopt_decoder.module.js';
 import { buildCollision } from './collision.js';
 import { createTrack } from './race.js';
 import { TRACKS } from './tracks.js';
+import { buildGate } from './gates.js';
 
 export const MAPS = [
-    { id: 'loop', name: 'Test Loop', build: buildTestTrack },
     {
         id: 'chicago', name: 'Chicago', file: 'maps/nfs_shift_mobile_-_chicago.glb', size: 7836168,
         // The file is built at about 2x real size: its trackside barriers are 1.87 units tall and the
@@ -21,7 +20,7 @@ export const MAPS = [
         scale: 0.5,
         info: 'city sprint · walls on',
         // west end of the sprint, right-hand lane, heading south (in scaled metres)
-        spawn: { x: -780, z: -100, yaw: 0 },
+        spawn: { x: -780, z: -100, yaw: 0 }, roadWidth: 22, ownGantry: true,   // the map has a finish gantry at the end of the road
         sky: '#b9cfe2', fog: [120, 500],
         credit: {
             title: 'nfs shift mobile - chicago', author: 'amogusstrikesback2', license: 'CC BY 4.0',
@@ -34,11 +33,11 @@ export const MAPS = [
     // normals). Their roads are 20-25 m wide against a 1.9 m car, so they're scaled to 0.6.
     // Spawns are in scaled metres.
     nfs3('woods', 'Country Woods', 'country_woods', '059ffef1c06f4f02aeafc529606b8dc9', 5009520,
-        { spawn: { x: 449.4, z: 180, yaw: Math.PI }, sky: '#b4cbe0', fog: [120, 500] }),   // east straight, heading north
+        { roadWidth: 15, spawn: { x: 449.4, z: 180, yaw: Math.PI }, sky: '#b4cbe0', fog: [120, 500] }),   // east straight, heading north
     nfs3('canyons', 'Lost Canyons', 'lost_canyons', '3017b1c97c3e401eb7a744ce172df97d', 7471740,
-        { spawn: { x: -445.2, z: 831.5, yaw: 1.6 }, sky: '#e9d3b0', fog: [120, 550] }),
+        { roadWidth: 22, spawn: { x: -445.2, z: 831.5, yaw: 1.6 }, sky: '#e9d3b0', fog: [120, 550] }),
     nfs3('rocky', 'Rocky Pass', 'rocky_pass', 'c53cc28c9f5d4dbfa40c96d7a41d434b', 5784468,
-        { spawn: { x: 269.7, z: 613.8, yaw: 1.63 }, sky: '#c4d6e6', fog: [120, 550] }),   // behind the start line
+        { roadWidth: 15, spawn: { x: 269.7, z: 613.8, yaw: 1.63 }, sky: '#c4d6e6', fog: [120, 550] }),   // behind the start line
 ];
 
 function nfs3(id, name, slug, sketchfabId, size, rest) {
@@ -53,14 +52,19 @@ function nfs3(id, name, slug, sketchfabId, size, rest) {
     };
 }
 
-const loader = new GLTFLoader();
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 const built = new Map();   // id -> Promise<map>, so switching back is instant
 
 export function loadMap(def, onProgress) {
     if (!built.has(def.id)) {
-        const p = (def.build ? Promise.resolve(def.build()) : loadGlbMap(def, onProgress)).then((map) => {
-            const line = map.line || TRACKS[def.id];
+        const p = loadGlbMap(def, onProgress).then((map) => {
+            const line = TRACKS[def.id];
             map.track = line ? createTrack(line) : null;
+            // a start line and gantry at the start (the finish of a sprint)
+            if (map.track) {
+                const t = map.track;
+                map.group.add(buildGate(t, map, t.closed ? 0 : t.length, def.roadWidth || 16, !t.closed, !def.ownGantry));
+            }
             return map;
         });
         p.catch(() => built.delete(def.id));   // let a failed load be retried
@@ -91,6 +95,19 @@ async function loadGlbMap(def, onProgress) {
     };
 }
 
+// Compressed maps store positions, normals and UVs as normalised integers; collision and merging want plain floats.
+function toFloat(attr) {
+    if (attr.array instanceof Float32Array && !attr.normalized) return attr;
+    const n = attr.itemSize, out = new Float32Array(attr.count * n);
+    for (let i = 0; i < attr.count; i++) {
+        out[i * n] = attr.getX(i);
+        if (n > 1) out[i * n + 1] = attr.getY(i);
+        if (n > 2) out[i * n + 2] = attr.getZ(i);
+        if (n > 3) out[i * n + 3] = attr.getW(i);
+    }
+    return new THREE.BufferAttribute(out, n);
+}
+
 // One mesh per material instead of hundreds: far fewer draw calls, which phones care about.
 // Unlit maps (lighting painted into the textures) drop their normals; lit ones keep them.
 // "Blended" materials are drawn solid with an alpha cut-off so nothing needs sorting.
@@ -102,6 +119,7 @@ function mergeByMaterial(scene, lit) {
         if (!o.isMesh) return;
         const g = o.geometry.clone();
         for (const name of Object.keys(g.attributes)) if (!keep.includes(name)) g.deleteAttribute(name);
+        for (const name of Object.keys(g.attributes)) g.setAttribute(name, toFloat(g.attributes[name]));
         if (lit && !g.attributes.normal) g.computeVertexNormals();
         if (!g.attributes.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
         if (!g.index) g.setIndex([...Array(g.attributes.position.count).keys()]);
