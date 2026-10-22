@@ -117,7 +117,7 @@ export function buildCollision(root) {
 
     // Height of the highest ground under (x, z) that is no more than `up` metres above yRef
     // (so a bridge overhead doesn't count), or null if there is none.
-    function groundAt(x, z, yRef = Infinity, up = 1) {
+    function groundRaw(x, z, yRef, up) {
         const list = groundCells.get(key(Math.floor(x / CELL), Math.floor(z / CELL)));
         if (!list) return null;
         let top = null;
@@ -134,6 +134,23 @@ export function buildCollision(root) {
             if (y <= limit && (top === null || y > top)) top = y;
         }
         return top;
+    }
+
+    // The imported maps have hairline cracks where road tiles meet (no triangle covers them), and a
+    // car whose nose or tail circle lands exactly on one is treated as being off the edge of the map
+    // and bounced back. A point with ground close by on both sides of it is on a crack, not an edge,
+    // so it takes their height; at a real edge only one side has ground and it stays empty.
+    const CRACK = 0.15;
+    function groundAt(x, z, yRef = Infinity, up = 1) {
+        const g = groundRaw(x, z, yRef, up);
+        if (g !== null) return g;
+        for (const [dx, dz] of [[CRACK, 0], [0, CRACK]]) {
+            const a = groundRaw(x + dx, z + dz, yRef, up);
+            if (a === null) continue;
+            const b = groundRaw(x - dx, z - dz, yRef, up);
+            if (b !== null && Math.abs(a - b) < 0.5) return Math.max(a, b);
+        }
+        return null;
     }
 
     // Push a circle out of every wall that overlaps the car's body height (y + 0.4 .. y + 1.6).

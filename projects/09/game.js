@@ -13,6 +13,7 @@ import { createBrain, botInput, obstacle, BOT_NAMES } from './bots.js';
 import { createSession, MAX_CHOICES } from './multiplayer.js';
 import { cleanCode } from './net.js';
 import { createRunner, stepRunner, rank, gridPose, formatTime } from './race.js';
+import { createAudio } from './audio.js';
 
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -24,7 +25,7 @@ const DEBUG = params.has('debug');
 const SETTINGS_KEY = 'pixel-racer-settings';
 const settings = {
     car: 0, map: 0, pixel: 1, camera: 0, wheelStyle: 'smooth', textures: 'auto', filter: 'smooth', anisotropy: 0, draw: 1,
-    bots: 3, name: '', maxPlayers: 4, laps: 1,   // laps 1 is a sprint: one run from the grid to the line
+    bots: 3, name: '', maxPlayers: 4, laps: 1, sound: true, music: true,   // laps 1 is a sprint: one run from the grid to the line
     ...loadSettings(),
 };
 function loadSettings() {
@@ -42,6 +43,11 @@ if (params.has('bots')) settings.bots = clamp(Number(params.get('bots')) | 0, 0,
 if (!TEXTURE_STEPS.includes(settings.textures)) settings.textures = 'auto';
 if (!settings.pixel) settings.pixel = 1;   // older saves used 0 for "auto pixels"
 if (!settings.name) settings.name = `Driver${Math.floor(Math.random() * 900 + 100)}`;
+// ---------- sound (starts on the first click, key or touch) ----------
+const audio = createAudio({ sound: settings.sound, music: settings.music, maxSpeed: TUNING.maxSpeed });
+for (const ev of ['pointerdown', 'keydown', 'touchstart']) addEventListener(ev, () => audio.unlock(), { passive: true });
+let myThrottle = 0;
+
 const playerName = () => settings.name.trim().slice(0, 12) || 'Driver';
 
 // ---------- renderer ----------
@@ -353,9 +359,10 @@ function frozen(now) {
 function myLap(ev) {
     if (!ev) return;
     const r = myRunner, last = r.lapTimes[r.lapTimes.length - 1], best = last === r.best && r.lapTimes.length > 1 ? ' · BEST' : '';
-    if (ev === 'finish') resultsT = 0;   // the results card says how it went
+    if (ev === 'finish') { resultsT = 0; audio.finishJingle(); }   // the results card says how it went
     else if (!race.laps) toast(`LAP ${formatTime(last)}${best}`, 2200);
     else toast(`${r.lap === race.laps ? 'FINAL LAP' : `LAP ${r.lap}/${race.laps}`} · ${formatTime(last)}${best}`, 2200);
+    if (ev !== 'finish') audio.lapChime();
 }
 
 const finishMs = (f) => Math.round((f || 0) * 1000);
@@ -401,7 +408,10 @@ function updateRaceHud(now, dt) {
         else if (now - race.goAt < 900) count = 'GO!';
     }
     $('countdown').hidden = !count;
-    if (count && $('countdown').textContent !== count) $('countdown').textContent = count;
+    if (count && $('countdown').textContent !== count) {
+        $('countdown').textContent = count;
+        audio.beep(count === 'GO!' ? 1040 : 520, count === 'GO!' ? 0.4 : 0.13);
+    }
     $('wrongWay').hidden = !(show && r.wrong && !finished && !onGrid(now));
     $('results').hidden = !(state === 'play' && finished);
     document.body.classList.toggle('finished', finished);   // the autopilot drives: no pedals
@@ -602,8 +612,9 @@ function updateCamera(dt) {
     cam.snap = false;
     const dist = c.dist * scale;
     cam.pos.set(drive.x - Math.sin(cam.yaw) * dist, carY + c.height * scale, drive.z - Math.cos(cam.yaw) * dist);
-    // on a downhill the road behind is higher than the car: stay above it
-    const behind = map.groundAt(cam.pos.x, cam.pos.z, cam.pos.y + 6, 0);
+    // on a downhill the road behind is higher than the car: stay above it. Only surfaces a little above
+    // the car count, so a tunnel roof or a bridge deck overhead never lifts the camera.
+    const behind = map.groundAt(cam.pos.x, cam.pos.z, carY + 2, 0);
     if (behind !== null) cam.pos.y = Math.max(cam.pos.y, behind + 1.2);
     // tunnels, bridge decks, walls: if anything sits between the car and the camera, move the camera
     // up to it. It moves in at once and eases back out once the way is clear.
@@ -622,6 +633,7 @@ function updateCamera(dt) {
 
 // ---------- states: menu / settings / mp / play / pause ----------
 let state = 'menu', settingsFrom = 'menu';
+let dbgHit = '';   // ?debug: where the car last hit something
 const input = createInput({
     pause: () => (state === 'play' ? pause() : state === 'pause' && resume()),
     camera: () => {
@@ -635,6 +647,12 @@ const input = createInput({
     reset: resetCar,
     pixel: () => { cycle('pixel'); toast(`Pixel size: ${labels.pixel()}`); },
     wheelStyle: () => { cycle('wheelStyle'); toast(`Wheels: ${labels.wheelStyle()}`); },
+    mute: () => {
+        const on = !(settings.sound || settings.music);   // anything playing: silence it all; silent: bring both back
+        settings.sound = settings.music = on;
+        saveSettings(); APPLY.sound(); APPLY.music(); updateSettingsLabels();
+        toast(on ? 'Sound on' : 'Sound off');
+    },
     touchMode: updateLayers,
 });
 
@@ -646,6 +664,8 @@ const OPTIONS = {
     anisotropy: [0, ...ANISO_STEPS],
     draw: [0, 1, 2],
     wheelStyle: ['smooth', 'stepped'],
+    sound: [true, false],
+    music: [true, false],
 };
 const labels = {
     pixel: () => (settings.pixel === 1 ? 'Off (sharp)' : `${settings.pixel}x`),
@@ -657,10 +677,13 @@ const labels = {
     },
     draw: () => DRAW[settings.draw].name,
     wheelStyle: () => (settings.wheelStyle === 'smooth' ? 'Smooth' : 'Stepped'),
+    sound: () => (settings.sound ? 'On' : 'Off'),
+    music: () => (settings.music ? 'On' : 'Off'),
 };
 const APPLY = {
     pixel: resize, textures: applyTextureSettings, filter: applyTextureSettings, anisotropy: applyTextureSettings,
     draw: applyDraw, wheelStyle: () => {},
+    sound: () => audio.setSound(settings.sound), music: () => audio.setMusic(settings.music),
 };
 
 function cycle(key) {
@@ -689,7 +712,7 @@ function updateLayers() {
     document.body.classList.toggle('touch', input.touchMode);
     $('hint').textContent = input.touchMode
         ? 'Left thumb: drag to steer · Right: GAS, BRAKE, DRIFT'
-        : 'W/S or ↑/↓ drive · A/D steer · Space drift · C camera · Q/E car · R reset · P pixels · T wheel style';
+        : 'W/S or ↑/↓ drive · A/D steer · Space drift · C camera · Q/E car · R reset · P pixels · T wheel style · M mute';
 }
 
 function start() {
@@ -851,19 +874,25 @@ function frame(now) {
                 const keys = input.read();   // read every frame so one-shot pad buttons stay live
                 const ctl = grid ? HOLD : myRunner && myRunner.finish && racing() ? botInput(me, autopilot, map, others('me'), dt) : keys;
                 stepVehicle(me, map, ctl, dt, others('me'));
+                myThrottle = ctl.throttle || 0;
+                if (me.bump > 2) audio.bump(me.bump);
                 dropCrumbs(dt, now);
                 poseVehicle(me, map, dt, settings.wheelStyle);
             } else if (inMenu()) {
-                // let the showroom wheels roll slowly so you can see the rig working
-                drive.steer = Math.sin(now / 900) * 0.35;
-                poseVehicle(me, map, dt, settings.wheelStyle, 3);
+                // the showroom car stands still, wheels straight
+                drive.steer = 0;
+                poseVehicle(me, map, dt, settings.wheelStyle, 0);
             } else {
                 poseVehicle(me, map, dt, settings.wheelStyle);
             }
         }
         for (const b of bots) {
             const near = others(b.id);
-            if (!stop) stepVehicle(b.v, map, grid ? HOLD : botInput(b.v, b.brain, map, near, dt), dt, near);
+            if (!stop) {
+                const ctl = grid ? HOLD : botInput(b.v, b.brain, map, near, dt);
+                b.thr = ctl.throttle || 0;
+                stepVehicle(b.v, map, ctl, dt, near);
+            }
             poseVehicle(b.v, map, dt, settings.wheelStyle);
         }
         if (!stop) stepRace(now, dt);
@@ -885,12 +914,28 @@ function frame(now) {
         $('hudRoom').textContent = `ROOM ${session.code} · ${session.players}/${session.max}${ping}`;
     }
 
+    // sound: the race music and engines only while driving; the menu gets the quiet music
+    audio.setScene(state === 'play' ? 1 : 0, state === 'pause' || (state === 'settings' && settingsFrom === 'pause'));
+    const voices = [];
+    if (map && me.car && state === 'play') {
+        voices.push({ id: 'me', local: true, x: drive.x, y: me.y, z: drive.z, speed: drive.speed, slip: drive.slip, throttle: myThrottle });
+        for (const b of bots) voices.push({ id: `b${b.id}`, x: b.v.drive.x, y: b.v.y, z: b.v.drive.z, speed: b.v.drive.speed, throttle: b.thr || 0 });
+        for (const [id, p] of puppets) if (p.pose) voices.push({ id: `p${id}`, x: p.pose.x, y: p.pose.y, z: p.pose.z, speed: p.pose.speed || 0, throttle: Math.abs(p.pose.speed || 0) > 1 ? 0.6 : 0 });
+    }
+    audio.update(dt, { x: camera.position.x, y: camera.position.y, z: camera.position.z, yaw: cam.yaw }, voices);
+
     renderer.render(scene, topCam || camera);
 
     if (DEBUG) {
         fpsN++;
         fpsT += dt;
-        if (fpsT > 0.5) { $('fps').textContent = `${Math.round(fpsN / fpsT)} fps · ${renderer.info.render.calls} draws`; fpsT = fpsN = 0; }
+        if (me.bump > 1) dbgHit = `${Math.round(drive.x)}, ${Math.round(drive.z)} (s ${myRunner ? Math.round(myRunner.s) : '-'}) at ${(me.bump * 3.6) | 0} km/h`;
+        if (fpsT > 0.5) {
+            const stuck = bots.filter((b) => b.brain.backing > 0).map((b) => `${b.name} ${Math.round(b.v.drive.x)}, ${Math.round(b.v.drive.z)}`);
+            $('fps').textContent = `${Math.round(fpsN / fpsT)} fps · ${renderer.info.render.calls} draws · you ${Math.round(drive.x)}, ${Math.round(drive.z)}${myRunner ? ` s ${Math.round(myRunner.s)}` : ''}`
+                + (dbgHit ? ` · last hit ${dbgHit}` : '') + (stuck.length ? ` · stuck: ${stuck.join('; ')}` : '');
+            fpsT = fpsN = 0;
+        }
     }
 }
 
@@ -909,6 +954,6 @@ requestAnimationFrame(frame);
 window.__game = {
     drive, me, get car() { return me.car; }, get map() { return map; }, get bots() { return bots; }, puppets, session,
     race, get runner() { return myRunner; }, startRace,
-    camera, cam, selectCar, selectMap, settings, renderer, topView, hostGame, joinGame, leaveGame,
+    camera, cam, selectCar, selectMap, settings, renderer, topView, audio, hostGame, joinGame, leaveGame,
     placeCar: (p) => { placeVehicle(me, map, p); cam.snap = true; },
 };

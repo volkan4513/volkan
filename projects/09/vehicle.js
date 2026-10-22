@@ -166,7 +166,7 @@ export function poseVehicle(v, map, dt, wheelStyle, wheelSpeed = v.drive.speed) 
 // ---------- posing a model (also used for remote players) ----------
 // The wheel's true angle keeps counting; what's drawn is capped per frame so fast wheels
 // don't strobe backwards, and in "stepped" style it snaps to 16 positions like a sprite flipbook.
-const WHEEL_CAP = 0.42;
+const WHEEL_CAP = 0.25;   // rad per frame: under half the spoke gap of a 12-spoke rim, so fast wheels never seem to run backwards
 const WHEEL_STEP = (Math.PI * 2) / 16;
 
 export function poseCar(car, p, dt, wheelStyle) {

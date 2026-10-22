@@ -14,7 +14,7 @@ export function createInput(actions) {
     let touchMode = matchMedia('(pointer: coarse)').matches;
 
     // ---------- keyboard ----------
-    const ONE_SHOT = { KeyC: 'camera', KeyE: 'nextCar', KeyQ: 'prevCar', KeyR: 'reset', KeyP: 'pixel', KeyT: 'wheelStyle' };
+    const ONE_SHOT = { KeyC: 'camera', KeyE: 'nextCar', KeyQ: 'prevCar', KeyR: 'reset', KeyP: 'pixel', KeyT: 'wheelStyle', KeyM: 'mute' };
     addEventListener('keydown', (e) => {
         // Esc toggles pause, so it has to work while input is switched off too
         if (e.code === 'Escape' && !e.repeat) return void actions.pause?.();
