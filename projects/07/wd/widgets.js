@@ -372,6 +372,7 @@ def((() => {
         },
         toggle() { a.paused ? go() : a.pause(); },
         next, prev,
+        play: i => set(i, true),
     };
 })());
 
@@ -446,14 +447,14 @@ def((() => {
         qs(el, '.go').textContent = running ? 'Pause' : (s < mins * 60 ? 'Resume' : 'Start');
         if (sessions.day !== new Date().toDateString()) sessions = { day: new Date().toDateString(), n: 0 };
         qs(el, '.cnt').textContent = `${sessions.n} focus session${sessions.n === 1 ? '' : 's'} today`;
-        document.title = running ? `${qs(el, '.big-face').textContent} · Widget Desktop` : 'Widget Desktop';
+        document.title = running ? `${qs(el, '.big-face').textContent} · ${appTitle()}` : appTitle();
         if (running && s <= 0) done();
     }
     function done() {
         running = false; clearInterval(int); left = mins * 60;
         if (mins === 25) { sessions.n++; store.set('sessions', sessions); }
         chime(); toast(mins === 25 ? 'Focus session done — take a break' : 'Break over', 3000);
-        if ('Notification' in window && Notification.permission === 'granted') new Notification('Widget Desktop', { body: 'Timer finished' });
+        if ('Notification' in window && Notification.permission === 'granted') new Notification(appTitle(), { body: 'Timer finished' });
         render();
     }
     return {

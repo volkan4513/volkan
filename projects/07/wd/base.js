@@ -8,6 +8,11 @@ const store = {
     set(k, v) { try { localStorage.setItem('wd.' + k, JSON.stringify(v)); } catch { } },
 };
 const isPhone = () => matchMedia('(max-width: 700px)').matches;
+// the page is "Widget Mobile" in the phone layout and "Widget Desktop" otherwise
+const appTitle = () => isPhone() ? 'Widget Mobile' : 'Widget Desktop';
+const syncTitle = () => { if (!/·/.test(document.title)) document.title = appTitle(); };
+matchMedia('(max-width: 700px)').addEventListener('change', syncTitle);
+syncTitle();
 const accent = () => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
@@ -79,7 +84,8 @@ const Lens = {
     x: innerWidth / 2, y: innerHeight / 2, on: false, pinned: false, raf: 0,
 };
 // elements over which the lens should not follow the pointer
-const UI_SEL = '.widget, .dock, .panel, .icon, .hw, .favbar, .edit-bar, .coach, .site-home-btn, .status, .drawer, .shade, .headsup';
+const UI_SEL = '.widget, .panel, .icon, .hw, .favbar, .edit-bar, .site-home-btn, .status, .drawer, .shade, .headsup, '
+    + '#desk, .win, .taskbar, .start, .flyout, .dicon, .ctx, .dlg-back, .wtoast';
 
 function lensDims() {
     const k = Lens.scale * (isPhone() ? 0.8 : 1), s = Lens.shape;

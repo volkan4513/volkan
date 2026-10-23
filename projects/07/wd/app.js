@@ -1,9 +1,11 @@
-// Widget Desktop - framework: builds widgets from WIDGETS, desktop drag /
-// resize / layouts, the dock + panels. The phone home screen is wd/phone.js.
+// Widget Desktop - framework: builds widgets from WIDGETS, the Widgets board
+// (desktop, opened from the taskbar), panels, keyboard shortcuts and the
+// shared tick. The desktop shell is wd/win/shell.js, the phone home screen
+// is wd/phone.js.
 'use strict';
 const byId = id => document.querySelector(`.widget[data-w="${id}"]`);
 const defOf = id => WIDGETS.find(w => w.id === id);
-const DEFAULT_SET = ['clock', 'calendar', 'date', 'weather', 'music', 'system', 'sky'];
+const DEFAULT_SET = ['clock', 'weather', 'calendar', 'music', 'date', 'todo', 'sky', 'quote'];
 const PRESETS = {
     Default: DEFAULT_SET,
     Focus: ['clock', 'timer', 'todo', 'notes', 'breathe', 'ambient'],
@@ -18,9 +20,9 @@ const PRESETS = {
 // =================================================================
 // Build widgets
 // =================================================================
-let layout = store.get('layout2', null);   // { id: {x, y, w, h, on} }
-let zTop = 20;
+let layout = store.get('board', null);   // { id: { on } }
 const desk = $('desk');
+desk.insertAdjacentHTML('beforeend', '<div class="board-cols" id="boardCols"></div>');
 
 WIDGETS.forEach(w => {
     const el = document.createElement('section');
@@ -28,22 +30,22 @@ WIDGETS.forEach(w => {
     el.dataset.w = w.id;
     el.tabIndex = -1;
     el.setAttribute('aria-label', w.name);
-    el.style.width = w.w + 'px';
-    el.innerHTML = `<div class="w-head"><button class="w-back" aria-label="Back to home">&#8592;</button><span class="w-grip" aria-hidden="true">&#10303;</span><span class="w-title">${w.name}</span><button class="w-close" aria-label="Hide ${w.name}">&times;</button></div>
-        <div class="w-body">${w.body()}</div>${w.big ? '<div class="w-resize" aria-hidden="true" title="Resize"></div>' : ''}`;
+    el.innerHTML = `<div class="w-head"><button class="w-back" aria-label="Back to home">&#8592;</button><span class="w-ic" aria-hidden="true">${w.icon}</span><span class="w-title">${w.name}</span><button class="w-close" aria-label="Remove ${w.name}" title="Remove from board">&times;</button></div>
+        <div class="w-body">${w.body()}</div>`;
     el.hidden = true;
-    desk.appendChild(el);
+    $('boardCols').appendChild(el);
     try { w.init(el.querySelector('.w-body')); w.tick?.(new Date()); } catch (err) { console.error('widget init failed:', w.id, err); }
 });
 
 // =================================================================
-// Active state: start/stop hooks so off-screen widgets do no work
+// Active state: start/stop hooks so hidden widgets do no work
 // =================================================================
+let boardOpen = false;
 const active = new Set();
 function isActive(id) {
     if (document.hidden) return false;
     if (isPhone()) return openApp === id;
-    return !byId(id).hidden && !document.body.classList.contains('zen');
+    return boardOpen && !!layout[id]?.on && !document.body.classList.contains('zen');
 }
 function refreshActive() {
     WIDGETS.forEach(w => {
@@ -54,171 +56,93 @@ function refreshActive() {
 }
 
 // =================================================================
-// Desktop layout
+// Widgets board (desktop): a panel that slides in from the left
 // =================================================================
-function saveLayout() { store.set('layout2', layout); }
-function place(el, l) {
-    if (l.x != null) { el.style.left = l.x * innerWidth + 'px'; el.style.top = l.y * innerHeight + 'px'; }
-    if (l.w) el.style.width = l.w + 'px';
-    if (l.h) el.style.height = l.h + 'px';
-}
-function applyLayout() {
-    WIDGETS.forEach(w => {
-        const el = byId(w.id), l = layout[w.id] || {};
-        el.hidden = !l.on;
-        place(el, l);
-    });
-    clampAll();
-    renderLauncher();
-    refreshActive();
-}
-function clampAll() {
-    if (isPhone()) return;
-    document.querySelectorAll('.widget:not([hidden])').forEach(el => {
-        const r = el.getBoundingClientRect();
-        const x = Math.max(0, Math.min(innerWidth - r.width, r.left));
-        const y = Math.max(0, Math.min(innerHeight - 70 - r.height, r.top));
-        if (Math.round(x) !== Math.round(r.left) || Math.round(y) !== Math.round(r.top)) { el.style.left = x + 'px'; el.style.top = y + 'px'; }
-    });
-}
-addEventListener('resize', () => { if (!isPhone()) applyLayout(); });
+desk.insertAdjacentHTML('afterbegin', `<div class="board-head"><div><div class="bh-time" id="bhTime"></div><div class="bh-date" id="bhDate"></div></div>
+    <div class="row2"><button class="btn" id="boardAdd" aria-expanded="false">+ Add widgets</button><button class="btn" id="boardClose" aria-label="Close widgets">✕</button></div></div>`);
+$('desk').querySelector('.board-head').after($('launcher'));
 
-// masonry-style auto arrange of the visible widgets, column by column
-function autoArrange(ids) {
-    const gap = 12, top = 16, maxY = innerHeight - 80;
-    let x = 16, y = top, colW = 0;
-    ids.forEach(id => {
-        const el = byId(id);
-        el.hidden = false;
-        el.style.height = layout[id]?.h ? layout[id].h + 'px' : '';
-        const r = el.getBoundingClientRect();
-        if (y + r.height > maxY && y > top) { x += colW + gap; y = top; colW = 0; }
-        el.style.left = x + 'px'; el.style.top = y + 'px';
-        layout[id] = { ...(layout[id] || {}), on: true, x: x / innerWidth, y: y / innerHeight };
-        y += r.height + gap; colW = Math.max(colW, r.width);
-    });
+const saveLayout = () => store.set('board', layout);
+function applyLayout() {
+    WIDGETS.forEach(w => { byId(w.id).hidden = !layout[w.id]?.on; });
+    renderLauncher();
     refreshActive();
 }
 function applyPreset(name, silent) {
     const ids = PRESETS[name];
-    WIDGETS.forEach(w => { layout[w.id] = { ...(layout[w.id] || {}), on: ids.includes(w.id) }; byId(w.id).hidden = !ids.includes(w.id); });
-    autoArrange(ids);
+    layout = {};
+    ids.forEach(id => { layout[id] = { on: true }; });
     saveLayout(); applyLayout();
-    if (!silent) toast(name + ' layout');
+    if (!silent) toast(name + ' widgets');
 }
 function setWidget(id, on) {
-    layout[id] = { ...(layout[id] || {}), on };
-    const el = byId(id);
-    el.hidden = !on;
-    if (on && layout[id].x == null) {
-        // drop new widgets near the middle, cascading
-        const n = document.querySelectorAll('.widget:not([hidden])').length;
-        el.style.left = Math.max(16, innerWidth / 2 - el.offsetWidth / 2 + (n % 5) * 24) + 'px';
-        el.style.top = Math.max(16, innerHeight / 3 - 80 + (n % 5) * 24) + 'px';
-        const r = el.getBoundingClientRect();
-        layout[id].x = r.left / innerWidth; layout[id].y = r.top / innerHeight;
-    }
-    if (on) { el.style.zIndex = ++zTop; clampAll(); }
+    layout[id] = { on };
+    byId(id).hidden = !on;
     saveLayout(); renderLauncher(); refreshActive();
 }
-
-// ---- drag by the title bar, resize from the corner
-desk.addEventListener('pointerdown', e => {
-    const el = e.target.closest('.widget');
-    if (!el || isPhone()) return;
-    el.style.zIndex = ++zTop;
-    if (!e.target.closest('input, textarea, select, button, canvas, [tabindex]:not(.widget)')) el.focus({ preventScroll: true });
-    const head = e.target.closest('.w-head'), grip = e.target.closest('.w-resize');
-    if (document.body.classList.contains('locked') || (!head && !grip) || e.target.closest('.w-close, .w-back')) return;
-    e.preventDefault();
-    const r = el.getBoundingClientRect(), sx = e.clientX, sy = e.clientY;
-    const tgt = e.target;
-    tgt.setPointerCapture(e.pointerId);
-    el.classList.add('dragging');
-    dismissCoach();
-    const move = ev => {
-        if (grip) {
-            el.style.width = Math.max(180, Math.min(innerWidth - r.left, r.width + ev.clientX - sx)) + 'px';
-            el.style.height = Math.max(140, Math.min(innerHeight - r.top - 10, r.height + ev.clientY - sy)) + 'px';
-        } else {
-            const x = Math.max(0, Math.min(innerWidth - r.width, r.left + ev.clientX - sx));
-            const y = Math.max(0, Math.min(innerHeight - r.height, r.top + ev.clientY - sy));
-            el.style.left = Math.round(x / 8) * 8 + 'px';
-            el.style.top = Math.round(y / 8) * 8 + 'px';
-        }
-    };
-    const up = () => {
-        el.classList.remove('dragging');
-        tgt.removeEventListener('pointermove', move);
-        tgt.removeEventListener('pointerup', up);
-        tgt.removeEventListener('pointercancel', up);
-        const b = el.getBoundingClientRect(), id = el.dataset.w;
-        layout[id] = { ...(layout[id] || {}), x: b.left / innerWidth, y: b.top / innerHeight };
-        if (grip) { layout[id].w = Math.round(b.width); layout[id].h = Math.round(b.height); }
-        saveLayout();
-    };
-    tgt.addEventListener('pointermove', move);
-    tgt.addEventListener('pointerup', up);
-    tgt.addEventListener('pointercancel', up);
-});
+// on the desktop the widgets sit on the right of the screen; W or the taskbar button hides them
+function setBoard(open) {
+    if (!isPhone()) store.set('deskWidgets', open);
+    if (isPhone()) open = false;
+    boardOpen = open;
+    document.body.classList.toggle('board-open', open);
+    if (!open) $('launcher').hidden = true;
+    renderBoardTime();
+    refreshActive();
+    fitBoard();
+}
+// the desktop widgets never scroll: if they don't fit their area, the columns
+// zoom out (which also makes room for a third column) until they do
+let fitRaf = 0;
+function fitBoard() {
+    cancelAnimationFrame(fitRaf);
+    fitRaf = requestAnimationFrame(() => {
+        const cols = $('boardCols');
+        if (isPhone() || !boardOpen) { cols.style.zoom = ''; return; }
+        const avail = desk.clientHeight - cols.offsetTop;
+        const fits = z => { cols.style.zoom = z; return cols.getBoundingClientRect().height <= avail + 1; };
+        if (fits(1)) return;
+        // the height jumps whenever a column is added, so search for the largest zoom that fits
+        let lo = 0.4, hi = 1;
+        for (let i = 0; i < 9; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
+        cols.style.zoom = lo;
+    });
+}
+const fitObserver = new ResizeObserver(fitBoard);
+[...$('boardCols').children, $('launcher'), desk.querySelector('.board-head')].forEach(el => fitObserver.observe(el));
+addEventListener('resize', fitBoard);
+function renderBoardTime(now = new Date()) {
+    if (!boardOpen) return;
+    $('bhTime').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    $('bhDate').textContent = now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+}
 desk.addEventListener('click', e => {
     const close = e.target.closest('.w-close'), back = e.target.closest('.w-back');
     if (close) setWidget(close.closest('.widget').dataset.w, false);
     if (back) history.back();
 });
-
-// ---- first-visit hint: widgets are draggable
-let coachT = 0;
-function showCoach() {
-    if (isPhone() || store.get('coached', false)) return;
-    const el = [...document.querySelectorAll('.widget:not([hidden])')][0];
-    if (!el) return;
-    const h = el.querySelector('.w-head').getBoundingClientRect();
-    const c = $('coach');
-    c.innerHTML = `<b>Psst — these move!</b><br>Drag any widget by its <b>&#10303;</b> title bar.<br>Big ones resize from the <b>&#9698;</b> corner.<br><button class="btn">Got it</button>`;
-    c.style.left = Math.min(innerWidth - 280, h.left + 8) + 'px';
-    c.style.top = h.bottom + 12 + 'px';
-    c.hidden = false;
-    document.querySelectorAll('.widget:not([hidden])').forEach(w => w.classList.add('hint-wiggle'));
-    c.querySelector('button').onclick = dismissCoach;
-    coachT = setTimeout(dismissCoach, 12000);
-}
-function dismissCoach() {
-    if ($('coach').hidden) return;
-    $('coach').hidden = true;
-    clearTimeout(coachT);
-    document.querySelectorAll('.hint-wiggle').forEach(w => w.classList.remove('hint-wiggle'));
-    store.set('coached', true);
-}
+desk.addEventListener('pointerdown', e => {
+    const el = e.target.closest('.widget');
+    if (el && !e.target.closest('input, textarea, select, button, canvas, [tabindex]:not(.widget)')) el.focus({ preventScroll: true });
+});
+$('boardAdd').onclick = () => {
+    const open = $('launcher').hidden;
+    $('launcher').hidden = !open;
+    $('boardAdd').setAttribute('aria-expanded', open);
+};
+$('boardClose').onclick = () => setBoard(false);
+$('boardClose').title = 'Hide widgets (W)';
 
 // =================================================================
-// Dock + panels (desktop)
+// Panels: widget picker (inside the board), phone settings, help
 // =================================================================
 const PANELS = ['launcher', 'settings', 'help', 'hwPicker'];
-function closePanels() { PANELS.forEach(id => { $(id).hidden = true; }); }
+function closePanels(except) { PANELS.forEach(id => { if (id !== except) $(id).hidden = true; }); }
 function togglePanel(id) { const open = $(id).hidden; closePanels(); $(id).hidden = !open; }
 document.addEventListener('pointerdown', e => {
-    if (!e.target.closest('.panel, .dock, .favbar, .icon')) closePanels();
+    if (!e.target.closest('.panel, .taskbar, .favbar, .icon, #boardAdd, .start, .ctx')) closePanels();
 });
 
-function renderDock() {
-    const dock = $('dock');
-    dock.innerHTML = '';
-    const add = (html, tip, fn, cls = '') => {
-        const b = document.createElement('button');
-        b.innerHTML = html; b.title = tip; b.setAttribute('aria-label', tip); b.className = cls;
-        b.addEventListener('click', fn);
-        dock.appendChild(b);
-        return b;
-    };
-    add('&#9638; WIDGETS', 'Widgets and layouts (W)', () => togglePanel('launcher'), 'label');
-    add('', 'Next wallpaper (B)', () => setBg(bgIndex + 1), 'bg-thumb').id = 'bgBtn';
-    add('&#9635;', 'Lens shape (L)', cycleShape);
-    add('&#128204;', 'Pin lens (P)', togglePin);
-    add('&#9881;', 'Settings', () => togglePanel('settings'));
-    add('?', 'Help (?)', () => togglePanel('help'));
-    setBg(bgIndex);
-}
 function renderLauncher() {
     const on = WIDGETS.filter(w => !byId(w.id).hidden).length;
     $('launchCount').textContent = `· ${on} of ${WIDGETS.length} on`;
@@ -228,26 +152,31 @@ $('tiles').addEventListener('click', e => {
     const t = e.target.closest('.tile'); if (!t) return;
     setWidget(t.dataset.id, byId(t.dataset.id).hidden);
 });
-$('presets').innerHTML = Object.keys(PRESETS).map(p => `<button class="btn" data-p="${p}">${p}</button>`).join('') + '<button class="btn" data-arrange>Tidy up</button>';
-$('presets').addEventListener('click', e => {
-    const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.p) applyPreset(b.dataset.p);
-    else { autoArrange(WIDGETS.filter(w => !byId(w.id).hidden).map(w => w.id)); saveLayout(); toast('Tidied up'); }
-});
+$('presets').innerHTML = Object.keys(PRESETS).map(p => `<button class="btn" data-p="${p}">${p}</button>`).join('');
+$('presets').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (b) applyPreset(b.dataset.p); });
 
-// settings
+// settings panel (phones; the desktop has the Settings app)
 SHAPES.forEach(s => {
     const b = document.createElement('button');
     b.className = 'btn'; b.dataset.s = s.id; b.textContent = s.label;
     b.onclick = () => setShape(s.id);
     $('lensShapes').appendChild(b);
 });
-BGS.forEach((bg, i) => {
-    const b = document.createElement('button');
-    b.className = 'btn'; b.textContent = bg.name;
-    b.onclick = () => setBg(i);
-    $('bgChoices').appendChild(b);
-});
+function renderBgChoices() {
+    $('bgChoices').innerHTML = '';
+    BGS.forEach((bg, i) => {
+        const b = document.createElement('button');
+        b.className = 'btn' + (i === bgIndex ? ' on' : ''); b.textContent = bg.name;
+        b.onclick = () => setBg(i);
+        $('bgChoices').appendChild(b);
+    });
+    const up = document.createElement('button');
+    up.className = 'btn'; up.textContent = '+ Photo'; up.title = 'Use one of your photos';
+    up.onclick = () => $('bgFile').click();
+    $('bgChoices').appendChild(up);
+}
+renderBgChoices();
+$('bgFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) Shell.addWallpaper(f, f.name).catch(() => toast('Couldn’t use that picture')); };
 $('lensSize').oninput = e => setLensScale(+e.target.value);
 const ACCENTS = ['#6aa8ff', '#ff6b8b', '#ffd23f', '#3ddc84', '#b48cff', '#ff9f43'];
 function setAccent(c) {
@@ -263,37 +192,36 @@ ACCENTS.forEach(c => {
 });
 function setToggle(btn, on) { btn.textContent = on ? 'On' : 'Off'; btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on); }
 function setGrain(on) { document.body.classList.toggle('no-grain', !on); setToggle($('grainBtn'), on); store.set('grain', on); }
-function setLock(on) { document.body.classList.toggle('locked', on); setToggle($('lockBtn'), on); store.set('locked', on); }
 $('grainBtn').onclick = () => setGrain(document.body.classList.contains('no-grain'));
-$('lockBtn').onclick = () => setLock(!document.body.classList.contains('locked'));
-$('arrangeBtn').onclick = () => { autoArrange(WIDGETS.filter(w => !byId(w.id).hidden).map(w => w.id)); saveLayout(); toast('Tidied up'); };
-$('resetBtn').onclick = () => {
-    if (!confirm('Reset the layout? (Your notes, to-dos and other data are kept.)')) return;
-    WIDGETS.forEach(w => { const el = byId(w.id); el.style.width = w.w + 'px'; el.style.height = ''; });
-    layout = {};
-    applyPreset('Default');
+function resetLayout() {
+    applyPreset('Default', true);
     resetHome();
     toast('Layout reset');
-};
+}
+$('resetBtn').onclick = () => { if (confirm('Reset the layout? (Your notes, to-dos and other data are kept.)')) resetLayout(); };
 
+// =================================================================
+// Keyboard
+// =================================================================
 document.addEventListener('keydown', e => {
-    if (e.target.closest('input, textarea, select') || e.defaultPrevented) return;
-    if (e.target.closest('.widget') && e.target !== document.body && /^Arrow/.test(e.key)) return;
+    if (e.defaultPrevented || e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
     const k = e.key.toLowerCase();
     if (k === 'escape') {
         const hadPanel = PANELS.some(id => !$(id).hidden);
-        closePanels(); dismissCoach(); document.body.classList.remove('zen'); refreshActive();
-        if (!hadPanel && isPhone()) phoneBack();
+        closePanels();
+        document.body.classList.remove('zen');
+        refreshActive();
+        if (!hadPanel) isPhone() ? phoneBack() : Shell.escape();
         return;
     }
-    if (e.target.closest('.widget')) return;   // widget keyboard shortcuts win
-    if (k === 'w') togglePanel('launcher');
+    if (e.target.closest('.widget, .win, .dlg-back') || e.ctrlKey || e.metaKey || e.altKey) return;   // apps get their own keys
+    if (k === 'w') setBoard(!boardOpen);
     else if (k === 'b') setBg(bgIndex + 1);
     else if (k === 'l') cycleShape();
     else if (k === 'p') togglePin();
     else if (k === '[') setLensScale(Lens.scale - 0.1);
     else if (k === ']') setLensScale(Lens.scale + 0.1);
-    else if (k === 'h') { document.body.classList.toggle('zen'); refreshActive(); toast(document.body.classList.contains('zen') ? 'Zen mode — press H to come back' : 'Widgets back'); }
+    else if (k === 'h') { document.body.classList.toggle('zen'); refreshActive(); toast(document.body.classList.contains('zen') ? 'Zen mode — press H to come back' : 'Desktop back'); }
     else if (k === '?' || (k === '/' && e.shiftKey)) togglePanel('help');
     else if (k === ' ') { e.preventDefault(); defOf('music').toggle(); }
 });
@@ -302,7 +230,10 @@ document.addEventListener('keydown', e => {
 let wasPhone = isPhone();
 addEventListener('resize', () => {
     const p = isPhone();
-    if (p !== wasPhone) { wasPhone = p; if (!p) phoneReset(); applyLayout(); }
+    if (p === wasPhone) return;
+    wasPhone = p;
+    if (p) { boardOpen = false; document.body.classList.remove('board-open'); } else { phoneReset(); Shell.init(); setBoard(store.get('deskWidgets', true)); }
+    refreshActive();
 });
 
 // =================================================================
@@ -312,7 +243,9 @@ let tickInt = 0;
 function tick() {
     const now = new Date();
     active.forEach(id => { try { defOf(id).tick?.(now); } catch (err) { console.error(err); } });
+    Shell.clock.check(now);
     if (isPhone()) phoneTick(now);
+    else { Shell.tick(now); renderBoardTime(now); }
 }
 function startTicking() { clearInterval(tickInt); tick(); tickInt = setInterval(tick, 1000); }
 document.addEventListener('visibilitychange', () => {
@@ -325,13 +258,11 @@ document.addEventListener('visibilitychange', () => {
 // =================================================================
 setAccent(store.get('accent', ACCENTS[0]));
 setGrain(store.get('grain', true));
-setLock(store.get('locked', false));
 setShape(Lens.shape.id);
+setBg(bgIndex);
 $('lensSize').value = Lens.scale;
-renderDock();
 initPhone();
-if (!layout) { layout = {}; applyPreset('Default', true); }
-else applyLayout();
+if (!layout) applyPreset('Default', true); else applyLayout();
+if (!isPhone()) { Shell.init(); setBoard(store.get('deskWidgets', true)); }
 if (matchMedia('(hover: none)').matches && !isPhone()) { Lens.on = true; queueLens(); }
 startTicking();
-setTimeout(showCoach, 900);

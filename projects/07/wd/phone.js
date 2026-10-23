@@ -95,6 +95,7 @@ function syncLayerClass() { document.body.classList.toggle('layer-open', drawerP
 const EXTRA_APPS = {
     settings: { name: 'Settings', icon: '⚙️', color: '#57606f' },
     portfolio: { name: 'Portfolio', icon: '🏠', color: '#c9a400' },
+    wallpaper: { name: 'Wallpaper', icon: '🖼️', color: '#3d7bd9' },
     apps: { name: 'Apps', icon: '⠿', color: '#3d4457' },
 };
 const appInfo = id => appDef(id) || EXTRA_APPS[id];
@@ -104,7 +105,7 @@ function iconHtml(id, style = '') {
 }
 
 function openAppFrom(id, fromEl) {
-    if (id === 'settings') { if (layers[layers.length - 1] === 'shade') back(); togglePanel('settings'); return; }
+    if (id === 'settings' || id === 'wallpaper') { if (layers[layers.length - 1] === 'shade') back(); togglePanel('settings'); return; }
     if (id === 'portfolio') { leave('../../index.html'); return; }
     if (id === 'apps') { openDrawer(); return; }
     const el = byId(id);
@@ -519,7 +520,7 @@ function openDrawer(focusSearch) {
 }
 function renderDrawer() {
     const q = $('appSearch').value.trim().toLowerCase();
-    const list = [...WIDGETS.map(w => w.id), 'settings', 'portfolio'].map(id => ({ id, name: appInfo(id).name }))
+    const list = [...WIDGETS.map(w => w.id), 'settings', 'wallpaper', 'portfolio'].map(id => ({ id, name: appInfo(id).name }))
         .filter(a => !q || a.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
     $('drawerGrid').innerHTML = list.length ? list.map(a => iconHtml(a.id)).join('') : '<p class="drawer-none">No apps match</p>';
     $('drawerCount').textContent = `${list.length} app${list.length === 1 ? '' : 's'}`;
@@ -595,8 +596,8 @@ const QS = [
         tap: () => Geo.locate().then(() => Weather.refresh(true)).then(() => { renderQS(); renderHomeWidgets(true); }).catch(() => toast('Location not available')),
     },
 ];
-function renderQS() {
-    $('qs').innerHTML = QS.map(q => {
+function renderQS(box = $('qs')) {
+    box.innerHTML = QS.map(q => {
         const on = q.on ? q.on() : null;
         return `<button class="qt ${on ? 'on' : ''}" data-q="${q.id}" ${on === null ? '' : `aria-pressed="${on}"`}><span class="qt-ic">${q.icon}</span><span class="qt-l">${esc(q.label())}</span></button>`;
     }).join('');
@@ -625,13 +626,15 @@ function renderNotifs() {
     syncEmpty();
 }
 function syncEmpty() {
-    $('nfList').querySelector('.nf-empty').hidden = !!(notifs.length || mediaOn);
+    const empty = $('nfList').querySelector('.nf-empty');
+    if (empty) empty.hidden = !!(notifs.length || mediaOn);
     $('nfClear').hidden = !notifs.length;
 }
 function updateStatus() {
     const ic = [...new Set(notifs.map(n => n.icon))].slice(0, 3);
     if (mediaOn) ic.unshift('🎵');
     $('sbIcons').textContent = ic.join(' ') + (notifs.length > 3 ? ' •' : '');
+    document.dispatchEvent(new CustomEvent('notifs'));   // the desktop shell listens
 }
 function addNotif(n) {
     n.id = 'n' + (++nidSeq);
@@ -640,7 +643,8 @@ function addNotif(n) {
     notifs = notifs.slice(0, 20);
     saveNotifs();
     updateStatus();
-    if (shadeP > 0) renderNotifs(); else showHeadsup(n);
+    if (!isPhone()) Shell.notify(n);
+    else if (shadeP > 0) renderNotifs(); else showHeadsup(n);
 }
 function dismiss(id, card) {
     if (card) {
@@ -655,12 +659,17 @@ function dismiss(id, card) {
     syncEmpty();
 }
 function runNotif(id, card) {
-    if (id === 'media') { openAppFrom('music', card); return; }
+    if (id === 'media') { isPhone() ? openAppFrom('music', card) : Shell.launch('w:music'); return; }
     const n = notifs.find(x => x.id === id);
     if (!n) return;
     const act = n.act || '';
     dismiss(id, $('nfList').querySelector(`[data-nid="${id}"]`));
-    if (act.startsWith('app:')) openAppFrom(act.slice(4), card);
+    if (!isPhone()) { Shell.runAct(act); return; }
+    if (act.startsWith('win:')) {
+        // desktop apps have a phone equivalent among the widgets
+        const m = { clock: 'clock', calculator: 'calc', notepad: 'notes', paint: 'sketch', solitaire: 'g2048' }[act.slice(4)];
+        if (m) openAppFrom(m, card); else toast('Open this on a computer');
+    } else if (act.startsWith('app:')) openAppFrom(act.slice(4), card);
     else if (act.startsWith('go:')) leave(act.slice(3));
     else toast('Marked as read');
 }
@@ -800,14 +809,15 @@ function randomNotif() {
     }
     return NOTIF_GEN[0]();
 }
-function scheduleNotif(ms = 30000 + Math.random() * 45000) {
+// a random message every 30-75 s on phones, 60-150 s on the desktop (Settings can turn them off)
+function scheduleNotif(ms = isPhone() ? 30000 + Math.random() * 45000 : 60000 + Math.random() * 90000) {
     clearTimeout(notifT);
-    notifT = setTimeout(() => { if (!document.hidden && isPhone()) addNotif(randomNotif()); scheduleNotif(); }, ms);
+    notifT = setTimeout(() => { if (!document.hidden && store.get('nfRandom', true)) addNotif(randomNotif()); scheduleNotif(); }, ms);
 }
 if (!notifs) {
     const now = Date.now();
     notifs = [
-        { id: 'n1', app: 'Widget Desktop', icon: '👋', color: '#6aa8ff', title: 'Welcome!', text: 'Swipe a notification left or right to clear it. Tap to open.', t: now - 60e3 },
+        { id: 'n1', app: appTitle(), icon: '👋', color: '#6aa8ff', title: 'Welcome!', text: 'Swipe a notification left or right to clear it. Tap to open.', t: now - 60e3 },
         { id: 'n2', app: 'Pixel Racer', icon: '🏎️', color: '#ff6050', title: 'New project', text: 'A PS1-style racer is out. Tap to play.', act: 'go:../09/index.html', t: now - 18 * 60e3 },
         { id: 'n3', app: 'Messages', icon: '💬', color: '#ff6b8b', title: 'Mia', text: 'ok but which wallpaper is your favourite', t: now - 2 * 36e5 },
     ];

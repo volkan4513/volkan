@@ -7,6 +7,8 @@
     <meta name="theme-color" content="#0b0e16">
     <title>Widget Desktop</title>
     <link rel="stylesheet" href="wd/wd.css">
+    <link rel="stylesheet" href="wd/win/win.css">
+    <link rel="stylesheet" href="wd/win/apps.css">
 </head>
 
 <body>
@@ -22,14 +24,12 @@
     <div class="dim" id="dim"></div>
     <div class="grain"></div>
 
-    <!-- desktop widgets are created here by wd/app.js from the registry in wd/widgets.js -->
+    <!-- widgets are created here by wd/app.js from the registry in wd/widgets.js:
+         the Widgets board on desktop, full-screen apps on phones -->
     <main id="desk" aria-label="Widgets"></main>
 
-    <!-- desktop dock -->
-    <nav class="dock" id="dock" aria-label="Tools"></nav>
-
-    <!-- desktop: widget launcher -->
-    <div class="panel launcher" id="launcher" hidden role="dialog" aria-label="Widgets">
+    <!-- widget picker (moved into the board by wd/app.js) -->
+    <div class="panel launcher" id="launcher" hidden aria-label="Add widgets">
         <h2>LAYOUTS</h2>
         <div class="presets" id="presets"></div>
         <h2>WIDGETS <span class="muted" id="launchCount"></span></h2>
@@ -41,12 +41,10 @@
         <div class="row"><span>Shape</span><div class="group" id="lensShapes"></div></div>
         <div class="row"><span>Size</span><input type="range" id="lensSize" min="0.6" max="2.2" step="0.1" value="1" style="width:150px" aria-label="Lens size"></div>
         <h2>LOOK</h2>
-        <div class="row"><span>Wallpaper</span><div class="group" id="bgChoices"></div></div>
+        <div class="row"><span>Wallpaper</span><div class="group" id="bgChoices"></div></div><input type="file" id="bgFile" accept="image/*" hidden>
         <div class="row"><span>Accent</span><div class="group" id="swatches"></div></div>
         <div class="row"><span>Film grain</span><button class="btn" id="grainBtn" aria-pressed="true">On</button></div>
         <h2>LAYOUT</h2>
-        <div class="row desk-only"><span>Lock widgets</span><button class="btn" id="lockBtn" aria-pressed="false">Off</button></div>
-        <div class="row desk-only"><span>Tidy up</span><button class="btn" id="arrangeBtn">Auto-arrange</button></div>
         <div class="row"><span>Start over</span><button class="btn" id="resetBtn">Reset layout</button></div>
     </div>
 
@@ -54,7 +52,9 @@
         <h2>HOW TO</h2>
         <ul>
             <li>Move the mouse (or your finger) over the wallpaper to see the photo clearly through the lens. Click / tap to pin it.</li>
-            <li class="desk-only">Drag widgets by their <b>&#10303;</b> title bar. Big widgets resize from the <b>&#9698;</b> corner.</li>
+            <li class="desk-only">Start (bottom centre) has every app; right-click an app to pin it. Widgets sit on the far left of the taskbar.</li>
+            <li class="desk-only">Drag a window by its title bar. Drop it at the top edge to maximise, or the left / right edge to fill half the screen.</li>
+            <li class="desk-only">Right-click the desktop for new files and folders; drop files from your computer onto it.</li>
             <li class="phone-only">Swipe down for notifications and quick settings, up for all apps, sideways for more pages.</li>
             <li class="phone-only">Drag the lens rectangle with your finger, or tap the wallpaper to move it.</li>
             <li class="phone-only">Long-press to rearrange or remove. Long-press in the app drawer to add an app to Home.</li>
@@ -65,7 +65,7 @@
             <li><kbd>B</kbd>next wallpaper</li>
             <li><kbd>L</kbd>lens shape &middot; <kbd>[</kbd><kbd>]</kbd> lens size</li>
             <li><kbd>P</kbd>pin lens</li>
-            <li><kbd>H</kbd>zen mode</li>
+            <li><kbd>H</kbd>zen mode &middot; <kbd>Esc</kbd> close menus</li>
             <li><kbd>?</kbd>this help</li>
         </ul>
     </div>
@@ -106,13 +106,15 @@
         <div class="tiles" id="hwList"></div>
     </div>
 
-    <div class="coach" id="coach" hidden role="status"></div>
     <div class="toast" id="toast" role="status"></div>
 
     <script src="../04/playlist.js"></script>
     <script src="wd/base.js"></script>
     <script src="wd/widgets.js"></script>
     <script src="wd/phone.js"></script>
+    <script src="wd/win/icons.js"></script>
+    <script src="wd/win/vfs.js"></script>
+    <script src="wd/win/shell.js"></script>
     <script src="wd/app.js"></script>
 </body>
 
