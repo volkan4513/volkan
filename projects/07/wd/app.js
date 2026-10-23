@@ -1,5 +1,5 @@
 // Widget Desktop - framework: builds widgets from WIDGETS, desktop drag /
-// resize / layouts, the dock + panels, and the Android-style phone home.
+// resize / layouts, the dock + panels. The phone home screen is wd/phone.js.
 'use strict';
 const byId = id => document.querySelector(`.widget[data-w="${id}"]`);
 const defOf = id => WIDGETS.find(w => w.id === id);
@@ -7,9 +7,11 @@ const DEFAULT_SET = ['clock', 'calendar', 'date', 'weather', 'music', 'system', 
 const PRESETS = {
     Default: DEFAULT_SET,
     Focus: ['clock', 'timer', 'todo', 'notes', 'breathe', 'ambient'],
-    Music: ['music', 'ambient', 'photos', 'quote', 'sky'],
+    Music: ['music', 'piano', 'metronome', 'ambient', 'photos'],
     Planner: ['calendar', 'date', 'countdown', 'habits', 'todo', 'worldclock', 'weather'],
-    Play: ['snake', 'dice', 'typing', 'sketch', 'calc'],
+    Play: ['snake', 'g2048', 'tictactoe', 'dice', 'typing'],
+    Create: ['palette', 'sketch', 'notes', 'quote', 'piano'],
+    Tools: ['calc', 'convert', 'password', 'stopwatch', 'worldclock'],
     Outdoors: ['weather', 'sun', 'sky', 'worldclock', 'clock'],
 };
 
@@ -37,7 +39,6 @@ WIDGETS.forEach(w => {
 // =================================================================
 // Active state: start/stop hooks so off-screen widgets do no work
 // =================================================================
-let openApp = null;
 const active = new Set();
 function isActive(id) {
     if (document.hidden) return false;
@@ -193,7 +194,8 @@ function dismissCoach() {
 // =================================================================
 // Dock + panels (desktop)
 // =================================================================
-function closePanels() { ['launcher', 'settings', 'help'].forEach(id => { $(id).hidden = true; }); }
+const PANELS = ['launcher', 'settings', 'help', 'hwPicker'];
+function closePanels() { PANELS.forEach(id => { $(id).hidden = true; }); }
 function togglePanel(id) { const open = $(id).hidden; closePanels(); $(id).hidden = !open; }
 document.addEventListener('pointerdown', e => {
     if (!e.target.closest('.panel, .dock, .favbar, .icon')) closePanels();
@@ -270,7 +272,7 @@ $('resetBtn').onclick = () => {
     WIDGETS.forEach(w => { const el = byId(w.id); el.style.width = w.w + 'px'; el.style.height = ''; });
     layout = {};
     applyPreset('Default');
-    homeOrder = WIDGETS.map(w => w.id); store.set('homeOrder', homeOrder); renderHome();
+    resetHome();
     toast('Layout reset');
 };
 
@@ -279,9 +281,9 @@ document.addEventListener('keydown', e => {
     if (e.target.closest('.widget') && e.target !== document.body && /^Arrow/.test(e.key)) return;
     const k = e.key.toLowerCase();
     if (k === 'escape') {
+        const hadPanel = PANELS.some(id => !$(id).hidden);
         closePanels(); dismissCoach(); document.body.classList.remove('zen'); refreshActive();
-        if (openApp) history.back();
-        if (document.body.classList.contains('edit-mode')) setEdit(false);
+        if (!hadPanel && isPhone()) phoneBack();
         return;
     }
     if (e.target.closest('.widget')) return;   // widget keyboard shortcuts win
@@ -296,160 +298,11 @@ document.addEventListener('keydown', e => {
     else if (k === ' ') { e.preventDefault(); defOf('music').toggle(); }
 });
 
-// =================================================================
-// Phones: Android-style home screen
-// =================================================================
-let homeOrder = store.get('homeOrder', null) || WIDGETS.map(w => w.id);
-WIDGETS.forEach(w => { if (!homeOrder.includes(w.id)) homeOrder.push(w.id); });
-homeOrder = homeOrder.filter(id => defOf(id));
-const FAVS = ['music', 'notes', 'timer', 'settings'];
-const PER_FIRST = 12, PER_PAGE = 20;
-
-function iconHtml(id) {
-    if (id === 'settings') return `<button class="icon" data-id="settings" aria-label="Settings"><span class="ic" style="background:#57606f">⚙️</span><span class="lbl">Settings</span></button>`;
-    const w = defOf(id);
-    return `<button class="icon" data-id="${id}" aria-label="Open ${w.name}"><span class="ic" style="background:${w.color}">${w.icon}</span><span class="lbl">${w.name}</span></button>`;
-}
-function renderHome() {
-    const ids = homeOrder.filter(id => !FAVS.includes(id));
-    const pages = [ids.slice(0, PER_FIRST)];
-    for (let i = PER_FIRST; i < ids.length; i += PER_PAGE) pages.push(ids.slice(i, i + PER_PAGE));
-    $('pages').innerHTML = pages.map((p, i) => `<div class="page">${i === 0 ? `<button class="glance" data-id="clock" aria-label="Open clock"><div class="glance-time" id="gTime"></div><div class="glance-date" id="gDate"></div><div class="glance-extra" id="gExtra"></div></button>` : ''}${p.map(iconHtml).join('')}</div>`).join('');
-    $('dots').innerHTML = pages.map((_, i) => `<i class="${i === 0 ? 'on' : ''}"></i>`).join('');
-    $('favbar').innerHTML = FAVS.map(iconHtml).join('');
-    renderGlance();
-}
-$('pages').addEventListener('scroll', () => {
-    const i = Math.round($('pages').scrollLeft / innerWidth);
-    [...$('dots').children].forEach((d, j) => d.classList.toggle('on', i === j));
-}, { passive: true });
-
-function renderGlance(now = new Date()) {
-    if (!$('gTime')) return;
-    $('gTime').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    $('gDate').textContent = now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
-    const m = moonPhase(now), wx = Weather.data;
-    const bits = [];
-    if (wx && wx.cur) bits.push(`${wxOf(wx.cur.weather_code)[0]} ${Math.round(wx.cur.temperature_2m)}°`);
-    bits.push(`🌙 ${Math.round(m.illum * 100)}%`);
-    const todos = store.get('todos', []).filter(t => !t.d).length;
-    if (todos) bits.push(`✅ ${todos} to do`);
-    $('gExtra').textContent = bits.join('   ');
-    $('sbTime').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    $('sbNet').textContent = navigator.onLine ? '▲▼' : '✕';
-}
-if (navigator.getBattery) navigator.getBattery().then(b => { const r = () => { $('sbBat').textContent = Math.round(b.level * 100) + '%' + (b.charging ? '⚡' : ''); }; r(); b.onlevelchange = r; b.onchargingchange = r; }).catch(() => { });
-document.addEventListener('wx', () => renderGlance());
-
-// ---- open / close "apps"
-function openAppFrom(id, fromEl) {
-    if (id === 'settings') { togglePanel('settings'); return; }
-    const el = byId(id);
-    if (fromEl) {
-        const r = fromEl.getBoundingClientRect();
-        el.style.setProperty('--ox', r.left + r.width / 2 + 'px');
-        el.style.setProperty('--oy', r.top + r.height / 2 + 'px');
-    }
-    openApp = id;
-    el.classList.remove('closing');
-    el.classList.add('app');
-    document.body.classList.add('app-open');
-    history.pushState({ app: id }, '');
-    closePanels();
-    refreshActive();
-}
-function closeAppNow() {
-    if (!openApp) return;
-    const el = byId(openApp);
-    openApp = null;
-    document.body.classList.remove('app-open');
-    el.classList.add('closing');
-    setTimeout(() => el.classList.remove('app', 'closing'), 180);
-    refreshActive();
-    queueLens();
-}
-addEventListener('popstate', () => closeAppNow());
-
-// ---- tap to open, long-press to rearrange
-let pressT = 0, drag = null, suppressClick = false;
-function setEdit(on) {
-    document.body.classList.toggle('edit-mode', on);
-    if (on) toast('Drag icons to rearrange');
-}
-$('editDone').onclick = () => setEdit(false);
-$('home').addEventListener('pointerdown', e => {
-    const icon = e.target.closest('.icon, .glance');
-    if (!icon) { if (document.body.classList.contains('edit-mode')) setEdit(false); return; }
-    clearTimeout(pressT);
-    const start = { x: e.clientX, y: e.clientY };
-    if (document.body.classList.contains('edit-mode') && icon.classList.contains('icon') && !icon.closest('.favbar')) {
-        beginDrag(icon, e);
-        return;
-    }
-    pressT = setTimeout(() => {
-        if (!icon.classList.contains('icon') || icon.closest('.favbar')) return;
-        navigator.vibrate?.(20);
-        setEdit(true);
-        suppressClick = true;
-        beginDrag(icon, e, start);
-    }, 480);
-    const cancel = ev => { if (Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > 10) clearTimeout(pressT); };
-    icon.addEventListener('pointermove', cancel, { passive: true });
-    icon.addEventListener('pointerup', () => { clearTimeout(pressT); icon.removeEventListener('pointermove', cancel); }, { once: true });
-});
-$('home').addEventListener('click', e => {
-    const icon = e.target.closest('.icon, .glance');
-    if (!icon || suppressClick) { suppressClick = false; return; }
-    if (document.body.classList.contains('edit-mode')) return;
-    openAppFrom(icon.dataset.id, icon.querySelector('.ic') || icon);
-});
-$('home').addEventListener('contextmenu', e => { if (e.target.closest('.icon')) e.preventDefault(); });
-
-// while an icon is being dragged, stop the browser scrolling the pages
-$('home').addEventListener('touchmove', e => { if (drag) e.preventDefault(); }, { passive: false });
-
-function beginDrag(icon, e) {
-    const id = icon.dataset.id, sx = e.clientX, sy = e.clientY;
-    icon.classList.add('drag');
-    try { icon.setPointerCapture(e.pointerId); } catch { }
-    let target = null;
-    drag = { id };
-    const move = ev => {
-        icon.style.transform = `translate(${ev.clientX - sx}px, ${ev.clientY - sy}px)`;
-        icon.style.pointerEvents = 'none';
-        const under = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.page .icon');
-        icon.style.pointerEvents = '';
-        if (target && target !== under) target.classList.remove('drop-target');
-        target = under && under !== icon ? under : null;
-        if (target) target.classList.add('drop-target');
-    };
-    const up = () => {
-        icon.removeEventListener('pointermove', move);
-        icon.removeEventListener('pointerup', up);
-        icon.removeEventListener('pointercancel', up);
-        icon.classList.remove('drag');
-        icon.style.transform = '';
-        if (target) {
-            const from = homeOrder.indexOf(id), to = homeOrder.indexOf(target.dataset.id);
-            homeOrder.splice(from, 1);
-            homeOrder.splice(to, 0, id);
-            store.set('homeOrder', homeOrder);
-            renderHome();
-        }
-        drag = null;
-        suppressClick = true;
-        setTimeout(() => { suppressClick = false; }, 50);
-    };
-    icon.addEventListener('pointermove', move);
-    icon.addEventListener('pointerup', up);
-    icon.addEventListener('pointercancel', up);
-}
-
 // switching between phone and desktop sizes
 let wasPhone = isPhone();
 addEventListener('resize', () => {
     const p = isPhone();
-    if (p !== wasPhone) { wasPhone = p; if (!p && openApp) closeAppNow(); applyLayout(); }
+    if (p !== wasPhone) { wasPhone = p; if (!p) phoneReset(); applyLayout(); }
 });
 
 // =================================================================
@@ -459,7 +312,7 @@ let tickInt = 0;
 function tick() {
     const now = new Date();
     active.forEach(id => { try { defOf(id).tick?.(now); } catch (err) { console.error(err); } });
-    if (isPhone()) renderGlance(now);
+    if (isPhone()) phoneTick(now);
 }
 function startTicking() { clearInterval(tickInt); tick(); tickInt = setInterval(tick, 1000); }
 document.addEventListener('visibilitychange', () => {
@@ -476,10 +329,9 @@ setLock(store.get('locked', false));
 setShape(Lens.shape.id);
 $('lensSize').value = Lens.scale;
 renderDock();
-renderHome();
+initPhone();
 if (!layout) { layout = {}; applyPreset('Default', true); }
 else applyLayout();
 if (matchMedia('(hover: none)').matches && !isPhone()) { Lens.on = true; queueLens(); }
 startTicking();
 setTimeout(showCoach, 900);
-if (isPhone() && !store.get('phoneHint', false)) { store.set('phoneHint', true); setTimeout(() => toast('Tap an icon to open it · long-press to rearrange', 3500), 900); }

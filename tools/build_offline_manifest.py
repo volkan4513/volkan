@@ -33,6 +33,7 @@ CORE = [
     'projects/04/index.html', 'projects/04/playlist.js', 'projects/04/ps_player_images/*', 'projects/04/music/cover/*',
     'projects/05/index.html', 'projects/05/windows98.html', 'projects/05/paint.html', 'projects/05/page_images/*',
     'projects/08/index.html', 'projects/08/*.js', 'projects/08/*.json', 'projects/08/images/0.webp', 'projects/08/textures/*',
+    'projects/09/index.html', 'projects/09/*.js', 'projects/09/lib/*', 'projects/09/images/0.webp',
     'projects/07/unblur_page.html', 'projects/07/lots_of_square_cursor.html', 'projects/07/images/lab_*.webp',
     'projects/07/page_images/w_*.webp', 'projects/07/wd/*',
 ]
@@ -41,6 +42,7 @@ HEAVY = [
     'projects/01/index*',
     'projects/02/index.html', 'projects/02/Build/*', 'projects/02/TemplateData/*', 'projects/02/StreamingAssets/*',
     'projects/04/music/*.mp3',
+    'projects/09/models/*.glb', 'projects/09/maps/*.glb',
 ]
 
 # Google Fonts stylesheets the pages use (their font files are cached too)

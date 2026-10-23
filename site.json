@@ -110,6 +110,19 @@
             "href": "projects/08/index.html",
             "color": "red",
             "sticker": "Play it!"
+        },
+        {
+            "title": "Pixel Racer",
+            "subtitle": "PS1-style arcade racer",
+            "tags": [
+                "Three.js",
+                "WebRTC"
+            ],
+            "desc": "Pick a pixel-art car and race bots or friends through Chicago and three classic NFS tracks. Drift, sprint, swap cameras.",
+            "thumb": "projects/09/images/0.webp",
+            "href": "projects/09/index.html",
+            "color": "blue",
+            "sticker": "Play it!"
         }
     ],
     "skills": [

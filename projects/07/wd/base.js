@@ -79,7 +79,7 @@ const Lens = {
     x: innerWidth / 2, y: innerHeight / 2, on: false, pinned: false, raf: 0,
 };
 // elements over which the lens should not follow the pointer
-const UI_SEL = '.widget, .dock, .panel, .icon, .glance, .favbar, .edit-bar, .coach, .site-home-btn';
+const UI_SEL = '.widget, .dock, .panel, .icon, .hw, .favbar, .edit-bar, .coach, .site-home-btn, .status, .drawer, .shade, .headsup';
 
 function lensDims() {
     const k = Lens.scale * (isPhone() ? 0.8 : 1), s = Lens.shape;
@@ -104,8 +104,10 @@ function drawLens() {
 }
 const queueLens = () => { if (!Lens.raf) Lens.raf = requestAnimationFrame(drawLens); };
 
+// on phones, touches drag the lens through the home-screen gestures (wd/phone.js)
+const phoneTouch = e => e.pointerType !== 'mouse' && isPhone();
 window.addEventListener('pointermove', e => {
-    if (Lens.pinned) return;
+    if (Lens.pinned || phoneTouch(e)) return;
     if (e.target.closest && e.target.closest(UI_SEL)) {
         if (e.pointerType === 'mouse') { Lens.on = false; queueLens(); }
         return;
@@ -114,7 +116,7 @@ window.addEventListener('pointermove', e => {
     queueLens();
 }, { passive: true });
 window.addEventListener('pointerdown', e => {
-    if (e.target.closest(UI_SEL + ', button')) return;
+    if (phoneTouch(e) || e.target.closest(UI_SEL + ', button')) return;
     if (e.pointerType !== 'mouse' && !Lens.pinned) { Lens.x = e.clientX; Lens.y = e.clientY; Lens.on = true; queueLens(); }
 });
 document.addEventListener('mouseleave', () => { if (!Lens.pinned) { Lens.on = false; queueLens(); } });

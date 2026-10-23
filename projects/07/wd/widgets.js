@@ -344,6 +344,7 @@ def((() => {
         for (let i = 0; i < 25; i++) { const h = Math.max(1, buf[i] / 255 * c.height); g.fillRect(i * 10, c.height - h, 7, h); }
     }
     const next = () => set(Music.shuffle ? Math.floor(Math.random() * Music.tracks.length) : Music.i + 1, true);
+    const prev = () => a.currentTime > 3 ? (a.currentTime = 0) : set(Music.i - 1, !a.paused);
     return {
         id: 'music', name: 'Music', icon: '🎵', color: '#e84393', w: 290,
         body: () => `<div class="m-top"><img class="m-cover" alt=""><div class="m-info"><div class="m-title">-</div><div class="muted m-artist"></div></div></div>
@@ -360,7 +361,7 @@ def((() => {
             a.addEventListener('loadedmetadata', () => { qs(b, '.dur').textContent = fmt(a.duration); });
             qs(b, '.play').onclick = () => a.paused ? go() : a.pause();
             qs(b, '.next').onclick = next;
-            qs(b, '.prev').onclick = () => a.currentTime > 3 ? (a.currentTime = 0) : set(Music.i - 1, !a.paused);
+            qs(b, '.prev').onclick = prev;
             qs(b, '.shuf').onclick = e => { Music.shuffle = !Music.shuffle; e.currentTarget.classList.toggle('on', Music.shuffle); e.currentTarget.setAttribute('aria-pressed', Music.shuffle); };
             qs(b, '.loop').onclick = e => { Music.loop = !Music.loop; e.currentTarget.classList.toggle('on', Music.loop); e.currentTarget.setAttribute('aria-pressed', Music.loop); };
             qs(b, '.seek').oninput = e => { if (a.duration) a.currentTime = e.target.value / 1000 * a.duration; };
@@ -370,6 +371,7 @@ def((() => {
             set(Music.i, false);
         },
         toggle() { a.paused ? go() : a.pause(); },
+        next, prev,
     };
 })());
 
@@ -542,6 +544,7 @@ def((() => {
             render();
         },
         tick: render,
+        get: () => cd,
     };
 })());
 
@@ -855,14 +858,17 @@ def((() => {
 // -----------------------------------------------------------------------
 // 21. Photo frame (project thumbnails)
 // -----------------------------------------------------------------------
+// [thumbnail, title, page] - also used by the phone home "Projects" widget
+const PROJECTS = [
+    ['../01/images/0.webp', 'BMW M3 GTR', '../01/index.html'], ['../02/images/0.webp', 'Just Jump It', '../02/index.html'],
+    ['../03/images/0.webp', 'Retro Image FX', '../03/index.html'], ['../04/images/0.webp', 'PS Music Player', '../04/index.html'],
+    ['../05/images/0.webp', 'Windows 98', '../05/index.html'], ['../../images_to_use/puzzle_thumb.webp', 'Parking Puzzle', '../../page2.html'],
+    ['../08/images/0.webp', 'Low-Poly Strike', '../08/index.html'], ['../09/images/0.webp', 'Pixel Racer', '../09/index.html'],
+    ['images/lab_cursor.webp', 'Glass Cursor', 'lots_of_square_cursor.html'],
+];
 def((() => {
     let el, i = 0, int = 0;
-    const PICS = [
-        ['../01/images/0.webp', 'BMW M3 GTR', '../01/index.html'], ['../02/images/0.webp', 'Just Jump It', '../02/index.html'],
-        ['../03/images/0.webp', 'Retro Image FX', '../03/index.html'], ['../04/images/0.webp', 'PS Music Player', '../04/index.html'],
-        ['../05/images/0.webp', 'Windows 98', '../05/index.html'], ['../../images_to_use/puzzle_thumb.webp', 'Parking Puzzle', '../../page2.html'],
-        ['images/lab_cursor.webp', 'Glass Cursor', 'lots_of_square_cursor.html'],
-    ];
+    const PICS = PROJECTS;
     function show(n) {
         i = (n + PICS.length) % PICS.length;
         const imgs = el.querySelectorAll('.photo-box img'), next = imgs[0].style.opacity === '0' ? imgs[0] : imgs[1], cur = next === imgs[0] ? imgs[1] : imgs[0];
@@ -1029,16 +1035,17 @@ def((() => {
 // -----------------------------------------------------------------------
 // 25. Quote of the day
 // -----------------------------------------------------------------------
-def((() => {
-    let el, qi = Math.floor(Date.now() / 864e5);
-    const Q = [
+const QUOTES = [
         ['Simplicity is the soul of efficiency.', 'Austin Freeman'], ['Make it work, make it right, make it fast.', 'Kent Beck'],
         ['The details are not the details. They make the design.', 'Charles Eames'], ['Creativity is intelligence having fun.', 'Albert Einstein'],
         ['Done is better than perfect.', 'Sheryl Sandberg'], ['Play is the highest form of research.', 'Albert Einstein'],
         ['First, solve the problem. Then, write the code.', 'John Johnson'], ['Good design is as little design as possible.', 'Dieter Rams'],
         ['Every artist was first an amateur.', 'Ralph Waldo Emerson'], ['The best way to predict the future is to invent it.', 'Alan Kay'],
         ['You can’t use up creativity. The more you use, the more you have.', 'Maya Angelou'], ['Small steps every day.', 'Unknown'],
-    ];
+];
+def((() => {
+    let el, qi = Math.floor(Date.now() / 864e5);
+    const Q = QUOTES;
     function render() { const q = Q[qi % Q.length]; qs(el, 'blockquote').textContent = '“' + q[0] + '”'; qs(el, 'cite').textContent = '— ' + q[1]; }
     return {
         id: 'quote', name: 'Quote', icon: '💬', color: '#a29bfe', w: 260, big: true,
@@ -1047,6 +1054,373 @@ def((() => {
             el = b; render();
             qs(b, '.nx').onclick = () => { qi++; render(); };
             qs(b, '.cp').onclick = () => navigator.clipboard?.writeText(qs(el, 'blockquote').textContent + ' ' + qs(el, 'cite').textContent).then(() => toast('Copied'), () => toast('Could not copy'));
+        },
+    };
+})());
+
+// -----------------------------------------------------------------------
+// 26. Piano (Web Audio synth, glide across the keys)
+// -----------------------------------------------------------------------
+def((() => {
+    let el, wave = store.get('pianoWave', 'triangle'), oct = 0;
+    const held = new Map(), N = 17;   // C to E, an octave and a third
+    const NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const KB = 'awsedftgyhujkolp;';   // one key per semitone, like a DAW
+    const black = n => [1, 3, 6, 8, 10].includes(n % 12);
+    function keys() {
+        const ww = 100 / [...Array(N).keys()].filter(n => !black(n)).length;
+        let wi = 0;
+        qs(el, '.piano').innerHTML = [...Array(N).keys()].map(n => black(n)
+            ? `<i class="pk b" data-n="${n}" style="left:${(wi * ww - ww * 0.3).toFixed(2)}%;width:${(ww * 0.6).toFixed(2)}%"></i>`
+            : `<i class="pk w" data-n="${n}" style="left:${(wi++ * ww).toFixed(2)}%;width:${ww.toFixed(2)}%">${n % 12 ? '' : 'C' + (4 + oct + n / 12)}</i>`).join('');
+        qs(el, '.po').textContent = `C${4 + oct}`;
+    }
+    function play(n) {
+        const m = 60 + oct * 12 + n, c = audioCtx(), t = c.currentTime;
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = wave;
+        o.frequency.value = 440 * 2 ** ((m - 69) / 12);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(wave === 'square' || wave === 'sawtooth' ? 0.07 : 0.22, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+        o.connect(g).connect(c.destination);
+        o.start(t); o.stop(t + 1.45);
+        const k = qs(el, `.pk[data-n="${n}"]`);
+        if (k) { k.classList.add('down'); setTimeout(() => k.classList.remove('down'), 180); }
+        qs(el, '.pn').textContent = NAMES[m % 12] + (Math.floor(m / 12) - 1);
+    }
+    return {
+        id: 'piano', name: 'Piano', icon: '🎹', color: '#2d3436', w: 320, big: true,
+        body: () => `<div class="row2" style="justify-content:space-between;margin-bottom:8px"><select class="pw" aria-label="Sound">${['triangle', 'sine', 'square', 'sawtooth'].map(w => `<option value="${w}">${w}</option>`).join('')}</select>
+            <span class="row2"><button class="btn dn" aria-label="Octave down">−</button><b class="po" style="font-family:var(--mono)"></b><button class="btn up" aria-label="Octave up">+</button></span><b class="pn" style="font:700 16px var(--mono);min-width:36px;text-align:right">-</b></div>
+            <div class="piano" aria-label="Piano keys"></div><div class="muted" style="margin-top:6px">Keys A to ; play notes · slide a finger to glide</div>`,
+        init(b) {
+            el = b;
+            qs(b, '.pw').value = wave;
+            qs(b, '.pw').onchange = e => { wave = e.target.value; store.set('pianoWave', wave); };
+            qs(b, '.dn').onclick = () => { oct = Math.max(-2, oct - 1); keys(); };
+            qs(b, '.up').onclick = () => { oct = Math.min(2, oct + 1); keys(); };
+            const kb = qs(b, '.piano'), keyAt = e => document.elementFromPoint(e.clientX, e.clientY)?.closest('.piano .pk');
+            kb.onpointerdown = e => { kb.setPointerCapture(e.pointerId); const k = keyAt(e); held.set(e.pointerId, k); if (k) play(+k.dataset.n); };
+            kb.onpointermove = e => {
+                if (!held.has(e.pointerId)) return;
+                const k = keyAt(e);
+                if (k && k !== held.get(e.pointerId)) { held.set(e.pointerId, k); play(+k.dataset.n); }
+            };
+            kb.onpointerup = kb.onpointercancel = e => held.delete(e.pointerId);
+            b.closest('.widget')?.addEventListener('keydown', e => {
+                const n = KB.indexOf(e.key.toLowerCase());
+                if (n < 0 || e.target.closest('input, select') || e.ctrlKey || e.metaKey) return;
+                e.preventDefault(); e.stopPropagation();
+                if (!e.repeat) play(n);
+            });
+            keys();
+        },
+    };
+})());
+
+// -----------------------------------------------------------------------
+// 27. Metronome (scheduled on the audio clock, tap tempo)
+// -----------------------------------------------------------------------
+def((() => {
+    let el, bpm = store.get('bpm', 100), beats = store.get('beats', 4), running = false, timer = 0, next = 0, beat = 0, taps = [];
+    const NAME = b => b < 60 ? 'Largo' : b < 76 ? 'Adagio' : b < 108 ? 'Andante' : b < 120 ? 'Moderato' : b < 168 ? 'Allegro' : 'Presto';
+    function click(t, strong) {
+        const c = audioCtx(), o = c.createOscillator(), g = c.createGain();
+        o.frequency.value = strong ? 1600 : 1000;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.3, t + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+        o.connect(g).connect(c.destination);
+        o.start(t); o.stop(t + 0.07);
+    }
+    // look 120 ms ahead on a 25 ms timer so beats stay exact even if the page hiccups
+    function schedule() {
+        const c = audioCtx();
+        while (next < c.currentTime + 0.12) {
+            const b = beat;
+            click(next, b === 0);
+            setTimeout(() => flash(b), Math.max(0, (next - c.currentTime) * 1000));
+            next += 60 / bpm;
+            beat = (beat + 1) % beats;
+        }
+    }
+    function flash(b) { el.querySelectorAll('.mt-dot').forEach((d, i) => d.classList.toggle('on', running && i === b)); }
+    function setBpm(v) {
+        bpm = Math.max(30, Math.min(240, Math.round(v)));
+        qs(el, '.mt-bpm').textContent = bpm;
+        qs(el, '.mt-name').textContent = NAME(bpm);
+        qs(el, '.mt-range').value = bpm;
+        store.set('bpm', bpm);
+    }
+    function setBeats(n) { beats = n; beat = 0; store.set('beats', n); qs(el, '.mt-dots').innerHTML = '<i class="mt-dot"></i>'.repeat(n); }
+    function toggle(on = !running) {
+        running = on;
+        clearInterval(timer);
+        if (on) { next = audioCtx().currentTime + 0.05; beat = 0; schedule(); timer = setInterval(schedule, 25); }
+        flash(-1);
+        qs(el, '.go').textContent = on ? 'Stop' : 'Start';
+    }
+    return {
+        id: 'metronome', name: 'Metronome', icon: '🥁', color: '#c0392b', w: 250,
+        body: () => `<div style="text-align:center"><span class="big-face mt-bpm" style="display:inline-block;margin:0">100</span> <span class="muted">BPM</span><div class="muted mt-name"></div></div>
+            <div class="mt-dots"></div>
+            <div class="row2"><button class="btn m5" aria-label="Slower">−</button><input type="range" class="mt-range" min="30" max="240" aria-label="Tempo" style="flex:1"><button class="btn p5" aria-label="Faster">+</button></div>
+            <div class="center-row" style="margin-top:8px"><button class="btn go">Start</button><button class="btn tap">Tap</button><select class="bt" aria-label="Beats per bar">${[2, 3, 4, 6].map(n => `<option value="${n}">${n}/4</option>`).join('')}</select></div>`,
+        init(b) {
+            el = b;
+            qs(b, '.mt-range').oninput = e => setBpm(+e.target.value);
+            qs(b, '.m5').onclick = () => setBpm(bpm - 1);
+            qs(b, '.p5').onclick = () => setBpm(bpm + 1);
+            qs(b, '.go').onclick = () => toggle();
+            qs(b, '.bt').value = beats;
+            qs(b, '.bt').onchange = e => setBeats(+e.target.value);
+            qs(b, '.tap').onclick = () => {
+                const t = performance.now();
+                taps = taps.filter(x => t - x < 2500).concat(t).slice(-6);
+                if (taps.length > 1) setBpm(60000 / ((taps[taps.length - 1] - taps[0]) / (taps.length - 1)));
+            };
+            setBpm(bpm); setBeats(beats);
+        },
+        stop() { if (running) toggle(false); },
+    };
+})());
+
+// -----------------------------------------------------------------------
+// 28. Tic-tac-toe against the computer (minimax)
+// -----------------------------------------------------------------------
+def((() => {
+    let el, board, over, cpuFirst = false, hard = store.get('tttHard', true), score = store.get('ttt', { w: 0, l: 0, d: 0 });
+    const LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+    function winner(b) {
+        for (const l of LINES) if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[0]] === b[l[2]]) return { p: b[l[0]], line: l };
+        return b.every(Boolean) ? { p: 'draw', line: [] } : null;
+    }
+    // O is the computer; quicker wins score higher so it never dawdles
+    function minimax(b, me, depth = 0) {
+        const w = winner(b);
+        if (w) return [w.p === 'O' ? 10 - depth : w.p === 'X' ? depth - 10 : 0, -1];
+        let best = [me === 'O' ? -99 : 99, -1];
+        for (let i = 0; i < 9; i++) {
+            if (b[i]) continue;
+            b[i] = me;
+            const s = minimax(b, me === 'O' ? 'X' : 'O', depth + 1)[0];
+            b[i] = null;
+            if (me === 'O' ? s > best[0] : s < best[0]) best = [s, i];
+        }
+        return best;
+    }
+    function cpu() {
+        if (over) return;
+        const free = board.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+        const i = !hard && Math.random() < 0.45 ? free[Math.floor(Math.random() * free.length)] : minimax(board, 'O')[1];
+        board[i] = 'O';
+        check();
+        if (!over) qs(el, '.ts').textContent = 'Your move (X)';
+    }
+    function check() {
+        const w = winner(board);
+        if (w) {
+            over = true;
+            if (w.p === 'X') score.w++; else if (w.p === 'O') score.l++; else score.d++;
+            store.set('ttt', score);
+            qs(el, '.ts').textContent = w.p === 'X' ? 'You win! 🎉' : w.p === 'O' ? 'Computer wins' : 'Draw';
+        }
+        render(w);
+    }
+    function render(w) {
+        qs(el, '.ttt').innerHTML = board.map((v, i) => `<button class="${v ? v.toLowerCase() : ''} ${w && w.line.includes(i) ? 'win' : ''}" data-i="${i}" aria-label="Square ${i + 1}${v ? ', ' + v : ''}" ${v || over ? 'disabled' : ''}>${v || ''}</button>`).join('');
+        qs(el, '.tsc').textContent = `You ${score.w} · CPU ${score.l} · Draws ${score.d}`;
+    }
+    function reset() {
+        board = Array(9).fill(null); over = false;
+        qs(el, '.ts').textContent = cpuFirst ? 'Computer starts' : 'Your move (X)';
+        render();
+        if (cpuFirst) setTimeout(cpu, 350);
+        cpuFirst = !cpuFirst;
+    }
+    return {
+        id: 'tictactoe', name: 'Tic-Tac-Toe', icon: '⭕', color: '#16a085', w: 240,
+        body: () => `<div class="ts" style="text-align:center;font-weight:700;margin-bottom:6px"></div><div class="ttt"></div>
+            <div class="muted tsc" style="text-align:center;margin:6px 0"></div><div class="center-row"><button class="btn nw">New game</button><button class="btn lv"></button></div>`,
+        init(b) {
+            el = b;
+            qs(b, '.ttt').onclick = e => {
+                const c = e.target.closest('button');
+                if (!c || over || board[+c.dataset.i]) return;
+                board[+c.dataset.i] = 'X';
+                check();
+                if (!over) { qs(el, '.ts').textContent = 'Thinking…'; setTimeout(cpu, 300); }
+            };
+            qs(b, '.nw').onclick = reset;
+            const lv = qs(b, '.lv');
+            lv.textContent = hard ? 'Hard' : 'Easy';
+            lv.onclick = () => { hard = !hard; store.set('tttHard', hard); lv.textContent = hard ? 'Hard' : 'Easy'; };
+            reset();
+        },
+    };
+})());
+
+// -----------------------------------------------------------------------
+// 29. 2048 (arrow keys / WASD or swipe; the game is saved)
+// -----------------------------------------------------------------------
+def((() => {
+    let el, grid, score, over, best = store.get('2048best', 0);
+    const COL = { 2: '#eee4da', 4: '#ede0c8', 8: '#f2b179', 16: '#f59563', 32: '#f67c5f', 64: '#f65e3b', 128: '#edcf72', 256: '#edcc61', 512: '#edc850', 1024: '#edc53f', 2048: '#edc22e' };
+    const save = () => store.set('2048', { grid, score, over });
+    function add() {
+        const free = grid.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+        if (!free.length) return -1;
+        const i = free[Math.floor(Math.random() * free.length)];
+        grid[i] = Math.random() < 0.9 ? 2 : 4;
+        return i;
+    }
+    function reset() { grid = Array(16).fill(0); score = 0; over = false; add(); add(); save(); render(); }
+    // dir: 0 left, 1 right, 2 up, 3 down
+    function slide(dir) {
+        let moved = false;
+        for (let r = 0; r < 4; r++) {
+            const idx = [0, 1, 2, 3].map(k => dir < 2 ? r * 4 + (dir === 0 ? k : 3 - k) : (dir === 2 ? k : 3 - k) * 4 + r);
+            const line = idx.map(i => grid[i]).filter(Boolean);
+            for (let k = 0; k < line.length - 1; k++) if (line[k] === line[k + 1]) { line[k] *= 2; score += line[k]; line.splice(k + 1, 1); }
+            while (line.length < 4) line.push(0);
+            idx.forEach((i, k) => { if (grid[i] !== line[k]) moved = true; grid[i] = line[k]; });
+        }
+        return moved;
+    }
+    const canMove = () => grid.some((v, i) => !v || (i % 4 < 3 && v === grid[i + 1]) || (i < 12 && v === grid[i + 4]));
+    function move(dir) {
+        if (over || !slide(dir)) return;
+        const fresh = add();
+        if (score > best) { best = score; store.set('2048best', best); }
+        if (!canMove()) { over = true; toast(`Game over · ${score} points`, 2500); }
+        if (grid.includes(2048) && !el.dataset.won) { el.dataset.won = 1; toast('2048! You did it 🎉', 3000); }
+        save(); render(fresh);
+    }
+    function render(fresh = -1) {
+        qs(el, '.g2').innerHTML = grid.map((v, i) => `<div class="${i === fresh ? 'new' : ''}" style="${v ? `background:${COL[v] || '#3c3a32'};color:${v > 4 ? '#fff' : '#776e65'};font-size:${v > 512 ? 18 : 24}px` : ''}">${v || ''}</div>`).join('');
+        qs(el, '.gs').textContent = `Score ${score} · best ${best}${over ? ' · game over' : ''}`;
+    }
+    return {
+        id: 'g2048', name: '2048', icon: '🔢', color: '#d4a017', w: 260, big: true,
+        body: () => `<div class="g2" tabindex="0" aria-label="2048 board. Arrow keys or swipe to move."></div><div class="row2" style="justify-content:space-between;margin-top:6px"><span class="muted gs"></span><button class="btn nw">New</button></div>`,
+        init(b) {
+            el = b;
+            const s = store.get('2048', null);
+            if (s && s.grid && s.grid.length === 16) { grid = s.grid; score = s.score; over = s.over; render(); } else reset();
+            qs(b, '.nw').onclick = () => { delete el.dataset.won; reset(); };
+            b.closest('.widget')?.addEventListener('keydown', e => {
+                const d = { ArrowLeft: 0, a: 0, ArrowRight: 1, d: 1, ArrowUp: 2, w: 2, ArrowDown: 3, s: 3 }[e.key];
+                if (d == null || e.target.closest('input, textarea')) return;
+                e.preventDefault(); e.stopPropagation(); move(d);
+            });
+            const board = qs(b, '.g2');
+            let sx = 0, sy = 0;
+            board.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; board.focus(); });
+            board.addEventListener('pointerup', e => {
+                const dx = e.clientX - sx, dy = e.clientY - sy;
+                if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+                move(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 0 : 1) : (dy < 0 ? 2 : 3));
+            });
+        },
+    };
+})());
+
+// -----------------------------------------------------------------------
+// 30. Password generator (crypto random, no look-alike characters)
+// -----------------------------------------------------------------------
+def((() => {
+    let el, o = store.get('pwOpts', { len: 16, U: true, L: true, D: true, S: true });
+    const SETS = { U: 'ABCDEFGHJKLMNPQRSTUVWXYZ', L: 'abcdefghijkmnopqrstuvwxyz', D: '23456789', S: '!@#$%^&*-_=+?' };
+    const LABEL = { U: 'A–Z', L: 'a–z', D: '2–9', S: '#$%' };
+    // unbiased index in [0, n)
+    function rnd(n) {
+        const lim = Math.floor(0x100000000 / n) * n, u = new Uint32Array(1);
+        do crypto.getRandomValues(u); while (u[0] >= lim);
+        return u[0] % n;
+    }
+    function gen() {
+        const on = Object.keys(SETS).filter(k => o[k]), pool = on.map(k => SETS[k]).join('');
+        let pw;
+        do pw = [...Array(o.len)].map(() => pool[rnd(pool.length)]).join('');
+        while (!on.every(k => [...pw].some(c => SETS[k].includes(c))));
+        qs(el, '.pw-out').value = pw;
+        const bits = Math.round(o.len * Math.log2(pool.length));
+        qs(el, '.bar i').style.width = Math.min(100, bits / 1.28) + '%';
+        qs(el, '.pw-s').textContent = `${bits} bits · ${bits < 45 ? 'weak' : bits < 65 ? 'okay' : bits < 90 ? 'strong' : 'very strong'}`;
+    }
+    function ui() {
+        qs(el, '.pw-len').textContent = o.len;
+        el.querySelectorAll('.pw-set').forEach(b => { b.classList.toggle('on', o[b.dataset.k]); b.setAttribute('aria-pressed', o[b.dataset.k]); });
+        store.set('pwOpts', o);
+        gen();
+    }
+    return {
+        id: 'password', name: 'Password', icon: '🔑', color: '#6d4c41', w: 280,
+        body: () => `<div class="row2"><input type="text" class="pw-out" readonly aria-label="Generated password" style="flex:1;min-width:0;font-family:var(--mono)"><button class="btn cp">Copy</button></div>
+            <div class="bar"><i></i></div><div class="muted pw-s"></div>
+            <div class="row2" style="margin-top:8px"><span>Length <b class="pw-len"></b></span><input type="range" class="pw-r" min="6" max="40" aria-label="Length" style="flex:1"></div>
+            <div class="row2" style="margin-top:6px">${Object.keys(SETS).map(k => `<button class="btn pw-set" data-k="${k}">${LABEL[k]}</button>`).join('')}<button class="btn nw" aria-label="New password">↻</button></div>`,
+        init(b) {
+            el = b;
+            qs(b, '.pw-r').value = o.len;
+            qs(b, '.pw-r').oninput = e => { o.len = +e.target.value; ui(); };
+            b.querySelectorAll('.pw-set').forEach(x => x.onclick = () => {
+                const k = x.dataset.k;
+                if (o[k] && Object.keys(SETS).filter(s => o[s]).length === 1) return toast('Keep at least one set');
+                o[k] = !o[k]; ui();
+            });
+            qs(b, '.nw').onclick = gen;
+            qs(b, '.cp').onclick = () => navigator.clipboard?.writeText(qs(b, '.pw-out').value).then(() => toast('Password copied'), () => toast('Could not copy'));
+            ui();
+        },
+    };
+})());
+
+// -----------------------------------------------------------------------
+// 31. Colour palette generator (lock, copy, use as accent)
+// -----------------------------------------------------------------------
+def((() => {
+    let el, cols = store.get('palette', null) || Array(5).fill('#000000'), mode = 'Analogous';
+    const locks = Array(5).fill(false);
+    const MODES = { Analogous: [-40, -20, 0, 20, 40], Complementary: [0, 15, 180, 195, 0], Triadic: [0, 120, 240, 0, 120], Mono: [0, 0, 0, 0, 0] };
+    function hex(h, s, l) {
+        s /= 100; l /= 100;
+        const a = s * Math.min(l, 1 - l);
+        const f = n => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))).toString(16).padStart(2, '0'); };
+        return '#' + f(0) + f(8) + f(4);
+    }
+    const dark = c => { const v = parseInt(c.slice(1), 16); return ((v >> 16) * 299 + ((v >> 8) & 255) * 587 + (v & 255) * 114) / 1000 < 140; };
+    function gen() {
+        const h = Math.random() * 360;
+        const ls = mode === 'Mono' ? [22, 36, 50, 64, 80] : [28, 42, 54, 66, 80];
+        cols = cols.map((c, i) => locks[i] ? c : hex(((mode === 'Random' ? Math.random() * 360 : h + MODES[mode][i]) + 360) % 360, 50 + Math.random() * 35, ls[i]));
+        store.set('palette', cols);
+        render();
+    }
+    function render() {
+        qs(el, '.pal').innerHTML = cols.map((c, i) => `<div style="background:${c};color:${dark(c) ? '#fff' : '#111'}"><button class="pc" data-i="${i}" title="Copy">${c}</button><button class="pl" data-i="${i}" aria-label="${locks[i] ? 'Unlock' : 'Lock'} colour">${locks[i] ? '🔒' : '🔓'}</button><button class="pa" data-i="${i}" aria-label="Use as accent">◎</button></div>`).join('');
+    }
+    return {
+        id: 'palette', name: 'Palette', icon: '🌈', color: '#8e44ad', w: 300, big: true,
+        body: () => `<div class="pal"></div><div class="row2" style="margin-top:8px"><button class="btn gn">Generate</button><select class="pm" aria-label="Harmony">${[...Object.keys(MODES), 'Random'].map(m => `<option>${m}</option>`).join('')}</select><button class="btn ca">Copy all</button></div><div class="muted" style="margin-top:6px">Tap a hex to copy · ◎ sets the accent · Space regenerates</div>`,
+        init(b) {
+            el = b;
+            qs(b, '.gn').onclick = gen;
+            qs(b, '.pm').onchange = e => { mode = e.target.value; gen(); };
+            qs(b, '.ca').onclick = () => navigator.clipboard?.writeText(cols.join(', ')).then(() => toast('Palette copied'), () => toast('Could not copy'));
+            qs(b, '.pal').onclick = e => {
+                const t = e.target.closest('button'); if (!t) return;
+                const i = +t.dataset.i;
+                if (t.classList.contains('pl')) { locks[i] = !locks[i]; render(); }
+                else if (t.classList.contains('pa')) { setAccent(cols[i]); toast('Accent changed'); }
+                else navigator.clipboard?.writeText(cols[i]).then(() => toast(cols[i] + ' copied'), () => toast('Could not copy'));
+            };
+            b.closest('.widget')?.addEventListener('keydown', e => {
+                if (e.key !== ' ' || e.target.closest('input, select, button')) return;
+                e.preventDefault(); e.stopPropagation(); gen();
+            });
+            if (cols[0] === '#000000') gen(); else render();
         },
     };
 })());
