@@ -1,0 +1,544 @@
+{
+ "size": [
+  1684,
+  2528
+ ],
+ "layers": [
+  {
+   "id": "sky",
+   "src": "images/sky.webp",
+   "x": 0,
+   "y": 0,
+   "w": 1684,
+   "h": 2528,
+   "depth": 0.08
+  },
+  {
+   "id": "land",
+   "src": "images/land.webp",
+   "x": 0,
+   "y": 925,
+   "w": 1684,
+   "h": 1603,
+   "depth": 0.22
+  },
+  {
+   "id": "houses",
+   "src": "images/houses.webp",
+   "x": 0,
+   "y": 1407,
+   "w": 1657,
+   "h": 637,
+   "depth": 0.4
+  },
+  {
+   "id": "pole",
+   "src": "images/pole.webp",
+   "x": 104,
+   "y": 784,
+   "w": 840,
+   "h": 1123,
+   "depth": 0.5,
+   "wires": [
+    [
+     531,
+     1078,
+     1760,
+     892,
+     70
+    ],
+    [
+     531,
+     1124,
+     1760,
+     1150,
+     95
+    ],
+    [
+     524,
+     1186,
+     1760,
+     1352,
+     60
+    ],
+    [
+     -80,
+     1050,
+     500,
+     1104,
+     22
+    ]
+   ]
+  },
+  {
+   "id": "bushesL",
+   "src": "images/bushesL.webp",
+   "x": 0,
+   "y": 1672,
+   "w": 805,
+   "h": 445,
+   "depth": 0.62
+  },
+  {
+   "id": "bushesR",
+   "src": "images/bushesR.webp",
+   "x": 1339,
+   "y": 1294,
+   "w": 345,
+   "h": 840,
+   "depth": 0.62
+  },
+  {
+   "id": "ground",
+   "src": "images/ground.webp",
+   "x": 0,
+   "y": 1880,
+   "w": 1684,
+   "h": 648,
+   "depth": 0.85
+  },
+  {
+   "id": "text",
+   "src": "images/text.webp",
+   "x": 0,
+   "y": 0,
+   "w": 1684,
+   "h": 2528,
+   "depth": 0,
+   "fixed": true
+  }
+ ],
+ "car": {
+  "cx": 960,
+  "bottom": 2242,
+  "ground": 2190,
+  "poster": 79,
+  "frames": [
+   {
+    "src": "images/car/00.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/01.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/02.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/03.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/04.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/05.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/06.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/07.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/08.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/09.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/10.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/11.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/12.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/13.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/14.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/15.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/16.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/17.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/18.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/19.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/20.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/21.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/22.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/23.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/24.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/25.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/26.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/27.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/28.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/29.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/30.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/31.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/32.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/33.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/34.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/35.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/36.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/37.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/38.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/39.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/40.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/41.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/42.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/43.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/44.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/45.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/46.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/47.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/48.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/49.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/50.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/51.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/52.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/53.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/54.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/55.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/56.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/57.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/58.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/59.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/60.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/61.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/62.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/63.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/64.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/65.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/66.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/67.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/68.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/69.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/70.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/71.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/72.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/73.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/74.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/75.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/76.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/77.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/78.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/79.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/80.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/81.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/82.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/83.webp",
+    "w": 1460,
+    "h": 476
+   },
+   {
+    "src": "images/car/84.webp",
+    "w": 1460,
+    "h": 476
+   }
+  ]
+ }
+}

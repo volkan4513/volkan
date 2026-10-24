@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#20232e">
+    <title>Fuji Poster</title>
+    <style>
+        :root {
+            --bg: #1b1d26;
+            --cream: #f1e8d6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--cream);
+            font-family: system-ui, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
+        }
+
+        /* blurred sky behind the poster fills the letterbox */
+        #backdrop {
+            position: fixed;
+            inset: -40px;
+            background: center / cover no-repeat;
+            filter: blur(40px) brightness(.38) saturate(.7);
+            transform: scale(1.1);
+        }
+
+        /* the poster: 1684 x 2528 poster units, scaled to fit the screen (see fit()) */
+        #stage {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            overflow: hidden;
+            transform-origin: 0 0;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, .55);
+            touch-action: none;
+            opacity: 0;
+            transition: opacity .8s ease;
+        }
+
+        #stage.ready { opacity: 1; }
+        #stage.oncar { cursor: grab; }
+        #stage.dragging { cursor: grabbing; }
+
+        /* scene and car are drawn a little larger than the poster so parallax never shows an edge */
+        .depth {
+            position: absolute;
+            inset: 0;
+            transform-origin: 50% 50%;
+        }
+
+        .layer, .car, .shadow, .text {
+            position: absolute;
+            display: block;
+            pointer-events: none;
+            will-change: transform;
+        }
+
+        .shadow {
+            border-radius: 50%;
+            background: radial-gradient(closest-side, rgba(8, 9, 16, .45), rgba(8, 9, 16, .2) 60%, transparent);
+        }
+
+        /* film grain over the whole poster, car and text included. It sits outside
+           the scaled stage so its dots stay screen-sized instead of shrinking away. */
+        #grain {
+            position: fixed;
+            pointer-events: none;
+            opacity: .32;
+            mix-blend-mode: overlay;
+            background-size: 256px 256px;
+        }
+
+        #vignette {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(10, 10, 20, .45) 100%);
+        }
+
+        #hint {
+            position: fixed;
+            left: 50%;
+            bottom: max(14px, env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            padding: 7px 14px;
+            border-radius: 999px;
+            background: rgba(20, 22, 30, .6);
+            backdrop-filter: blur(6px);
+            font-size: 13px;
+            letter-spacing: .04em;
+            color: var(--cream);
+            pointer-events: none;
+            transition: opacity .6s ease;
+        }
+
+        #hint.gone { opacity: 0; }
+
+        #loading {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            font-size: 13px;
+            letter-spacing: .2em;
+            color: rgba(241, 232, 214, .6);
+            pointer-events: none;
+            transition: opacity .5s ease;
+        }
+
+        #loading.gone { opacity: 0; }
+    </style>
+</head>
+
+<body>
+    <script src="../../pixel-transition.js"></script>
+    <script src="../../offline.js"></script>
+    <script>PixelTransition.reveal();</script>
+    <script src="../../site-nav.js" data-home="../../index.html"></script>
+
+    <div id="backdrop"></div>
+    <div id="loading">LOADING</div>
+
+    <div id="stage" aria-label="Mt. Fuji poster. Drag the car to turn it.">
+        <div class="depth" id="scene"></div>
+        <div id="vignette"></div>
+        <img class="text" id="text" alt="">
+        <div class="depth" id="carDepth">
+            <div class="shadow" id="shadow"></div>
+            <img class="car" id="car" alt="">
+        </div>
+    </div>
+
+    <div id="grain"></div>
+    <div id="hint">drag the car to turn it</div>
+
+    <script>
+    (() => {
+        const OVERSCAN = 1.05;          // scene drawn this much bigger than the poster
+        const LEAN_X = 18, LEAN_Y = 10; // how far a hovered layer can move, in poster units
+        const FOLLOW = 0.22;            // share of the pointer's motion a hovered layer follows
+        const HIT_SCALE = 0.25;         // hover hit maps are kept at this fraction of poster size
+        const DEG_PER_PX = 0.45;        // drag speed of the car
+        const RETURN_AFTER = 6000;      // ms idle before the car swings back to the poster view
+
+        const stage = document.getElementById('stage');
+        const sceneEl = document.getElementById('scene');
+        const carDepth = document.getElementById('carDepth');
+        const carImg = document.getElementById('car');
+        const shadow = document.getElementById('shadow');
+        const textImg = document.getElementById('text');
+        const hint = document.getElementById('hint');
+        const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        let W = 1684, H = 2528, scene, layers = [], frames = [];
+
+        // ---------------------------------------------------------------- layout
+        function place(el, x, y, w, h) {
+            el.style.left = x + 'px';
+            el.style.top = y + 'px';
+            el.style.width = w + 'px';
+            el.style.height = h + 'px';
+        }
+
+        function fit() {
+            const vw = innerWidth, vh = innerHeight;
+            const s = Math.min(vw / W, vh / H);
+            stage.style.width = W + 'px';
+            stage.style.height = H + 'px';
+            stage.style.transform = `translate(${-W * s / 2}px, ${-H * s / 2}px) scale(${s})`;
+            const g = document.getElementById('grain').style;
+            g.left = (vw - W * s) / 2 + 'px';
+            g.top = (vh - H * s) / 2 + 'px';
+            g.width = W * s + 'px';
+            g.height = H * s + 'px';
+        }
+
+        // ---------------------------------------------------------------- grain
+        // one tile of noise, jumped to a new random offset ~12 times a second
+        function makeGrain() {
+            const N = 256, c = document.createElement('canvas');
+            c.width = c.height = N;
+            const g = c.getContext('2d');
+            const img = g.createImageData(N, N);
+            for (let i = 0; i < img.data.length; i += 4) {
+                const v = 128 + ((Math.random() + Math.random() + Math.random()) / 3 - .5) * 255;
+                img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+                img.data[i + 3] = 255;
+            }
+            g.putImageData(img, 0, 0);
+            const el = document.getElementById('grain');
+            el.style.backgroundImage = `url(${c.toDataURL()})`;
+            if (reduceMotion) return;
+            setInterval(() => {
+                el.style.backgroundPosition = `${Math.random() * N | 0}px ${Math.random() * N | 0}px`;
+            }, 80);
+        }
+
+        // ---------------------------------------------------------------- hover
+        // Only the layer under the pointer moves: it is nudged along with the
+        // pointer's motion (a little, up to LEAN_X/Y) and settles back once the
+        // pointer leaves it.
+        let hovered = null, lastP = null;
+
+        function toScene(e) {
+            const r = stage.getBoundingClientRect();
+            const px = (e.clientX - r.left) / r.width * W, py = (e.clientY - r.top) / r.height * H;
+            return { x: (px - W / 2) / OVERSCAN + W / 2, y: (py - H / 2) / OVERSCAN + H / 2 };
+        }
+
+        function hitMap(l, img) {
+            l.hw = Math.max(1, Math.ceil(l.w * HIT_SCALE));
+            l.hh = Math.max(1, Math.ceil(l.h * HIT_SCALE));
+            try {
+                const c = document.createElement('canvas');
+                c.width = l.hw;
+                c.height = l.hh;
+                const g = c.getContext('2d', { willReadFrequently: true });
+                g.drawImage(img, 0, 0, l.hw, l.hh);
+                l.hit = g.getImageData(0, 0, l.hw, l.hh).data;
+            } catch (err) {
+                l.hit = null;  // e.g. opened from file:// - fall back to the layer's box
+            }
+        }
+
+        function covers(l, p) {
+            const u = Math.floor((p.x - l.x) * HIT_SCALE), v = Math.floor((p.y - l.y) * HIT_SCALE);
+            if (u < 0 || v < 0 || u >= l.hw || v >= l.hh) return false;
+            return !l.hit || l.hit[(v * l.hw + u) * 4 + 3] > 90;
+        }
+
+        function onCar(p) {
+            if (frame < 0) return false;
+            const f = frames[frame], c = scene.car;
+            return Math.abs(p.x - c.cx) < f.w * 0.46 && p.y > c.bottom - f.h * 0.92 && p.y < c.bottom;
+        }
+
+        const clamp = (v, m) => Math.max(-m, Math.min(m, v));
+
+        function hoverAt(e) {
+            const p = toScene(e);
+            const dx = lastP ? p.x - lastP.x : 0, dy = lastP ? p.y - lastP.y : 0;
+            lastP = p;
+            const car = onCar(p);
+            stage.classList.toggle('oncar', car);
+            const l = car ? null : layers.findLast(l => covers(l, p)) || null;
+            if (l && l !== hovered) {  // pick up from wherever it is now
+                l.tx = l.cx;
+                l.ty = l.cy;
+            }
+            hovered = l;
+            if (!l) return;
+            l.tx = clamp(l.tx + dx * FOLLOW, LEAN_X);
+            l.ty = clamp(l.ty + dy * FOLLOW, LEAN_Y);
+        }
+
+        function unhover() {
+            hovered = null;
+            lastP = null;
+        }
+
+        stage.addEventListener('pointerleave', () => {
+            if (!dragging) unhover();
+        });
+
+        // ---------------------------------------------------------------- car
+        let angle = 0, vel = 0, dragging = false, touching = false, dragX = 0, lastInput = 0, frame = -1;
+
+        function showFrame(i) {
+            if (i === frame || !frames[i].img) return;  // not loaded yet: keep the last view
+            frame = i;
+            const f = frames[i], c = scene.car;
+            carImg.src = f.img.src;
+            place(carImg, c.cx - f.w / 2, c.bottom - f.h, f.w, f.h);
+            // soft ambient shade on the road; each frame carries its own contact shadow
+            const sw = f.w * 0.92, sh = Math.max(60, f.h * 0.16), ground = c.ground ?? c.bottom;
+            place(shadow, c.cx - sw / 2, ground - sh * 0.55, sw, sh);
+        }
+
+        function frameFor(a) {
+            const n = frames.length;
+            const i = Math.round(a / (360 / n));
+            return (((i + scene.car.poster) % n) + n) % n;
+        }
+
+        // press on the car to turn it; a finger anywhere else acts like hovering
+        stage.addEventListener('pointerdown', e => {
+            stage.setPointerCapture(e.pointerId);
+            if (!onCar(toScene(e))) {
+                if (e.pointerType !== 'mouse') {
+                    touching = true;
+                    lastP = null;
+                    hoverAt(e);
+                }
+                return;
+            }
+            dragging = true;
+            unhover();
+            dragX = e.clientX;
+            vel = 0;
+            lastInput = performance.now();
+            stage.classList.add('dragging');
+            hint.classList.add('gone');
+        });
+
+        stage.addEventListener('pointermove', e => {
+            if (!dragging) {
+                if (e.pointerType === 'mouse' || touching) hoverAt(e);
+                return;
+            }
+            const dx = e.clientX - dragX;
+            dragX = e.clientX;
+            const d = -dx * DEG_PER_PX;  // the near side of the car follows the pointer
+            angle += d;
+            vel = vel * 0.5 + d * 0.5;
+            lastInput = performance.now();
+        });
+
+        function endDrag(e) {
+            if (touching) unhover();
+            touching = false;
+            if (!dragging) return;
+            dragging = false;
+            stage.classList.remove('dragging');
+            lastInput = performance.now();
+            if (e.pointerType === 'mouse') hoverAt(e);
+        }
+        stage.addEventListener('pointerup', endDrag);
+        stage.addEventListener('pointercancel', endDrag);
+
+        addEventListener('keydown', e => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                angle += (e.key === 'ArrowLeft' ? 1 : -1) * 360 / frames.length;
+                vel = 0;
+                lastInput = performance.now();
+                hint.classList.add('gone');
+            }
+        });
+
+        // ---------------------------------------------------------------- loop
+        let prev = performance.now();
+        function tick(now) {
+            const dt = Math.min(50, now - prev) / 1000;
+            prev = now;
+
+            // car: coast after a flick, then swing home to the poster view
+            if (!dragging) {
+                if (Math.abs(vel) > 0.05) {
+                    angle += vel;
+                    vel *= Math.pow(0.04, dt);
+                } else if (now - lastInput > RETURN_AFTER) {
+                    const home = Math.round(angle / 360) * 360;
+                    angle += (home - angle) * Math.min(1, dt * 2.2);
+                    if (Math.abs(home - angle) < 0.5) angle = home;
+                }
+            }
+            showFrame(frameFor(angle));
+
+            // layers: the hovered one eases toward its lean, the rest ease home
+            const k = 1 - Math.pow(0.01, dt);
+            for (const l of layers) {
+                const tx = l === hovered ? l.tx : 0, ty = l === hovered ? l.ty : 0;
+                if (tx === l.cx && ty === l.cy) continue;
+                l.cx += (tx - l.cx) * k;
+                l.cy += (ty - l.cy) * k;
+                if (Math.abs(tx - l.cx) < 0.05 && Math.abs(ty - l.cy) < 0.05) {
+                    l.cx = tx;
+                    l.cy = ty;
+                }
+                const t = `translate3d(${l.cx}px, ${l.cy}px, 0)`;
+                for (const el of l.els) el.style.transform = t;
+            }
+
+            requestAnimationFrame(tick);
+        }
+
+        // power lines strung off the pole, as sagging curves in poster units
+        function wires(list) {
+            const NS = 'http://www.w3.org/2000/svg';
+            const svg = document.createElementNS(NS, 'svg');
+            svg.setAttribute('class', 'layer');
+            svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+            place(svg, 0, 0, W, H);
+            svg.style.overflow = 'visible';
+            for (const [x1, y1, x2, y2, sag] of list) {
+                const path = document.createElementNS(NS, 'path');
+                path.setAttribute('d', `M${x1} ${y1} Q${(x1 + x2) / 2} ${(y1 + y2) / 2 + sag * 2} ${x2} ${y2}`);
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke', 'rgba(24, 20, 26, .85)');
+                path.setAttribute('stroke-width', '3');
+                svg.appendChild(path);
+            }
+            return svg;
+        }
+
+        // ---------------------------------------------------------------- load
+        function loadImg(src) {
+            return new Promise((res, rej) => {
+                const im = new Image();
+                im.decoding = 'async';
+                im.onload = () => (im.decode ? im.decode().catch(() => {}) : Promise.resolve()).then(() => res(im));
+                im.onerror = rej;
+                im.src = src;
+            });
+        }
+
+        fetch('scene.json').then(r => r.json()).then(async data => {
+            scene = data;
+            [W, H] = data.size;
+            fit();
+            addEventListener('resize', fit);
+            sceneEl.style.transform = carDepth.style.transform = `scale(${OVERSCAN})`;
+
+            // scenery and the poster view first; the rest of the turntable streams in after
+            frames = data.car.frames.map(f => ({ ...f, img: null }));
+            const poster = data.car.poster;
+            const [imgs, posterImg] = await Promise.all([
+                Promise.all(data.layers.map(l => loadImg(l.src))),
+                loadImg(data.car.frames[poster].src),
+            ]);
+            frames[poster].img = posterImg;
+
+            data.layers.forEach((l, i) => {
+                if (l.fixed) {
+                    textImg.src = imgs[i].src;
+                    place(textImg, l.x, l.y, l.w, l.h);
+                    return;
+                }
+                const el = imgs[i];
+                el.className = 'layer';
+                el.alt = '';
+                place(el, l.x, l.y, l.w, l.h);
+                sceneEl.appendChild(el);
+                const layer = { ...l, els: [el], cx: 0, cy: 0, tx: 0, ty: 0 };
+                hitMap(layer, el);
+                layers.push(layer);
+                if (l.wires) {  // the power lines move with their pole
+                    const svg = wires(l.wires);
+                    sceneEl.insertBefore(svg, el);
+                    layer.els.push(svg);
+                }
+                if (l.id === 'sky') document.getElementById('backdrop').style.backgroundImage = `url(${l.src})`;
+            });
+            // nearest angles first, a few at a time
+            const queue = frames.map((_, i) => i).filter(i => i !== poster)
+                .sort((a, b) => ring(a - poster) - ring(b - poster));
+            function ring(d) {
+                const n = frames.length;
+                d = ((d % n) + n) % n;
+                return Math.min(d, n - d);
+            }
+            const next = () => {
+                const i = queue.shift();
+                if (i === undefined) return;
+                loadImg(frames[i].src).then(im => { frames[i].img = im; }).catch(() => {}).then(next);
+            };
+            for (let j = 0; j < 4; j++) next();
+
+            makeGrain();
+            stage.classList.add('ready');
+            document.getElementById('loading').classList.add('gone');
+            setTimeout(() => hint.classList.add('gone'), 7000);
+            requestAnimationFrame(tick);
+        }).catch(err => {
+            document.getElementById('loading').textContent = 'COULD NOT LOAD THE SCENE';
+            console.error(err);
+        });
+    })();
+    </script>
+</body>
+
+</html>
