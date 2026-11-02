@@ -24,7 +24,8 @@
             "thumbs": [
                 "projects/03/images/0.webp"
             ],
-            "href": "projects/03/index.html"
+            "href": "projects/03/index.html",
+            "slug": "retro"
         },
         {
             "id": "unity",
@@ -40,7 +41,8 @@
             "thumbs": [
                 "projects/02/images/0.webp"
             ],
-            "href": "projects/02/index.html"
+            "href": "projects/02/index.html",
+            "slug": "unity"
         },
         {
             "id": "bmw",
@@ -55,7 +57,8 @@
             "thumbs": [
                 "projects/01/images/0.webp"
             ],
-            "href": "projects/01/index.html"
+            "href": "projects/01/index.html",
+            "slug": "bmw"
         }
     ],
     "projects": [
@@ -70,7 +73,8 @@
             "thumb": "projects/04/images/0.webp",
             "href": "projects/04/index.html",
             "color": "red",
-            "sticker": "Try this!"
+            "sticker": "Try this!",
+            "slug": "music"
         },
         {
             "title": "Windows 98",
@@ -83,7 +87,8 @@
             "thumb": "projects/05/images/0.webp",
             "href": "projects/05/index.html",
             "color": "blue",
-            "sticker": "Try this!"
+            "sticker": "Try this!",
+            "slug": "win98"
         },
         {
             "title": "Parking Puzzle",
@@ -96,7 +101,8 @@
             "thumb": "images_to_use/puzzle_thumb.webp",
             "href": "page2.html",
             "color": "yellow",
-            "sticker": "Try this!"
+            "sticker": "Try this!",
+            "slug": "puzzle"
         },
         {
             "title": "Low-Poly Strike",
@@ -109,7 +115,8 @@
             "thumb": "projects/08/images/0.webp",
             "href": "projects/08/index.html",
             "color": "red",
-            "sticker": "Play it!"
+            "sticker": "Play it!",
+            "slug": "strike"
         },
         {
             "title": "Pixel Racer",
@@ -122,7 +129,8 @@
             "thumb": "projects/09/images/0.webp",
             "href": "projects/09/index.html",
             "color": "blue",
-            "sticker": "Play it!"
+            "sticker": "Play it!",
+            "slug": "racer"
         },
         {
             "title": "Fuji Poster",
@@ -135,7 +143,8 @@
             "thumb": "projects/10/images/0.webp",
             "href": "projects/10/index.html",
             "color": "red",
-            "sticker": "Try this!"
+            "sticker": "Try this!",
+            "slug": "fuji"
         }
     ],
     "skills": [
@@ -225,5 +234,199 @@
             "thumb": "projects/07/images/lab_cursor.webp",
             "href": "projects/07/lots_of_square_cursor.html"
         }
-    ]
+    ],
+    "contact": {
+        "title": "Let's make something",
+        "text": "Got a game, a 3D scene or a strange web idea? Send a note and I'll get back to you.",
+        "email": "bchalke4513@gmail.com",
+        "links": []
+    },
+    "details": {
+        "retro": {
+            "title": "Retro Image Effects Studio",
+            "tagline": "Scanline, ASCII and pixel-art effects, live.",
+            "tools": [
+                "Canvas 2D",
+                "JavaScript"
+            ],
+            "overview": "Upload an image and watch it turn into scanlines, ASCII art or pixel art right in the browser, with nothing sent to a server.",
+            "how": "Reads every pixel of the image with the Canvas API. Scanlines blank out rows, ASCII maps brightness to characters, and pixel art averages blocks of pixels then snaps them to a small palette.",
+            "highlights": [
+                "Three effects side by side in a responsive grid",
+                "Runs fully client-side",
+                "Download any result as an image"
+            ],
+            "gallery": [
+                "projects/03/images/0.webp",
+                "projects/03/images/1.webp",
+                "projects/03/images/2.webp"
+            ],
+            "href": "projects/03/index.html"
+        },
+        "unity": {
+            "title": "Just Jump It",
+            "tagline": "A Unity 3D jump platformer, exported to WebGL.",
+            "tools": [
+                "Unity",
+                "C#",
+                "WebGL"
+            ],
+            "overview": "A 3D platformer where the whole game is about timing your jumps across floating platforms.",
+            "how": "Built in Unity with C# player controls, exported with Unity's WebGL template and compressed for the web.",
+            "challenge": "Getting a Unity build small enough to load comfortably in a browser tab.",
+            "highlights": [
+                "Playable straight in the browser",
+                "Custom C# player controller"
+            ],
+            "gallery": [
+                "projects/02/images/0.webp",
+                "projects/02/images/1.webp",
+                "projects/02/images/2.webp"
+            ],
+            "href": "projects/02/index.html",
+            "heavy": true
+        },
+        "bmw": {
+            "title": "BMW M3 GTR",
+            "tagline": "A 3D walkaround scene in the browser.",
+            "tools": [
+                "Godot",
+                "WebGL"
+            ],
+            "overview": "A modelled and lit BMW M3 GTR scene you can walk around, running entirely in the browser.",
+            "how": "Modelled scene set up in Godot, lit and exported to the web as a WebAssembly build.",
+            "challenge": "Keeping a 70 MB scene loadable in a browser.",
+            "highlights": [
+                "Godot WebAssembly export",
+                "Lit and set up as a full walkaround scene"
+            ],
+            "gallery": [
+                "projects/01/images/0.webp",
+                "projects/01/images/1.webp",
+                "projects/01/images/2.webp"
+            ],
+            "href": "projects/01/index.html",
+            "heavy": true
+        },
+        "music": {
+            "title": "PS Music Player",
+            "tagline": "Pixel-art PlayStation player.",
+            "tools": [
+                "Web Audio",
+                "Canvas 2D",
+                "JavaScript"
+            ],
+            "overview": "A PlayStation-inspired music player in pixel art, with a spinning disc, visualizer, lyrics and iTunes previews.",
+            "how": "PlayStation artwork is layered in canvases and pixelated live with an ordered dither. Web Audio drives the visualizer; iTunes and lyrics come from public APIs.",
+            "highlights": [
+                "Live ordered-dither pixelation",
+                "Audio-reactive visualizer",
+                "Song previews and lyrics from public APIs"
+            ],
+            "gallery": [
+                "projects/04/images/0.webp",
+                "projects/04/images/1.webp",
+                "projects/04/images/2.webp"
+            ],
+            "href": "projects/04/index.html"
+        },
+        "win98": {
+            "title": "Windows 98",
+            "tagline": "A desktop in a CRT.",
+            "tools": [
+                "HTML / CSS",
+                "JavaScript"
+            ],
+            "overview": "A working Windows 98 desktop with Paint, Minesweeper, MS-DOS, a media player, Internet Explorer and more.",
+            "how": "A tiny window manager in plain JavaScript: draggable, resizable windows, a taskbar and Start menu. Every icon is drawn from code.",
+            "highlights": [
+                "Draggable, resizable windows",
+                "Paint, Minesweeper and an MS-DOS prompt",
+                "No images for icons, all drawn in code"
+            ],
+            "gallery": [
+                "projects/05/images/0.webp",
+                "projects/05/images/1.webp",
+                "projects/05/images/2.webp"
+            ],
+            "href": "projects/05/index.html"
+        },
+        "puzzle": {
+            "title": "Parking Puzzle",
+            "tagline": "Pixel-art sliding-block puzzle.",
+            "tools": [
+                "JavaScript",
+                "Python"
+            ],
+            "overview": "Slide the cars and free the red one. 20 levels, par moves and stars to earn, plus a daily puzzle.",
+            "how": "Sliding-block puzzle with drag, tap and keyboard controls. A Python solver checks every level, works out its par, and hill-climbs new harder levels.",
+            "highlights": [
+                "Solver-verified levels with par scores",
+                "Daily puzzle and streak",
+                "Drag, tap and keyboard controls"
+            ],
+            "gallery": [
+                "images_to_use/puzzle_thumb.webp"
+            ],
+            "href": "page2.html"
+        },
+        "strike": {
+            "title": "Low-Poly Strike",
+            "tagline": "A 4v4 shooter in the browser.",
+            "tools": [
+                "Three.js",
+                "WebRTC"
+            ],
+            "overview": "Free Area against bots, or host a match for friends. Deathmatch and Bomb mode, no server needed, on desktop and phones.",
+            "how": "A 4v4 shooter in plain JavaScript. One tab hosts the match and the others connect peer to peer, by room code or copy-paste. The same rules run offline against bots.",
+            "highlights": [
+                "Peer-to-peer multiplayer with no server",
+                "Deathmatch and Bomb modes",
+                "Touch controls for phones"
+            ],
+            "gallery": [
+                "projects/08/images/0.webp"
+            ],
+            "href": "projects/08/index.html",
+            "heavy": true
+        },
+        "racer": {
+            "title": "Pixel Racer",
+            "tagline": "PS1-style arcade racer.",
+            "tools": [
+                "Three.js",
+                "WebRTC"
+            ],
+            "overview": "Pick a pixel-art car and race bots or friends through Chicago and three classic NFS tracks. Drift, sprint and swap cameras.",
+            "how": "A Three.js racer with a PS1-style look and peer-to-peer multiplayer over WebRTC.",
+            "highlights": [
+                "Four tracks",
+                "Race bots or friends",
+                "Drift, sprint and camera swap"
+            ],
+            "gallery": [
+                "projects/09/images/0.webp"
+            ],
+            "href": "projects/09/index.html",
+            "heavy": true
+        },
+        "fuji": {
+            "title": "Fuji Poster",
+            "tagline": "A parallax poster scene.",
+            "tools": [
+                "Parallax",
+                "JavaScript"
+            ],
+            "overview": "A Mt. Fuji print come to life: layers drift as you move, and you can drag the car around.",
+            "how": "The poster is split into separate layers that shift at different speeds as you move.",
+            "highlights": [
+                "Layered parallax depth",
+                "Draggable car"
+            ],
+            "gallery": [
+                "projects/10/images/0.webp"
+            ],
+            "href": "projects/10/index.html"
+        }
+    }
 }

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project | Volkan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --y: #ffdf00;
+            --b: #00a5ff;
+            --r: #ff6050;
+            --g: #323834;
+            --ink: #111;
+        }
+
+        body {
+            color: var(--ink);
+            background:
+                radial-gradient(circle, rgba(0, 0, 0, 0.07) 1.2px, transparent 1.6px) 0 0 / 9px 9px,
+                #f6f1e4;
+            font: 400 19px/1.45 'Kalam', 'Comic Sans MS', cursive;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .wrap {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 64px 16px 56px;
+        }
+
+        .chip {
+            display: inline-block;
+            font: 700 clamp(14px, 3vw, 18px)/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 6px 12px 8px;
+            background: var(--b);
+            color: #fff;
+            box-shadow: 4px 4px 0 var(--ink);
+            transform: rotate(-1.5deg);
+        }
+
+        h1 {
+            font: 700 clamp(36px, 8vw, 72px)/0.98 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            margin: 18px 0 8px;
+        }
+
+        .tagline { font-size: clamp(20px, 3vw, 26px); }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 14px 0 20px;
+        }
+
+        .tag {
+            font: bold 12px/1 ui-monospace, 'Courier New', monospace;
+            background: #fff;
+            border: 2px solid var(--ink);
+            padding: 5px 7px;
+            text-transform: uppercase;
+        }
+
+        .launch {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 52px;
+            font: 700 22px/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            color: var(--ink);
+            background: var(--y);
+            border: 3px solid var(--ink);
+            box-shadow: 5px 5px 0 var(--ink);
+            padding: 12px 20px;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .launch:active { transform: translate(3px, 3px); box-shadow: 2px 2px 0 var(--ink); }
+        .launch:focus-visible { outline: 3px solid var(--b); outline-offset: 3px; }
+
+        .heavy {
+            margin-top: 10px;
+            font: 13px/1.3 ui-monospace, monospace;
+            opacity: 0.75;
+        }
+
+        .gallery {
+            display: flex;
+            gap: 14px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            padding: 8px 4px 18px;
+            margin: 28px -4px 8px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .gallery button {
+            all: unset;
+            flex: 0 0 min(82%, 520px);
+            scroll-snap-align: start;
+            cursor: zoom-in;
+            border: 3px solid var(--ink);
+            box-shadow: 5px 5px 0 var(--ink);
+            background: #fff;
+            line-height: 0;
+        }
+
+        .gallery button:focus-visible { outline: 3px solid var(--b); outline-offset: 3px; }
+        .gallery img { width: 100%; height: auto; display: block; }
+        .gallery.single button { flex-basis: min(100%, 640px); }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+            gap: 26px;
+            margin-top: 18px;
+        }
+
+        .panel {
+            background: #fff;
+            border: 3px solid var(--ink);
+            box-shadow: 5px 5px 0 var(--ink);
+            padding: 18px;
+        }
+
+        .panel.dark { background: var(--g); color: #f6f1e4; }
+
+        .panel h2 {
+            display: inline-block;
+            font: 700 22px/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            background: var(--y);
+            color: var(--ink);
+            padding: 4px 10px 6px;
+            margin-bottom: 10px;
+            box-shadow: 3px 3px 0 #000;
+        }
+
+        .panel ul { padding-left: 22px; }
+        .panel li + li { margin-top: 4px; }
+
+        .pager {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 40px;
+        }
+
+        .pager a {
+            display: inline-flex;
+            align-items: center;
+            min-height: 44px;
+            font: 700 17px/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            color: var(--ink);
+            background: #fff;
+            border: 3px solid var(--ink);
+            box-shadow: 3px 3px 0 var(--ink);
+            padding: 9px 14px;
+            text-decoration: none;
+        }
+
+        .pager a:hover { background: var(--b); color: #fff; }
+
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 9600;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.88);
+            padding: 16px;
+            cursor: zoom-out;
+        }
+
+        .lightbox.open { display: flex; }
+        .lightbox img { max-width: 100%; max-height: 100%; border: 3px solid #fff; }
+
+        .missing { text-align: center; padding: 80px 0; }
+        .missing a { color: var(--ink); }
+
+        @media (prefers-reduced-motion: reduce) {
+            .chip { transform: none; }
+            .launch:active { transform: none; }
+        }
+    </style>
+</head>
+<body>
+    <script src="pixel-transition.js"></script>
+    <script src="site-nav.js" data-home="index.html#more"></script>
+
+    <main class="wrap" id="app" aria-live="polite"></main>
+    <div class="lightbox" id="lightbox" role="dialog" aria-label="Image preview"><img alt=""></div>
+
+    <script>
+        (function () {
+            const app = document.getElementById('app');
+            const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const slug = new URLSearchParams(location.search).get('p');
+            const go = href => window.PixelTransition ? PixelTransition.go(href) : (location.href = href);
+
+            fetch('site.json').then(r => r.json()).then(site => {
+                const details = site.details || {};
+                const d = details[slug];
+                if (!d) {
+                    app.innerHTML = '<div class="missing"><p>Project not found.</p><p><a href="index.html#more">Back to the portfolio</a></p></div>';
+                    return;
+                }
+                document.title = d.title + ' | Volkan';
+
+                const keys = Object.keys(details);
+                const i = keys.indexOf(slug);
+                const prev = details[keys[(i + keys.length - 1) % keys.length]];
+                const next = details[keys[(i + 1) % keys.length]];
+                const prevKey = keys[(i + keys.length - 1) % keys.length];
+                const nextKey = keys[(i + 1) % keys.length];
+
+                const list = a => `<ul>${a.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
+                const gal = d.gallery || [];
+
+                app.innerHTML =
+                    `<span class="chip">Project</span>` +
+                    `<h1>${esc(d.title)}</h1>` +
+                    `<p class="tagline">${esc(d.tagline || '')}</p>` +
+                    `<div class="tags">${(d.tools || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` +
+                    `<a class="launch" id="launch" href="${esc(d.href)}">Launch it <span aria-hidden="true">&#9654;</span></a>` +
+                    (d.heavy ? '<p class="heavy">Big download &mdash; best on Wi-Fi.</p>' : '') +
+                    (gal.length ? `<div class="gallery${gal.length === 1 ? ' single' : ''}">${gal.map((g, n) =>
+                        `<button type="button" data-src="${esc(g)}" aria-label="Enlarge screenshot ${n + 1}"><img src="${esc(g)}" alt="${esc(d.title)} screenshot ${n + 1}" loading="lazy"></button>`).join('')}</div>` : '') +
+                    `<div class="grid">` +
+                    (d.overview ? `<section class="panel"><h2>What it is</h2><p>${esc(d.overview)}</p></section>` : '') +
+                    (d.how ? `<section class="panel dark"><h2>How I built it</h2><p>${esc(d.how)}</p></section>` : '') +
+                    (d.challenge ? `<section class="panel"><h2>The challenge</h2><p>${esc(d.challenge)}</p></section>` : '') +
+                    ((d.highlights || []).length ? `<section class="panel"><h2>Highlights</h2>${list(d.highlights)}</section>` : '') +
+                    `</div>` +
+                    `<nav class="pager" aria-label="Other projects">` +
+                    `<a href="project.html?p=${encodeURIComponent(prevKey)}">&#9664; ${esc(prev.title)}</a>` +
+                    `<a href="project.html?p=${encodeURIComponent(nextKey)}">${esc(next.title)} &#9654;</a></nav>`;
+
+                document.getElementById('launch').addEventListener('click', e => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return;
+                    e.preventDefault();
+                    go(d.href);
+                });
+                app.querySelectorAll('.pager a').forEach(a => a.addEventListener('click', e => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return;
+                    e.preventDefault();
+                    go(a.getAttribute('href'));
+                }));
+
+                const lb = document.getElementById('lightbox');
+                app.querySelectorAll('.gallery button').forEach(b => b.addEventListener('click', () => {
+                    lb.querySelector('img').src = b.dataset.src;
+                    lb.classList.add('open');
+                }));
+                lb.addEventListener('click', () => lb.classList.remove('open'));
+                document.addEventListener('keydown', e => { if (e.key === 'Escape') lb.classList.remove('open'); });
+            }).catch(() => {
+                app.innerHTML = '<div class="missing"><p>Could not load this project.</p><p><a href="index.html#more">Back to the portfolio</a></p></div>';
+            });
+        })();
+    </script>
+</body>
+</html>

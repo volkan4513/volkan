@@ -138,14 +138,17 @@
         <img class="text" id="text" alt="">
         <div class="depth" id="carDepth">
             <div class="shadow" id="shadow"></div>
-            <img class="car" id="car" alt="">
+            <canvas class="car" id="car"></canvas>
         </div>
     </div>
 
     <div id="grain"></div>
     <div id="hint">drag the car to turn it</div>
 
-    <script>
+    <script type="module">
+    import * as THREE from './lib/three.module.min.js';
+    import { GLTFLoader } from './lib/GLTFLoader.js';
+
     (() => {
         const OVERSCAN = 1.05;          // scene drawn this much bigger than the poster
         const LEAN_X = 18, LEAN_Y = 10; // how far a hovered layer can move, in poster units
@@ -153,6 +156,12 @@
         const HIT_SCALE = 0.25;         // hover hit maps are kept at this fraction of poster size
         const DEG_PER_PX = 0.45;        // drag speed of the car
         const RETURN_AFTER = 6000;      // ms idle before the car swings back to the poster view
+        const CAR_URL = 'models/car.glb';
+        const CAR_W = 1460, CAR_H = 476;  // the car's canvas, in poster units (bottom-centred on scene.car)
+        const CAR_LEN = 1250;           // length of the model on the poster, in poster units
+        const CAR_YAW = 0;              // degrees: set so the model's side faces the camera at angle 0
+        const CAM_ELEV = 7;             // degrees the camera looks down on the car
+        const STEP = 15;                // degrees per arrow-key press
 
         const stage = document.getElementById('stage');
         const sceneEl = document.getElementById('scene');
@@ -163,7 +172,7 @@
         const hint = document.getElementById('hint');
         const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-        let W = 1684, H = 2528, scene, layers = [], frames = [];
+        let W = 1684, H = 2528, scene, layers = [];
 
         // ---------------------------------------------------------------- layout
         function place(el, x, y, w, h) {
@@ -184,6 +193,7 @@
             g.top = (vh - H * s) / 2 + 'px';
             g.width = W * s + 'px';
             g.height = H * s + 'px';
+            resizeCar(s);
         }
 
         // ---------------------------------------------------------------- grain
@@ -241,9 +251,9 @@
         }
 
         function onCar(p) {
-            if (frame < 0) return false;
-            const f = frames[frame], c = scene.car;
-            return Math.abs(p.x - c.cx) < f.w * 0.46 && p.y > c.bottom - f.h * 0.92 && p.y < c.bottom;
+            if (!carReady) return false;
+            const c = scene.car;
+            return Math.abs(p.x - c.cx) < CAR_W * 0.46 && p.y > c.bottom - CAR_H * 0.92 && p.y < c.bottom;
         }
 
         const clamp = (v, m) => Math.max(-m, Math.min(m, v));
@@ -275,23 +285,73 @@
         });
 
         // ---------------------------------------------------------------- car
-        let angle = 0, vel = 0, dragging = false, touching = false, dragX = 0, lastInput = 0, frame = -1;
+        let angle = 0, vel = 0, dragging = false, touching = false, dragX = 0, lastInput = 0, carReady = false, drawn = null;
 
-        function showFrame(i) {
-            if (i === frame || !frames[i].img) return;  // not loaded yet: keep the last view
-            frame = i;
-            const f = frames[i], c = scene.car;
-            carImg.src = f.img.src;
-            place(carImg, c.cx - f.w / 2, c.bottom - f.h, f.w, f.h);
-            // soft ambient shade on the road; each frame carries its own contact shadow
-            const sw = f.w * 0.92, sh = Math.max(60, f.h * 0.16), ground = c.ground ?? c.bottom;
-            place(shadow, c.cx - sw / 2, ground - sh * 0.55, sw, sh);
+        // orthographic camera: 1 world unit = 1 poster unit, ground plane at the wheels (y = 0)
+        const GROUND_Y = () => scene.car.ground - (scene.car.bottom - CAR_H);  // wheels, in canvas units
+        const renderer = new THREE.WebGLRenderer({ canvas: carImg, alpha: true, antialias: true });
+        renderer.setClearColor(0x000000, 0);
+        const three = new THREE.Scene();
+        const camera = new THREE.OrthographicCamera(-CAR_W / 2, CAR_W / 2, 0, -CAR_H, 1, 5000);
+        const pivot = new THREE.Group();
+        three.add(pivot);
+        three.add(new THREE.HemisphereLight(0xfff2e0, 0x5a5f78, 1.6));
+        const sun = new THREE.DirectionalLight(0xffe2bd, 2.4);
+        sun.position.set(-600, 900, 700);
+        three.add(sun);
+        const rim = new THREE.DirectionalLight(0x8fa6ff, 0.8);
+        rim.position.set(700, 300, -600);
+        three.add(rim);
+
+        function resizeCar(s) {
+            const px = Math.min(devicePixelRatio || 1, 2) * s;
+            renderer.setPixelRatio(1);
+            renderer.setSize(Math.round(CAR_W * px), Math.round(CAR_H * px), false);
+            carImg.style.width = CAR_W + 'px';
+            carImg.style.height = CAR_H + 'px';
+            drawn = null;  // force a redraw
         }
 
-        function frameFor(a) {
-            const n = frames.length;
-            const i = Math.round(a / (360 / n));
-            return (((i + scene.car.poster) % n) + n) % n;
+        function placeCar() {
+            const c = scene.car;
+            place(carImg, c.cx - CAR_W / 2, c.bottom - CAR_H, CAR_W, CAR_H);
+            // camera looks at the wheels' centre; the canvas is shifted so the ground sits at GROUND_Y
+            const g = GROUND_Y();
+            camera.top = g;
+            camera.bottom = g - CAR_H;
+            const e = CAM_ELEV * Math.PI / 180, d = 2000;
+            camera.position.set(0, Math.sin(e) * d, Math.cos(e) * d);
+            camera.lookAt(0, 0, 0);
+            camera.updateProjectionMatrix();
+            // soft ambient shade on the road
+            const sw = CAR_LEN * 0.95, sh = Math.max(60, CAR_H * 0.16);
+            place(shadow, c.cx - sw / 2, c.ground - sh * 0.55, sw, sh);
+        }
+
+        function loadCar() {
+            return new GLTFLoader().loadAsync(CAR_URL).then(gltf => {
+                const m = gltf.scene;
+                m.traverse(o => { if (o.isCamera || o.isLight) o.visible = false; });
+                // centre it, sit the wheels on y = 0, and scale the long axis to CAR_LEN
+                const box = new THREE.Box3().setFromObject(m);
+                const size = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+                const long = Math.max(size.x, size.z), k = CAR_LEN / long;
+                m.position.set(-mid.x, -box.min.y, -mid.z);
+                const fit = new THREE.Group();
+                fit.add(m);
+                fit.scale.setScalar(k);
+                // side on to the camera (+z): a model that is longer in z is turned a quarter
+                fit.rotation.y = (size.z > size.x ? Math.PI / 2 : 0) + CAR_YAW * Math.PI / 180;
+                pivot.add(fit);
+                carReady = true;
+            });
+        }
+
+        function drawCar() {
+            if (!carReady || angle === drawn) return;
+            drawn = angle;
+            pivot.rotation.y = -angle * Math.PI / 180;  // the near side of the car follows the pointer
+            renderer.render(three, camera);
         }
 
         // press on the car to turn it; a finger anywhere else acts like hovering
@@ -341,7 +401,7 @@
 
         addEventListener('keydown', e => {
             if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                angle += (e.key === 'ArrowLeft' ? 1 : -1) * 360 / frames.length;
+                angle += (e.key === 'ArrowLeft' ? 1 : -1) * STEP;
                 vel = 0;
                 lastInput = performance.now();
                 hint.classList.add('gone');
@@ -365,7 +425,7 @@
                     if (Math.abs(home - angle) < 0.5) angle = home;
                 }
             }
-            showFrame(frameFor(angle));
+            drawCar();
 
             // layers: the hovered one eases toward its lean, the rest ease home
             const k = 1 - Math.pow(0.01, dt);
@@ -422,14 +482,12 @@
             addEventListener('resize', fit);
             sceneEl.style.transform = carDepth.style.transform = `scale(${OVERSCAN})`;
 
-            // scenery and the poster view first; the rest of the turntable streams in after
-            frames = data.car.frames.map(f => ({ ...f, img: null }));
-            const poster = data.car.poster;
-            const [imgs, posterImg] = await Promise.all([
+            placeCar();
+            resizeCar(Math.min(innerWidth / W, innerHeight / H));
+            const [imgs] = await Promise.all([
                 Promise.all(data.layers.map(l => loadImg(l.src))),
-                loadImg(data.car.frames[poster].src),
+                loadCar(),
             ]);
-            frames[poster].img = posterImg;
 
             data.layers.forEach((l, i) => {
                 if (l.fixed) {
@@ -452,21 +510,6 @@
                 }
                 if (l.id === 'sky') document.getElementById('backdrop').style.backgroundImage = `url(${l.src})`;
             });
-            // nearest angles first, a few at a time
-            const queue = frames.map((_, i) => i).filter(i => i !== poster)
-                .sort((a, b) => ring(a - poster) - ring(b - poster));
-            function ring(d) {
-                const n = frames.length;
-                d = ((d % n) + n) % n;
-                return Math.min(d, n - d);
-            }
-            const next = () => {
-                const i = queue.shift();
-                if (i === undefined) return;
-                loadImg(frames[i].src).then(im => { frames[i].img = im; }).catch(() => {}).then(next);
-            };
-            for (let j = 0; j < 4; j++) next();
-
             makeGrain();
             stage.classList.add('ready');
             document.getElementById('loading').classList.add('gone');

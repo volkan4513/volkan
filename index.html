@@ -274,6 +274,26 @@
             padding: 8px 12px;
         }
 
+        .card-btns {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .det-link {
+            font: 700 16px/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            background: #fff;
+            color: var(--ink);
+            border: 2px solid var(--ink);
+            padding: 6px 10px;
+        }
+
+        .det-link:hover {
+            background: var(--b);
+            color: #fff;
+        }
+
         .heavy-note {
             font: 12px/1.3 ui-monospace, monospace;
             opacity: 0.75;
@@ -368,6 +388,108 @@
         .about-links a:hover {
             background: var(--b);
             color: #fff;
+        }
+
+        /* contact */
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+            gap: 28px;
+            align-items: start;
+        }
+
+        .contact-copy h4 {
+            font: 700 clamp(26px, 4vw, 38px)/1.05 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .contact-copy p {
+            font: 400 19px/1.4 'Kalam', 'Comic Sans MS', cursive;
+        }
+
+        .contact-copy .about-links a,
+        .copy-mail {
+            border: 0;
+            cursor: pointer;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .copy-mail {
+            font: 700 16px/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            color: var(--ink);
+            background: var(--y);
+            padding: 9px 12px;
+            box-shadow: 3px 3px 0 #000;
+        }
+
+        .contact-form {
+            background: #fff;
+            border: 3px solid var(--ink);
+            box-shadow: 6px 6px 0 var(--ink);
+            padding: 18px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .contact-form label {
+            display: grid;
+            gap: 4px;
+            font: bold 12px/1 ui-monospace, 'Courier New', monospace;
+            text-transform: uppercase;
+        }
+
+        .contact-form input,
+        .contact-form textarea {
+            font: 400 16px/1.3 'Kalam', system-ui, sans-serif;
+            color: var(--ink);
+            background: #fffdf5;
+            border: 2px solid var(--ink);
+            padding: 10px;
+            width: 100%;
+            resize: vertical;
+        }
+
+        .contact-form input:focus-visible,
+        .contact-form textarea:focus-visible {
+            outline: 3px solid var(--b);
+            outline-offset: 1px;
+        }
+
+        .send-btn {
+            font: 700 20px/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            color: #fff;
+            background: var(--r);
+            border: 3px solid var(--ink);
+            box-shadow: 4px 4px 0 var(--ink);
+            padding: 12px 16px;
+            min-height: 48px;
+            cursor: pointer;
+        }
+
+        .send-btn:active {
+            transform: translate(3px, 3px);
+            box-shadow: 1px 1px 0 var(--ink);
+        }
+
+        .form-note {
+            font: 12px/1.3 ui-monospace, monospace;
+            opacity: 0.75;
+        }
+
+        .more.dark .contact-form {
+            background: #1b1d22;
+        }
+
+        .more.dark .contact-form input,
+        .more.dark .contact-form textarea {
+            background: #2a2d33;
+            color: #f6f1e4;
+            border-color: #f6f1e4;
         }
 
         /* puzzle progress, in the game's pixel style */
@@ -988,6 +1110,45 @@
             transition: none;
         }
 
+        .star-hint {
+            position: absolute;
+            pointer-events: none;
+            z-index: 11;
+            display: grid;
+            place-items: center;
+        }
+
+        .star-hint i {
+            position: absolute;
+            inset: 8%;
+            border: 3px dashed #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.55);
+            animation: starPulse 1.6s ease-out infinite;
+        }
+
+        .star-hint b {
+            position: absolute;
+            bottom: -2%;
+            padding: 3px 7px;
+            font: bold 11px/1 ui-monospace, 'Courier New', monospace;
+            letter-spacing: 1px;
+            color: #111;
+            background: #ffd23f;
+            border: 2px solid #000;
+            box-shadow: 2px 2px 0 #000;
+            white-space: nowrap;
+        }
+
+        @keyframes starPulse {
+            0% { transform: scale(0.75); opacity: 1; }
+            100% { transform: scale(1.15); opacity: 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .star-hint i { animation: none; }
+        }
+
         .layer.active {
             transform: scale(1.025);
             z-index: 10;
@@ -1139,6 +1300,22 @@
             padding: 0.45cqw 0.6cqw;
             text-transform: uppercase;
             white-space: nowrap;
+        }
+
+        .c-btns {
+            display: inline-flex;
+            gap: 0.8cqw;
+            align-items: center;
+        }
+
+        .c-det {
+            font: 700 max(8px, 2cqw)/1 'Oswald', Impact, sans-serif;
+            text-transform: uppercase;
+            white-space: nowrap;
+            background: #fff;
+            color: var(--ink);
+            border: max(1px, 0.25cqw) solid var(--ink);
+            padding: 0.6cqw 1.2cqw;
         }
 
         .c-open {
@@ -1484,6 +1661,28 @@
                 <div class="lab" id="labList"></div>
             </section>
 
+            <section class="block contact" id="contact" aria-labelledby="contactTitle">
+                <h3 class="block-title" id="contactTitle"><span class="chip y">Contact</span></h3>
+                <div class="contact-grid">
+                    <div class="contact-copy">
+                        <h4 id="contactHeading">Let's make something</h4>
+                        <p id="contactText"></p>
+                        <div class="about-links" id="contactLinks">
+                            <a id="contactMail" href="#"></a>
+                            <button type="button" id="contactCopy" class="copy-mail">Copy email</button>
+                        </div>
+                    </div>
+                    <form class="contact-form" id="contactForm" autocomplete="on">
+                        <label>Your name<input name="name" required maxlength="80" autocomplete="name"></label>
+                        <label>Your email<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
+                        <label>Message<textarea name="message" required rows="5" maxlength="2000"></textarea></label>
+                        <input type="checkbox" name="botcheck" tabindex="-1" autocomplete="off" style="display:none">
+                        <button type="submit" class="send-btn">Send it &#9654;</button>
+                        <p class="form-note" id="contactNote" role="status">Sent to my inbox through Web3Forms.</p>
+                    </form>
+                </div>
+            </section>
+
             <footer class="more-foot">
                 <span class="hand">Made by Volkan &middot; runs entirely in your browser</span>
                 <span class="foot-actions">
@@ -1763,6 +1962,19 @@
             // HTML slots (the featured cards) cover the whole design canvas.
             const croppedLayers = [];
             const stages = [];
+            const placedLayers = [];
+            // pulsing "tap me" ring over the star until it has been used
+            const starHint = document.createElement('div');
+            starHint.className = 'star-hint';
+            starHint.setAttribute('aria-hidden', 'true');
+            starHint.innerHTML = '<i></i><b>TAP ME</b>';
+            wrapper.appendChild(starHint);
+            let starHintOn = true;
+            function dismissStarHint() {
+                if (!starHintOn) return;
+                starHintOn = false;
+                starHint.remove();
+            }
             function layoutCropped() {
                 const cw = wrapper.clientWidth, ch = wrapper.clientHeight;
                 if (!cw || !ch) return;
@@ -1775,6 +1987,11 @@
                     node.style.height = (h * s / ch * 100) + '%';
                 };
                 for (const { img, x, y, w, h } of croppedLayers) place(img, x, y, w, h);
+                if (starHintOn) place(starHint, 250, 480, 235, 250);
+                // glasses/beards: positioned in design px, sized from the image
+                for (const { img, x, y, scale } of placedLayers)
+                    if (img.naturalWidth)
+                        place(img, x, y, img.naturalWidth * scale, img.naturalHeight * scale);
                 for (const stage of stages) place(stage, 0, 0, DW, DH);
             }
 
@@ -1854,7 +2071,7 @@
                     const foot = document.createElement('div');
                     foot.className = 'c-foot' + (L.footLeft ? ' left' : '');
                     foot.innerHTML = (L.openOnly ? '' : `<span class="c-tags">${(p.tags || []).map(t => `<span class="c-tag">${esc(t)}</span>`).join('')}</span>`) +
-                        '<span class="c-open">Open &#9654;</span>';
+                        `<span class="c-btns"><span class="c-det" data-detail="${esc(p.slug || p.id)}">Info</span><span class="c-open">Open &#9654;</span></span>`;
                     placeIn(foot, L.foot, L.card);
                     card.appendChild(foot);
 
@@ -1881,16 +2098,13 @@
                 const pos = imagesToPos[name];
                 if (pos) {
                     img.classList.add('positioned');
-                    img.style.left = (pos.x / W * 100) + '%';
-                    img.style.top = (pos.y / H * 100) + '%';
+                    const placed = { img, x: pos.x, y: pos.y, scale: pos.scale };
+                    placedLayers.push(placed);
                     if (pos.draggable) {
                         img.classList.add('draggable-layer');
                         img.dataset.draggable = 'true';
                     }
-                    img.addEventListener('load', () => {
-                        img.style.width = (img.naturalWidth * pos.scale / W * 100) + '%';
-                        img.style.height = (img.naturalHeight * pos.scale / H * 100) + '%';
-                    });
+                    img.addEventListener('load', layoutCropped);
                 } else {
                     const { x, y, w, h } = layer;
                     // scale (hover) about the design canvas centre, as the
@@ -1910,12 +2124,10 @@
             function applyRandomImagePos(img, name) {
                 const pos = imagesToPos[name];
                 if (!pos) return;
-                img.style.left = (pos.x / W * 100) + '%';
-                img.style.top = (pos.y / H * 100) + '%';
-                img.onload = () => {
-                    img.style.width = (img.naturalWidth * pos.scale / W * 100) + '%';
-                    img.style.height = (img.naturalHeight * pos.scale / H * 100) + '%';
-                };
+                let placed = placedLayers.find(p => p.img === img);
+                if (!placed) placedLayers.push(placed = { img });
+                placed.x = pos.x; placed.y = pos.y; placed.scale = pos.scale;
+                img.onload = layoutCropped;
             }
             for (const [triggerName, options] of Object.entries(randomImageClick)) {
                 const img = document.createElement('img');
@@ -1933,7 +2145,9 @@
                 const entry = randomImageNodes[triggerName];
                 if (!entry) return;
                 const { img, options } = entry;
-                const name = options[Math.floor(Math.random() * options.length)];
+                // never repeat the current one: an unchanged src wouldn't reload
+                const others = options.filter(o => decodeURIComponent(o) !== img.alt);
+                const name = others[Math.floor(Math.random() * others.length)];
                 img.alt = decodeURIComponent(name);
                 applyRandomImagePos(img, name);
                 const onFirstLoad = img.onload;
@@ -2077,6 +2291,12 @@
                 const card = e.target.closest && e.target.closest('.c-card');
                 if (card && (hit || !(e.metaKey || e.ctrlKey || e.shiftKey))) e.preventDefault();
                 if (!hit) {
+                    const det = e.target.closest && e.target.closest('[data-detail]');
+                    if (det) {
+                        window.Ambient?.blip(620);
+                        PixelTransition.go('project.html?p=' + encodeURIComponent(det.dataset.detail));
+                        return;
+                    }
                     if (card && !(e.metaKey || e.ctrlKey || e.shiftKey)) {
                         window.Ambient?.blip(520);
                         PixelTransition.go(card.getAttribute('href'));
@@ -2093,6 +2313,7 @@
                 } else if (name in openRandomPopup) {
                     showRandomPopup();
                 } else if (name in randomImageClick) {
+                    dismissStarHint();
                     showRandomImage(name);
                 } else if (name in scrollDown) {
                     document.getElementById('more').scrollIntoView({ behavior: 'smooth' });
@@ -2173,10 +2394,16 @@
                         `<span class="card-desc">${esc(p.desc || '')}</span>` +
                         (p.heavy ? '<span class="heavy-note">Big download &mdash; best on Wi-Fi.</span>' : '') +
                         `<span class="card-foot"><span class="tags">${(p.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join('')}</span>` +
-                        `<span class="open-link">Open &#9654;</span></span>`;
+                        `<span class="card-btns"><span class="det-link" data-detail="${esc(p.slug || '')}">Details</span><span class="open-link">Open &#9654;</span></span></span>`;
                     a.addEventListener('click', e => {
                         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button > 0) return;
                         e.preventDefault();
+                        const det = e.target.closest('[data-detail]');
+                        if (det && det.dataset.detail) {
+                            window.Ambient?.blip(620);
+                            PixelTransition.go('project.html?p=' + encodeURIComponent(det.dataset.detail));
+                            return;
+                        }
                         window.Ambient?.blip(520);
                         PixelTransition.go(p.href);
                     });
@@ -2218,6 +2445,62 @@
                     });
                     lab.appendChild(a);
                 });
+
+                const c = site.contact || {};
+                const mail = c.email || (site.about?.links || []).find(l => /^mailto:/.test(l.url))?.url.slice(7) || '';
+                if (!mail) {
+                    document.getElementById('contact').hidden = true;
+                } else {
+                    if (c.title) document.getElementById('contactHeading').textContent = c.title;
+                    document.getElementById('contactText').textContent = c.text || '';
+                    const mailA = document.getElementById('contactMail');
+                    mailA.href = 'mailto:' + mail;
+                    mailA.textContent = mail;
+                    const linkBox = document.getElementById('contactLinks');
+                    (c.links || []).filter(l => l && l.url && l.label).forEach(l => {
+                        const a = document.createElement('a');
+                        a.href = l.url; a.textContent = l.label; a.target = '_blank'; a.rel = 'noopener';
+                        linkBox.insertBefore(a, document.getElementById('contactCopy'));
+                    });
+                    const note = document.getElementById('contactNote');
+                    const copyBtn = document.getElementById('contactCopy');
+                    copyBtn.addEventListener('click', async () => {
+                        try { await navigator.clipboard.writeText(mail); copyBtn.textContent = 'Copied!'; }
+                        catch { copyBtn.textContent = mail; }
+                        window.Ambient?.blip(700);
+                        setTimeout(() => { copyBtn.textContent = 'Copy email'; }, 1800);
+                    });
+                    const form = document.getElementById('contactForm');
+                    const sendBtn = form.querySelector('.send-btn');
+                    form.addEventListener('submit', async e => {
+                        e.preventDefault();
+                        const f = new FormData(form);
+                        f.append('access_key', 'ed4ee606-b74b-49e8-b5f1-38d2e291bd9e');
+                        f.append('subject', 'Hello from your portfolio');
+                        f.append('from_name', 'Portfolio contact form');
+                        const label = sendBtn.innerHTML;
+                        sendBtn.textContent = 'Sending...';
+                        sendBtn.disabled = true;
+                        try {
+                            const res = await fetch('https://api.web3forms.com/submit', { method: 'POST', body: f });
+                            const data = await res.json();
+                            if (!res.ok || data.success === false) throw new Error(data.message || 'failed');
+                            note.textContent = 'Sent! Thanks, I will get back to you soon.';
+                            window.Ambient?.blip(880);
+                            form.reset();
+                        } catch {
+                            const body = f.get('message') + '
+
+— ' + f.get('name') + ' (' + f.get('email') + ')';
+                            note.textContent = 'Could not send from here, opening your email app instead.';
+                            window.location.href = 'mailto:' + mail + '?subject=' +
+                                encodeURIComponent('Hello from your portfolio') + '&body=' + encodeURIComponent(body);
+                        } finally {
+                            sendBtn.innerHTML = label;
+                            sendBtn.disabled = false;
+                        }
+                    });
+                }
 
                 const about = site.about || {};
                 if (about.title) document.getElementById('aboutTitle').textContent = about.title;

@@ -20,7 +20,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'sw-manifest.js')
 
 CORE = [
-    'index.html', 'page2.html', 'offline.html', 'site.json', 'functions_to_work.json', 'tiles.json',
+    'index.html', 'page2.html', 'project.html', 'offline.html', 'site.json', 'functions_to_work.json', 'tiles.json',
     'pixel-transition.js', 'site-nav.js', 'offline.js', 'ambient.js', 'daily.js', 'miniplayer.js', 'collage-fun.js',
     'images_to_use/optimized/*',
     'images_to_use/bg_sequence_*/*_used.webp',
@@ -34,7 +34,7 @@ CORE = [
     'projects/05/index.html', 'projects/05/windows98.html', 'projects/05/paint.html', 'projects/05/page_images/*',
     'projects/08/index.html', 'projects/08/*.js', 'projects/08/*.json', 'projects/08/images/0.webp', 'projects/08/textures/*',
     'projects/09/index.html', 'projects/09/*.js', 'projects/09/lib/*', 'projects/09/images/0.webp',
-    'projects/10/index.html', 'projects/10/scene.json', 'projects/10/images/*.webp', 'projects/10/images/car/*',
+    'projects/10/index.html', 'projects/10/scene.json', 'projects/10/images/*.webp', 'projects/10/lib/*', 'projects/10/models/*.glb',
     'projects/07/unblur_page.html', 'projects/07/lots_of_square_cursor.html', 'projects/07/images/lab_*.webp',
     'projects/07/page_images/w_*.webp', 'projects/07/wd/*', 'projects/07/wd/win/*', 'projects/07/wd/win/apps/*',
 ]
