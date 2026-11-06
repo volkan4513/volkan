@@ -145,6 +145,20 @@
             "color": "red",
             "sticker": "Try this!",
             "slug": "fuji"
+        },
+        {
+            "title": "Cut-Out Studio",
+            "subtitle": "AI background remover",
+            "tags": [
+                "WebGPU",
+                "AI"
+            ],
+            "desc": "Remove the background from any photo with an AI model running on your own device. Swap in colours, blur or your own image, then download a PNG.",
+            "thumb": "projects/11/images/0.webp",
+            "href": "projects/11/index.html",
+            "color": "blue",
+            "sticker": "Try this!",
+            "slug": "cutout"
         }
     ],
     "skills": [
@@ -219,6 +233,15 @@
                 "WebRTC"
             ],
             "text": "A 4v4 shooter in plain JavaScript. One tab hosts the match and the others connect peer to peer, by room code or copy-paste. The same rules run offline against bots."
+        },
+        {
+            "title": "Cut-Out Studio",
+            "tools": [
+                "Transformers.js",
+                "WebGPU",
+                "Canvas 2D"
+            ],
+            "text": "Runs the RMBG-1.4 segmentation model in the browser with Transformers.js, on WebGPU or WebAssembly. The predicted mask becomes the alpha channel of a canvas, which is then composited over colours, a blurred copy or a custom image."
         }
     ],
     "lab": [
@@ -427,6 +450,28 @@
                 "projects/10/images/0.webp"
             ],
             "href": "projects/10/index.html"
+        },
+        "cutout": {
+            "title": "Cut-Out Studio",
+            "tagline": "AI background removal in the browser.",
+            "tools": [
+                "Transformers.js",
+                "WebGPU",
+                "Canvas 2D"
+            ],
+            "overview": "Drop in a photo and an AI model cuts out the subject, right on your device. Nothing is uploaded.",
+            "how": "Loads the RMBG-1.4 model with Transformers.js and runs it on WebGPU, falling back to WebAssembly. The mask it predicts is written into the image's alpha channel, then composited over a colour, gradient, blurred original or your own picture.",
+            "challenge": "Keeping a ~45 MB model usable on a static host: it downloads only when asked, shows progress, and is cached by the browser afterwards.",
+            "highlights": [
+                "Runs fully on-device, photos never leave the browser",
+                "Before / after slider",
+                "Transparent, colour, blur or custom backgrounds",
+                "Download as PNG"
+            ],
+            "gallery": [
+                "projects/11/images/0.webp"
+            ],
+            "href": "projects/11/index.html"
         }
     }
 }

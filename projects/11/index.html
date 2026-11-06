@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#1b1d26">
+    <title>Cut-Out Studio</title>
+    <style>
+        :root {
+            --bg: #1b1d26;
+            --panel: #262a37;
+            --line: #3a3f52;
+            --cream: #f1e8d6;
+            --muted: #9aa0b4;
+            --accent: #ff5a47;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--cream);
+            font-family: system-ui, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        header a { color: var(--muted); text-decoration: none; font-size: 14px; }
+        header a:hover { color: var(--cream); }
+        h1 { font-size: 18px; letter-spacing: .02em; }
+
+        main {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 16px;
+            display: grid;
+            gap: 16px;
+        }
+
+        .intro { color: var(--muted); font-size: 14px; line-height: 1.5; }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+        button, .btn {
+            font: inherit;
+            font-size: 14px;
+            color: var(--cream);
+            background: #343a4f;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 9px 14px;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        button:hover:not(:disabled), .btn:hover { background: #3f4660; }
+        button:disabled { opacity: .45; cursor: not-allowed; }
+        .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .primary:hover:not(:disabled) { background: #ff735f; }
+
+        #status { font-size: 13px; color: var(--muted); }
+        #status.err { color: #ff8a7d; }
+
+        progress { width: 100%; height: 8px; accent-color: var(--accent); }
+        progress[hidden] { display: none; }
+
+        #drop {
+            border: 2px dashed var(--line);
+            border-radius: 12px;
+            padding: 28px 16px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 14px;
+            transition: border-color .15s, background .15s;
+        }
+
+        #drop.over { border-color: var(--accent); background: rgba(255, 90, 71, .08); }
+
+        #workspace[hidden] { display: none; }
+
+        /* before / after view */
+        #view {
+            position: relative;
+            /* sized to the photo's own aspect ratio, so nothing is stretched */
+            width: min(100%, calc(70vh * var(--ar, 1.5)));
+            aspect-ratio: var(--ar, 1.5);
+            margin: 0 auto;
+            overflow: hidden;
+            border-radius: 8px;
+            background:
+                conic-gradient(#3a3f52 25%, #2c3040 0 50%, #3a3f52 0 75%, #2c3040 0) 0 0 / 20px 20px;
+            touch-action: pan-y;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #view canvas { display: block; width: 100%; height: 100%; }
+
+        #before {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            pointer-events: none;
+        }
+
+        #handle {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #fff;
+            box-shadow: 0 0 6px rgba(0, 0, 0, .6);
+            pointer-events: none;
+            display: none;
+        }
+
+        #handle::after {
+            content: "<>";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #fff;
+            color: #222;
+            font-size: 12px;
+            font-weight: 700;
+            display: grid;
+            place-items: center;
+        }
+
+        .tag {
+            position: absolute;
+            top: 8px;
+            padding: 3px 8px;
+            font-size: 11px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, .55);
+            pointer-events: none;
+            display: none;
+        }
+
+        #tagBefore { left: 8px; }
+        #tagAfter { right: 8px; }
+        #view.cut .tag, #view.cut #handle { display: block; }
+
+        .swatches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+        .sw {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            border: 2px solid var(--line);
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .sw.on { border-color: var(--cream); }
+        .sw.checker { background: conic-gradient(#888 25%, #555 0 50%, #888 0 75%, #555 0) 0 0 / 12px 12px; }
+        .sw.blur { background: linear-gradient(135deg, #4a6fa5, #ff5a47); filter: blur(1.5px); }
+
+        label.small { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; }
+        input[type=color] { width: 34px; height: 34px; border: 0; background: none; padding: 0; }
+        input[type=file] { display: none; }
+
+        footer { color: var(--muted); font-size: 12px; text-align: center; padding: 8px 16px 28px; line-height: 1.5; }
+    </style>
+</head>
+
+<body>
+    <header>
+        <a href="../../index.html">&larr; Portfolio</a>
+        <h1>Cut-Out Studio</h1>
+        <span></span>
+    </header>
+
+    <main>
+        <p class="intro">
+            Remove the background from any photo with an AI model that runs <b>on your own device</b>.
+            Your image never leaves the browser. The model (about 45 MB) downloads once the first time you
+            press the button, then it is saved for next time.
+        </p>
+
+        <section class="card">
+            <div class="row">
+                <button id="loadBtn" class="primary">Load AI model (~45 MB)</button>
+                <span id="status">Model not loaded.</span>
+            </div>
+            <progress id="bar" max="100" value="0" hidden style="margin-top:10px"></progress>
+        </section>
+
+        <section id="drop" class="card">
+            <p>Drop a photo here, or</p>
+            <div class="row" style="justify-content:center;margin-top:10px">
+                <label class="btn">Choose image<input id="file" type="file" accept="image/*"></label>
+                <button id="sampleBtn">Try a sample</button>
+            </div>
+        </section>
+
+        <section id="workspace" class="card" hidden>
+            <div id="view">
+                <canvas id="out"></canvas>
+                <img id="before" alt="Original photo">
+                <div id="handle"></div>
+                <span class="tag" id="tagBefore">Before</span>
+                <span class="tag" id="tagAfter">After</span>
+            </div>
+
+            <div class="row" style="margin-top:12px">
+                <button id="runBtn" class="primary">Remove background</button>
+                <button id="dlBtn" disabled>Download PNG</button>
+            </div>
+
+            <div style="margin-top:14px">
+                <label class="small">Background</label>
+                <div class="swatches" id="swatches">
+                    <button class="sw checker on" data-bg="none" title="Transparent"></button>
+                    <button class="sw" data-bg="#ffffff" style="background:#fff" title="White"></button>
+                    <button class="sw" data-bg="#111111" style="background:#111" title="Black"></button>
+                    <button class="sw" data-bg="#ff5a47" style="background:#ff5a47" title="Red"></button>
+                    <button class="sw" data-bg="#f1e8d6" style="background:#f1e8d6" title="Cream"></button>
+                    <button class="sw" data-bg="grad" style="background:linear-gradient(135deg,#ff9966,#ff5e62,#6a5acd)" title="Gradient"></button>
+                    <button class="sw blur" data-bg="blur" title="Blurred original"></button>
+                    <input type="color" id="custom" value="#4a6fa5" title="Custom color">
+                    <label class="btn" style="padding:6px 10px;font-size:13px">Image&hellip;<input id="bgFile" type="file" accept="image/*"></label>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        Powered by Transformers.js and the RMBG-1.4 model (non-commercial license), run locally with WebGPU
+        when available and WebAssembly otherwise.
+    </footer>
+
+    <script type="module">
+        const $ = id => document.getElementById(id);
+        const statusEl = $('status'), bar = $('bar'), loadBtn = $('loadBtn');
+        const runBtn = $('runBtn'), dlBtn = $('dlBtn'), out = $('out'), view = $('view');
+        const before = $('before'), handle = $('handle');
+
+        const LIB = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
+        const MODEL = 'briaai/RMBG-1.4';
+
+        let lib = null, model = null, processor = null;
+        let srcImg = null;          // HTMLImageElement of the current photo
+        let cutout = null;          // canvas: subject with transparent background
+        let bg = 'none';            // 'none' | css colour | 'grad' | 'blur' | 'image'
+        let bgImg = null;
+        let split = 0.5;            // before/after divider, 0..1 from the left
+
+        function setStatus(msg, err) {
+            statusEl.textContent = msg;
+            statusEl.classList.toggle('err', !!err);
+        }
+
+        // ---------------------------------------------------------- model
+        async function loadModel() {
+            if (model) return;
+            loadBtn.disabled = true;
+            bar.hidden = false;
+            bar.value = 0;
+            setStatus('Loading library...');
+            try {
+                lib = await import(LIB);
+                const { AutoModel, AutoProcessor, env } = lib;
+                env.allowLocalModels = false;
+
+                const files = {};
+                const onProgress = p => {
+                    if (p.status === 'progress' && p.file) {
+                        files[p.file] = p;
+                        let loaded = 0, total = 0;
+                        for (const f of Object.values(files)) { loaded += f.loaded; total += f.total; }
+                        if (total) {
+                            bar.value = (loaded / total) * 100;
+                            setStatus(`Downloading model... ${(loaded / 1048576).toFixed(0)} / ${(total / 1048576).toFixed(0)} MB`);
+                        }
+                    }
+                };
+
+                const hasGpu = 'gpu' in navigator;
+                try {
+                    model = await AutoModel.from_pretrained(MODEL, {
+                        device: hasGpu ? 'webgpu' : 'wasm',
+                        progress_callback: onProgress,
+                    });
+                    setStatus(hasGpu ? 'Model ready (WebGPU).' : 'Model ready (CPU, slower).');
+                } catch (e) {
+                    if (!hasGpu) throw e;
+                    console.warn('WebGPU failed, using WASM', e);
+                    model = await AutoModel.from_pretrained(MODEL, { device: 'wasm', progress_callback: onProgress });
+                    setStatus('Model ready (CPU, slower).');
+                }
+
+                processor = await AutoProcessor.from_pretrained(MODEL, {
+                    config: {
+                        do_normalize: true,
+                        do_pad: false,
+                        do_rescale: true,
+                        do_resize: true,
+                        image_mean: [0.5, 0.5, 0.5],
+                        feature_extractor_type: 'ImageFeatureExtractor',
+                        image_std: [1, 1, 1],
+                        resample: 2,
+                        rescale_factor: 0.00392156862745098,
+                        size: { width: 1024, height: 1024 },
+                    },
+                });
+                loadBtn.textContent = 'Model loaded';
+            } catch (e) {
+                console.error(e);
+                model = processor = null;
+                loadBtn.disabled = false;
+                setStatus('Could not load the model: ' + (e.message || e), true);
+            } finally {
+                bar.hidden = true;
+                updateButtons();
+            }
+        }
+
+        loadBtn.addEventListener('click', loadModel);
+
+        // ---------------------------------------------------------- image input
+        function showImage(url) {
+            const img = new Image();
+            img.onload = () => {
+                // keep inference input and memory in a sane range on phones
+                const MAX = 2000;
+                const k = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+                if (k < 1) {
+                    const c = document.createElement('canvas');
+                    c.width = Math.round(img.naturalWidth * k);
+                    c.height = Math.round(img.naturalHeight * k);
+                    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                    c.toBlob(b => {
+                        const small = new Image();
+                        small.onload = () => setSource(small, URL.createObjectURL(b));
+                        small.src = URL.createObjectURL(b);
+                    }, 'image/png');
+                } else setSource(img, url);
+            };
+            img.onerror = () => setStatus('Could not read that image.', true);
+            img.src = url;
+        }
+
+        function setSource(img, url) {
+            srcImg = img;
+            cutout = null;
+            before.src = url;
+            view.style.setProperty('--ar', img.naturalWidth / img.naturalHeight);
+            out.width = img.naturalWidth;
+            out.height = img.naturalHeight;
+            out.getContext('2d').drawImage(img, 0, 0);
+            view.classList.remove('cut');
+            $('workspace').hidden = false;
+            $('drop').hidden = true;
+            updateButtons();
+            applySplit();
+        }
+
+        $('file').addEventListener('change', e => {
+            const f = e.target.files[0];
+            if (f) showImage(URL.createObjectURL(f));
+            e.target.value = '';
+        });
+
+        $('sampleBtn').addEventListener('click', () => showImage('../03/images/f1_pitstop.jpg'));
+
+        const drop = $('drop');
+        ['dragenter', 'dragover'].forEach(t => window.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+        ['dragleave', 'drop'].forEach(t => window.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+        window.addEventListener('drop', e => {
+            const f = e.dataTransfer.files[0];
+            if (f && f.type.startsWith('image/')) showImage(URL.createObjectURL(f));
+        });
+
+        function updateButtons() {
+            runBtn.disabled = !(model && srcImg);
+            runBtn.textContent = model ? 'Remove background' : 'Load the model first';
+            dlBtn.disabled = !cutout;
+        }
+
+        // ---------------------------------------------------------- inference
+        runBtn.addEventListener('click', async () => {
+            if (!model || !srcImg) return;
+            runBtn.disabled = true;
+            setStatus('Removing background...');
+            await new Promise(r => setTimeout(r, 30)); // let the label repaint
+            try {
+                const { RawImage } = lib;
+                const t0 = performance.now();
+                const image = await RawImage.fromURL(before.src);
+                const { pixel_values } = await processor(image);
+                const { output } = await model({ input: pixel_values });
+                const mask = await RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(image.width, image.height);
+
+                const c = document.createElement('canvas');
+                c.width = image.width;
+                c.height = image.height;
+                const ctx = c.getContext('2d');
+                ctx.drawImage(srcImg, 0, 0, c.width, c.height);
+                const px = ctx.getImageData(0, 0, c.width, c.height);
+                for (let i = 0; i < mask.data.length; i++) px.data[i * 4 + 3] = mask.data[i];
+                ctx.putImageData(px, 0, 0);
+                cutout = c;
+
+                view.classList.add('cut');
+                render();
+                setStatus(`Done in ${((performance.now() - t0) / 1000).toFixed(1)} s.`);
+            } catch (e) {
+                console.error(e);
+                setStatus('Something went wrong: ' + (e.message || e), true);
+            } finally {
+                updateButtons();
+            }
+        });
+
+        // ---------------------------------------------------------- compositing
+        function drawComposite(ctx, w, h) {
+            if (bg === 'grad') {
+                const g = ctx.createLinearGradient(0, 0, w, h);
+                g.addColorStop(0, '#ff9966'); g.addColorStop(.5, '#ff5e62'); g.addColorStop(1, '#6a5acd');
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, w, h);
+            } else if (bg === 'blur') {
+                ctx.filter = `blur(${Math.max(8, Math.round(w / 70))}px)`;
+                ctx.drawImage(srcImg, -20, -20, w + 40, h + 40);
+                ctx.filter = 'none';
+            } else if (bg === 'image' && bgImg) {
+                const k = Math.max(w / bgImg.naturalWidth, h / bgImg.naturalHeight);
+                const dw = bgImg.naturalWidth * k, dh = bgImg.naturalHeight * k;
+                ctx.drawImage(bgImg, (w - dw) / 2, (h - dh) / 2, dw, dh);
+            } else if (bg !== 'none') {
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, w, h);
+            }
+            ctx.drawImage(cutout, 0, 0, w, h);
+        }
+
+        function render() {
+            if (!cutout) return;
+            out.width = cutout.width;
+            out.height = cutout.height;
+            const ctx = out.getContext('2d');
+            ctx.clearRect(0, 0, out.width, out.height);
+            drawComposite(ctx, out.width, out.height);
+            dlBtn.disabled = false;
+        }
+
+        $('swatches').addEventListener('click', e => {
+            const b = e.target.closest('.sw');
+            if (!b) return;
+            bg = b.dataset.bg;
+            document.querySelectorAll('.sw.on').forEach(x => x.classList.remove('on'));
+            b.classList.add('on');
+            render();
+        });
+
+        $('custom').addEventListener('input', e => {
+            bg = e.target.value;
+            document.querySelectorAll('.sw.on').forEach(x => x.classList.remove('on'));
+            render();
+        });
+
+        $('bgFile').addEventListener('change', e => {
+            const f = e.target.files[0];
+            e.target.value = '';
+            if (!f) return;
+            const img = new Image();
+            img.onload = () => {
+                bgImg = img;
+                bg = 'image';
+                document.querySelectorAll('.sw.on').forEach(x => x.classList.remove('on'));
+                render();
+            };
+            img.src = URL.createObjectURL(f);
+        });
+
+        dlBtn.addEventListener('click', () => {
+            if (!cutout) return;
+            out.toBlob(b => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(b);
+                a.download = 'cutout.png';
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+            }, 'image/png');
+        });
+
+        // ---------------------------------------------------------- before/after slider
+        function applySplit() {
+            before.style.clipPath = view.classList.contains('cut') ? `inset(0 ${(1 - split) * 100}% 0 0)` : 'inset(0 0 0 0)';
+            handle.style.left = (split * 100) + '%';
+        }
+
+        function moveSplit(e) {
+            const r = view.getBoundingClientRect();
+            split = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+            applySplit();
+        }
+
+        let dragging = false;
+        view.addEventListener('pointerdown', e => {
+            if (!view.classList.contains('cut')) return;
+            dragging = true;
+            view.setPointerCapture(e.pointerId);
+            moveSplit(e);
+        });
+        view.addEventListener('pointermove', e => { if (dragging) moveSplit(e); });
+        view.addEventListener('pointerup', () => { dragging = false; });
+        new MutationObserver(applySplit).observe(view, { attributes: true, attributeFilter: ['class'] });
+
+        updateButtons();
+    </script>
+</body>
+
+</html>
