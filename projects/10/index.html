@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#20232e">
     <title>Fuji Poster</title>
     <style>
@@ -53,10 +53,11 @@
         #stage.oncar { cursor: grab; }
         /* embedded in the main page: let vertical swipes scroll the page */
         .embed #stage { touch-action: pan-y; }
+        html.embed, html.embed body { overscroll-behavior: auto; }
         /* embedded: the hint sits in the empty sky, top right, and pulses until the panel is touched */
         .embed #hint {
             top: 13.5%; left: 56%; bottom: auto; width: 31%; transform: none;
-            font-size: 9px; line-height: 1.3; padding: 5px 7px; text-align: center; border-radius: 8px;
+            font-size: 9px; line-height: 1.3; padding: 5px 7px; text-align: center; border-radius: 0;
             color: #ffdf00; animation: hintPulse 1.4s ease-in-out infinite;
         }
         @keyframes hintPulse {

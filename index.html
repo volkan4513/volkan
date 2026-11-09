@@ -2025,14 +2025,16 @@
             // the three panels take the BMW card's width (design x 35, width 1026) and sit just under it
             const panelsEl = document.getElementById('panels');
             function layoutPanels(s, ox, oy, ch) {
-                panelsEl.style.width = (1026 * s) + 'px';
+                // desktop: wider than the BMW card (up to 1400px); phones: exactly the card's width
+                const wide = innerWidth > 768;
+                panelsEl.style.width = (wide ? Math.min(1400, innerWidth * 0.9) : 1026 * s) + 'px';
                 // line the panels up with the BMW card itself: the wrapper is 100vw (wider than the page when a
                 // scrollbar shows), so centring in the body would drift by a few pixels
                 const bodyLeft = document.body.getBoundingClientRect().left;
-                panelsEl.style.alignSelf = 'flex-start';
-                panelsEl.style.marginLeft = (wrapper.getBoundingClientRect().left - bodyLeft + ox + 35 * s) + 'px';
+                panelsEl.style.alignSelf = wide ? 'center' : 'flex-start';
+                panelsEl.style.marginLeft = wide ? '0' : (wrapper.getBoundingClientRect().left - bodyLeft + ox + 35 * s) + 'px';
                 // phones: two panels side by side (the black placeholder is hidden by CSS)
-                panelsEl.style.gap = (8 * s) + 'px';
+                panelsEl.style.gap = (wide ? 10 : 8 * s) + 'px';
                 panelsEl.style.marginBottom = (-40 * s) + 'px';
                 panelsEl.style.marginTop = (oy + 2119 * s - ch - 2 * s) + 'px';   // flush under the card
             }

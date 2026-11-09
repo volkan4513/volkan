@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#1b1d26">
     <title>Computer A-83</title>
     <style>
@@ -16,6 +16,9 @@
             user-select: none; -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent; overscroll-behavior: none;
         }
+        /* standalone: the browser must never pinch-zoom or double-tap-zoom the whole page (our own pinch zooms the model) */
+        html:not(.embed), html:not(.embed) body { touch-action: none; }
+        html.embed, html.embed body { touch-action: pan-y; }
         /* poster is 800 x 1200 units, scaled to fit the window (see fit()) */
         #stage {
             position: absolute; left: 50%; top: 50%;
@@ -63,10 +66,14 @@
         #hint.gone { opacity: 0; }
             /* embedded in the main page: paper-coloured letterbox instead of dark bars */
         .embed body { background: var(--cream); }
+        /* embedded: let swipes that start on the page chain up to the main page, and vertical swipes on the model scroll it too
+           (spinning is horizontal only; pinch still reaches our handler because pan-y does not allow browser zoom) */
+        .embed html, html.embed, html.embed body { overscroll-behavior: auto; }
+        html.embed #hit { touch-action: pan-y; }
         /* embedded: the hint is a strip along the top, left of the buttons, and pulses until the panel is touched */
         .embed #hint {
             top: 5px; left: 6px; bottom: auto; transform: none; width: 52%;
-            white-space: normal; font-size: 8px; line-height: 1.3; padding: 4px 7px; border-radius: 8px;
+            white-space: normal; font-size: 8px; line-height: 1.3; padding: 4px 7px; border-radius: 0;
             color: #ffdf00; animation: hintPulse 1.4s ease-in-out infinite;
         }
         @keyframes hintPulse {
@@ -706,6 +713,8 @@
                     q.slerp(qBase, 0.05); dirty = true;      // shortest way back to the poster angle
                 }
             }
+            // embedded: an accidental pinch must not leave the panel zoomed in, so ease back to 1x when idle
+            if (document.documentElement.classList.contains('embed') && now - lastInput > RETURN_AFTER && zoomT !== 1 && !dragging && pointers.size === 0) setZoom(1);
             if (Math.abs(zoomT - zoom) > 0.0005) { zoom += (zoomT - zoom) * 0.25; dirty = true; }
             // key travel + glow
             for (const k of keys) {
