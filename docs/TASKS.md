@@ -93,3 +93,9 @@ Pages should run **directly inside the main page**. Panel size is fixed and deri
 - [x] Page 10: bloom removed, sun light raised (3.3). Page 12: screen is dark until tapped, keys do nothing until then
 - [x] Main page: `#panels` under the BMW card holds page 10 and page 12 as iframes (`?embed=1`) plus a black "COMING SOON" panel. Sized from the card width in `layoutPanels()` in `index.html`. `site-nav.js` hides the HOME button when `embed=1`; page 10 uses `touch-action: pan-y` when embedded
 - [ ] Not done: pause the pages' render loops when off-screen, `site.json` card for page 12, offline manifest (`tools/build_offline_manifest.py`) for the new pages and `old_computer.glb`
+
+## Update 2026-11-09 (performance)
+- [x] Phones (<=768px): the two panels show `projects/10/shot.webp` and `projects/12/shot.webp` with a pulsing TAP TO PLAY; the iframe is only created on tap. Files are prefetched at idle (skipped on data saver / 2g). Desktop starts the iframes straight away
+- [x] Pause: pages 10 and 12 stop their render loop when the tab is hidden or the panel is scrolled out of view, and wake on return. Page 12's terminal cursor stops blinking after 20 s without a touch
+- [x] `?shot=1` hides hints and buttons for taking clean thumbnails (page 12: `projects/12/index.html?embed=1&shot=1`; page 10 needs the main-page route in headless Chrome, its standalone load never finishes there)
+- [ ] Add `projects/10`, `projects/12` and the two `shot.webp` files to the offline manifest

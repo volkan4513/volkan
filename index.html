@@ -1115,6 +1115,17 @@
             cursor: pointer;
         }
         #panels .open:hover { background: #ff6050; }
+        #panels .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+        #panels .play {
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1;
+            padding: 6px 9px; background: rgba(17, 17, 17, .78); color: #ffdf00; white-space: nowrap;
+            font: bold 10px/1 ui-monospace, 'Courier New', monospace; letter-spacing: .08em;
+            display: none; pointer-events: none; animation: playPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes playPulse { 50% { box-shadow: 0 0 0 3px rgba(255, 223, 0, .5), 0 0 12px rgba(255, 223, 0, .8); } }
+        #panels .panel.idle { cursor: pointer; }
+        #panels .panel.idle .play { display: block; }
+        #panels iframe { transition: opacity .25s ease; }
         #panels iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #000; }
 
         .stack-wrapper {
@@ -1640,8 +1651,8 @@
 
     <!-- project pages running live under the BMW card -->
     <section id="panels" aria-label="Live projects">
-        <div class="panel"><iframe title="Fuji poster" src="projects/10/index.html?embed=1" loading="lazy"></iframe><a class="open" href="projects/10/index.html" onclick="PixelTransition.go(this.href); return false;">OPEN &#9654;</a></div>
-        <div class="panel"><iframe title="Computer A-83 poster" src="projects/12/index.html?embed=1" loading="lazy"></iframe><a class="open" href="projects/12/index.html" onclick="PixelTransition.go(this.href); return false;">OPEN &#9654;</a></div>
+        <div class="panel" data-src="projects/10/index.html?embed=1" data-title="Fuji poster"><img class="shot" src="projects/10/shot.webp" alt=""><span class="play">TAP TO PLAY</span><a class="open" href="projects/10/index.html" onclick="PixelTransition.go(this.href); return false;">OPEN &#9654;</a></div>
+        <div class="panel" data-src="projects/12/index.html?embed=1" data-title="Computer A-83 poster"><img class="shot" src="projects/12/shot.webp" alt=""><span class="play">TAP TO PLAY</span><a class="open" href="projects/12/index.html" onclick="PixelTransition.go(this.href); return false;">OPEN &#9654;</a></div>
         <div class="panel placeholder" aria-hidden="true"></div>
     </section>
 
@@ -2053,9 +2064,13 @@
                 for (const { img, x, y, w, h } of croppedLayers) place(img, x, y, w, h);
                 if (starHintOn) place(starHint, 250, 480, 235, 250);
                 // glasses/beards: positioned in design px, sized from the image
+                // GROW enlarges glasses and beards a touch, about their own centres so they stay on the face
+                const GROW = 1.17, SHIFT_X = 6;   // SHIFT_X: design px to the right
                 for (const { img, x, y, scale } of placedLayers)
-                    if (img.naturalWidth)
-                        place(img, x, y, img.naturalWidth * scale, img.naturalHeight * scale);
+                    if (img.naturalWidth) {
+                        const w = img.naturalWidth * scale, h = img.naturalHeight * scale;
+                        place(img, x + SHIFT_X - w * (GROW - 1) / 2, y - h * (GROW - 1) / 2, w * GROW, h * GROW);
+                    }
                 for (const stage of stages) place(stage, 0, 0, DW, DH);
             }
 
@@ -2698,6 +2713,61 @@
         })();
     </script>
 
+
+    <script>
+    // The two live panels: on phones they stay a screenshot until tapped (no WebGL running while you scroll),
+    // with their files prefetched in the background so a tap starts quickly. On desktop they start straight away.
+    (function () {
+        const panels = [...document.querySelectorAll('#panels .panel[data-src]')];
+        const phone = () => innerWidth <= 768;
+
+        function start(p) {
+            if (p.querySelector('iframe')) return;
+            const f = document.createElement('iframe');
+            f.title = p.dataset.title;
+            f.src = p.dataset.src;
+            f.style.opacity = '0';
+            f.onload = () => { f.style.opacity = '1'; };   // the screenshot shows underneath until the page is ready
+            p.insertBefore(f, p.querySelector('.open'));
+            p.classList.remove('idle');
+        }
+
+        function sync() {
+            panels.forEach(p => {
+                if (phone()) { if (!p.querySelector('iframe')) p.classList.add('idle'); }
+                else start(p);
+            });
+        }
+        panels.forEach(p => p.addEventListener('click', e => {
+            if (!phone() || e.target.closest('.open')) return;
+            start(p);
+        }));
+        sync();
+        addEventListener('resize', sync);
+
+        // phones: warm the cache once the main page has settled, unless data saver / a slow connection
+        const c = navigator.connection || {};
+        if (phone() && !c.saveData && !/(^|-)2g$/.test(c.effectiveType || '')) {
+            const FILES = [
+                'projects/10/index.html?embed=1', 'projects/10/scene.json', 'projects/10/models/car.glb',
+                'projects/10/lib/three.module.min.js', 'projects/10/lib/GLTFLoader.js', 'projects/10/lib/BufferGeometryUtils.js',
+                'projects/10/images/sky.webp', 'projects/10/images/0.webp', 'projects/10/images/land.webp',
+                'projects/10/images/houses.webp', 'projects/10/images/ground.webp', 'projects/10/images/pole.webp',
+                'projects/10/images/bushesL.webp', 'projects/10/images/bushesR.webp', 'projects/10/images/text.webp',
+                'projects/12/index.html?embed=1', 'projects/12/old_computer.glb',
+                'projects/12/lib/three.module.min.js', 'projects/12/lib/GLTFLoader.js', 'projects/12/lib/BufferGeometryUtils.js',
+            ];
+            const idle = window.requestIdleCallback || (f => setTimeout(f, 2500));
+            const warm = async () => {
+                for (const u of FILES) {
+                    if (panels.every(p => p.querySelector('iframe'))) return;
+                    try { await fetch(u, { priority: 'low' }); } catch (e) { /* offline or missing: harmless */ }
+                }
+            };
+            addEventListener('load', () => idle(warm, { timeout: 6000 }));
+        }
+    })();
+    </script>
 </body>
 
 </html>

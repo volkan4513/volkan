@@ -66,6 +66,7 @@
         #hint.gone { opacity: 0; }
             /* embedded in the main page: paper-coloured letterbox instead of dark bars */
         .embed body { background: var(--cream); }
+        html.shot #hint, html.shot #ui { display: none; }   /* ?shot=1: clean poster for the main-page thumbnail */
         /* embedded: let swipes that start on the page chain up to the main page, and vertical swipes on the model scroll it too
            (spinning is horizontal only; pinch still reaches our handler because pan-y does not allow browser zoom) */
         .embed html, html.embed, html.embed body { overscroll-behavior: auto; }
@@ -83,7 +84,8 @@
 </head>
 
 <body>
-    <script>if (/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embed');</script>
+    <script>if (/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embed');
+    if (/[?&]shot=1/.test(location.search)) document.documentElement.classList.add('shot');</script>
     <div id="stage">
         <!-- poster artwork: everything but the computer -->
         <svg class="art" viewBox="0 0 800 1200" xmlns="http://www.w3.org/2000/svg">
@@ -153,6 +155,7 @@
         const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         let dirty = true, model = null;
+        const gate = { run: true, last: 0 };   // false while the tab is hidden or the panel is scrolled out of view
 
         // ---- layout
         let scale = 1;
@@ -445,7 +448,7 @@
                 if (shift && !realChar) { ch = ch.toUpperCase(); shift = false; }
                 type(ch);
             }
-            setInterval(() => { blink = !blink; if (on && !busy) paint(); }, 530);
+            setInterval(() => { blink = !blink; if (gate.run && on && !busy && performance.now() - gate.last < 20000) paint(); }, 530);   // the cursor stops blinking once nobody has touched it for 20 s
             function start() { if (!on) { on = true; boot(); } }
             return { tex, init, key, start };
         })();
@@ -699,10 +702,22 @@
         });
         addEventListener('resize', fit);
 
+        // pause: no frames at all while the tab is hidden or the panel is off screen; wake() restarts the loop
+        let looping = true, inView = true;
+        const shouldRun = () => !document.hidden && inView;
+        function wake() {
+            gate.run = shouldRun();
+            if (!looping && gate.run) { looping = true; dirty = true; requestAnimationFrame(tick); }
+        }
+        document.addEventListener('visibilitychange', wake);
+        if ('IntersectionObserver' in window) new IntersectionObserver(es => { inView = es[es.length - 1].isIntersecting; wake(); }).observe(stage);
+
         function tick() {
+            if (!shouldRun()) { looping = false; gate.run = false; return; }
             requestAnimationFrame(tick);
             if (!model) return;
             const now = performance.now();
+            gate.last = Math.max(gate.last, lastInput);
             if (!dragging) {
                 if (velX) {                          // coast after a flick
                     spin(velX, 0);

@@ -54,6 +54,7 @@
         /* embedded in the main page: let vertical swipes scroll the page */
         .embed #stage { touch-action: pan-y; }
         html.embed, html.embed body { overscroll-behavior: auto; }
+        html.shot #hint { display: none; }   /* ?shot=1: clean poster for the main-page thumbnail */
         /* embedded: the hint sits in the empty sky, top right, and pulses until the panel is touched */
         .embed #hint {
             top: 13.5%; left: 56%; bottom: auto; width: 31%; transform: none;
@@ -139,7 +140,8 @@
 <body>
     <script src="../../pixel-transition.js"></script>
     <script src="../../offline.js"></script>
-    <script>PixelTransition.reveal(); if (/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embed');</script>
+    <script>PixelTransition.reveal(); if (/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embed');
+    if (/[?&]shot=1/.test(location.search)) document.documentElement.classList.add('shot');</script>
     <script src="../../site-nav.js" data-home="../../index.html"></script>
 
     <div id="backdrop"></div>
@@ -464,7 +466,17 @@
 
         // ---------------------------------------------------------------- loop
         let prev = performance.now();
+        // pause: no frames while the tab is hidden or the panel is off screen; wake() restarts the loop
+        let looping = true, inView = true;
+        const shouldRun = () => !document.hidden && inView;
+        function wake() {
+            if (!looping && shouldRun()) { looping = true; prev = performance.now(); requestAnimationFrame(tick); }
+        }
+        document.addEventListener('visibilitychange', wake);
+        if ('IntersectionObserver' in window) new IntersectionObserver(es => { inView = es[es.length - 1].isIntersecting; wake(); }).observe(stage);
+
         function tick(now) {
+            if (!shouldRun()) { looping = false; return; }
             const dt = Math.min(50, now - prev) / 1000;
             prev = now;
 
