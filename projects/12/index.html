@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#1b1d26">
+    <title>Computer A-83</title>
+    <style>
+        :root { --bg: #1b1d26; --cream: #efe6d2; --red: #ee3b1d; --ink: #131313; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%; overflow: hidden;
+            background: var(--bg); color: var(--ink);
+            font-family: system-ui, sans-serif;
+            user-select: none; -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent; overscroll-behavior: none;
+        }
+        /* poster is 800 x 1200 units, scaled to fit the window (see fit()) */
+        #stage {
+            position: absolute; left: 50%; top: 50%;
+            width: 800px; height: 1200px; overflow: hidden;
+            transform-origin: 0 0; background: var(--cream);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, .55);
+            opacity: 0; transition: opacity .8s ease;
+        }
+        #stage.ready { opacity: 1; }
+        #stage.oncomp { cursor: grab; }
+        #stage.dragging { cursor: grabbing; }
+        svg.art, #comp { position: absolute; left: 0; top: 0; width: 800px; height: 1200px; display: block; pointer-events: none; }
+        .jp { font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", "Noto Sans JP", Meiryo, sans-serif; font-weight: 900; }
+        #grain {
+            position: absolute; inset: 0; pointer-events: none; opacity: .28;
+            mix-blend-mode: multiply; background-size: 256px 256px;
+        }
+
+        /* only this box (the model) claims touch gestures; the rest of the poster lets the page scroll */
+        #hit { position: absolute; z-index: 2; touch-action: none; }
+
+        /* controls, top right of the poster */
+        #ui {
+            position: absolute; top: 12px; right: 14px; z-index: 3;
+            display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+        }
+        #ui .row { display: flex; gap: 6px; }
+        #ui button {
+            font: 600 14px/1 system-ui, sans-serif; letter-spacing: .02em;
+            padding: 7px 12px; border-radius: 999px; border: 2px solid var(--ink);
+            background: var(--cream); color: var(--ink); cursor: pointer;
+            touch-action: manipulation;
+        }
+        #ui button.on { background: var(--ink); color: var(--cream); }
+        #ui button.sq { width: 34px; padding: 7px 0; }
+        #ui button:hover { background: var(--red); border-color: var(--red); color: #fff; }
+
+        #hint {
+            position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom));
+            transform: translateX(-50%); padding: 7px 14px; border-radius: 999px;
+            background: rgba(20, 22, 30, .6); backdrop-filter: blur(6px);
+            font-size: 13px; letter-spacing: .04em; color: #f1e8d6;
+            pointer-events: none; transition: opacity .6s ease; white-space: nowrap;
+        }
+        #hint.gone { opacity: 0; }
+            /* embedded in the main page: paper-coloured letterbox instead of dark bars */
+        .embed body { background: var(--cream); }
+        /* embedded: the hint is a strip along the top, left of the buttons, and pulses until the panel is touched */
+        .embed #hint {
+            top: 5px; left: 6px; bottom: auto; transform: none; width: 52%;
+            white-space: normal; font-size: 8px; line-height: 1.3; padding: 4px 7px; border-radius: 8px;
+            color: #ffdf00; animation: hintPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes hintPulse {
+            50% { box-shadow: 0 0 0 3px rgba(255, 223, 0, .55), 0 0 14px rgba(255, 223, 0, .8); background: rgba(40, 34, 10, .85); }
+        }
+    </style>
+</head>
+
+<body>
+    <script>if (/[?&]embed=1/.test(location.search)) document.documentElement.classList.add('embed');</script>
+    <div id="stage">
+        <!-- poster artwork: everything but the computer -->
+        <svg class="art" viewBox="0 0 800 1200" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <clipPath id="ringClip"><path d="M400 1125 L400 1050 A200 200 0 0 0 563 741 L627 694 A275 275 0 0 1 400 1125 Z" /></clipPath>
+                <g id="kata" class="jp" font-size="118" text-anchor="middle">
+                    <text x="668" y="270">コ</text>
+                    <text x="668" y="378">ン</text>
+                    <text x="668" y="486">ピ</text>
+                    <text x="668" y="594">ュ</text>
+                    <rect x="650" y="615" width="36" height="115" />
+                    <text x="668" y="842">タ</text>
+                </g>
+            </defs>
+            <circle cx="256" cy="257" r="172" fill="#ee3b1d" />
+            <path d="M400 1125 L400 1050 A200 200 0 0 0 563 741 L627 694 A275 275 0 0 1 400 1125 Z" fill="#131313" />
+            <rect x="60" y="1057" width="102" height="60" fill="#ee3b1d" />
+            <text x="635" y="116" font-size="38" font-family="system-ui, sans-serif" fill="#131313" letter-spacing="1">A-83</text>
+            <use href="#kata" fill="#131313" />
+            <!-- where the lettering crosses the black ring it flips to cream -->
+            <g clip-path="url(#ringClip)"><use href="#kata" fill="#efe6d2" /></g>
+            <!-- English translation of the katakana, reading down along its right side -->
+            <text transform="translate(752 200) rotate(90)" font-size="25" font-weight="700" font-family="system-ui, sans-serif" fill="#131313" letter-spacing="10">COMPUTER</text>
+        </svg>
+        <canvas id="comp"></canvas>
+        <div id="grain"></div>
+        <div id="hit"></div>
+        <div id="ui">
+            <div class="row">
+                <button id="bCav" tabindex="-1" class="on">Cavity: on</button>
+                <button id="bLab" tabindex="-1">Key labels: off</button>
+            </div>
+            <div class="row">
+                <button id="bOut" tabindex="-1" class="sq" title="zoom out">&minus;</button>
+                <button id="bIn" tabindex="-1" class="sq" title="zoom in">+</button>
+                <button id="bReset" tabindex="-1" class="sq" title="reset view">&#8634;</button>
+            </div>
+        </div>
+    </div>
+    <div id="hint">drag to spin &middot; scroll or pinch to zoom &middot; tap the screen to power on &middot; tap the keys to type</div>
+
+    <script type="module">
+    import * as THREE from './lib/three.module.min.js';
+    import { GLTFLoader } from './lib/GLTFLoader.js';
+    import { toCreasedNormals } from './lib/BufferGeometryUtils.js';
+
+    (() => {
+        const Q = new URLSearchParams(location.search);
+        const num = (k, d) => (Q.has(k) ? parseFloat(Q.get(k)) : d);
+        const rad = THREE.MathUtils.degToRad;
+
+        // ---- tuning: where and how the computer sits on the poster (poster units, 800 x 1200)
+        const W = 800, H = 1200;
+        const BASE_YAW = num('yaw', -26);    // degrees the front is turned toward the left (we see its right side)
+        const ELEV = num('elev', 21);        // degrees the camera looks down
+        const FOV = num('fov', 18);          // narrow = flatter, more "product shot"
+        const TARGET = { cx: num('cx', 343), cy: num('cy', 590), h: num('h', 565) };  // silhouette centre + height on poster
+        const DEG_PER_PX = 0.45, RETURN_AFTER = 6000, STEP = 15, TAP_PX = 6;
+        const ZMIN = 0.7, ZMAX = 4.5;
+        // cavity filter (like Blender's viewport cavity): ridges lighter, creases darker
+        const CAV = { radius: num('cavr', 1.5), ridge: num('ridge', 0.55), valley: num('valley', 0.9) };
+
+        const stage = document.getElementById('stage');
+        const canvas = document.getElementById('comp');
+        const hint = document.getElementById('hint');
+        if (Q.has('debug')) stage.style.transition = 'none';
+        const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        let dirty = true, model = null;
+
+        // ---- layout
+        let scale = 1;
+        function fit() {
+            scale = Math.min(innerWidth / W, innerHeight / H);
+            stage.style.transform = `translate(${-W * scale / 2}px, ${-H * scale / 2}px) scale(${scale})`;
+            renderer.setPixelRatio(Math.min(2.5, (devicePixelRatio || 1) * scale));
+            renderer.setSize(W, H, false);
+            const pr = renderer.getPixelRatio();
+            rtColor.setSize(Math.round(W * pr), Math.round(H * pr));
+            rtNormal.setSize(Math.round(W * pr), Math.round(H * pr));
+            cavMat.uniforms.px.value.set(1 / (W * pr), 1 / (H * pr));
+            cavMat.uniforms.radius.value = CAV.radius * pr;
+            dirty = true;
+        }
+
+        // ---- grain
+        (function grain() {
+            const N = 256, c = document.createElement('canvas');
+            c.width = c.height = N;
+            const g = c.getContext('2d'), img = g.createImageData(N, N);
+            for (let i = 0; i < img.data.length; i += 4) {
+                const v = 200 + ((Math.random() + Math.random()) / 2 - .5) * 110;
+                img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
+            }
+            g.putImageData(img, 0, 0);
+            const el = document.getElementById('grain');
+            el.style.backgroundImage = `url(${c.toDataURL()})`;
+            if (reduce) return;
+            setInterval(() => { el.style.backgroundPosition = `${Math.random() * N | 0}px ${Math.random() * N | 0}px`; }, 90);
+        })();
+
+        // ---- three.js
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+        renderer.setClearColor(0x000000, 0);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(FOV, W / H, 0.01, 100);
+        const pivot = new THREE.Group();
+        scene.add(pivot);
+
+        scene.add(new THREE.HemisphereLight(0xffffff, 0xcfc8b8, 1.5));
+        const sun = new THREE.DirectionalLight(0xfff8ee, 2.4);
+        sun.position.set(-0.8, 2.0, 1.0);
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(2048, 2048);
+        sun.shadow.radius = 10;
+        sun.shadow.bias = -0.0004;
+        Object.assign(sun.shadow.camera, { left: -.8, right: .8, top: .8, bottom: -.8, near: .1, far: 6 });
+        scene.add(sun);
+        const fill = new THREE.DirectionalLight(0xdfe6ff, 0.5);
+        fill.position.set(1.4, .6, .8);
+        scene.add(fill);
+
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.ShadowMaterial({ opacity: 0.2 }));
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // ---- cavity post-process: scene -> colour target, view-space normals -> normal target, then a
+        // curvature pass (how fast the normal turns) that lightens ridges and darkens creases.
+        const rtColor = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: 4 });
+        const rtNormal = new THREE.WebGLRenderTarget(4, 4, { type: THREE.UnsignedByteType });
+        const normalMat = new THREE.MeshNormalMaterial();
+        const cavMat = new THREE.ShaderMaterial({
+            depthTest: false, depthWrite: false,
+            uniforms: {
+                tColor: { value: rtColor.texture }, tNormal: { value: rtNormal.texture },
+                px: { value: new THREE.Vector2(1, 1) }, radius: { value: 1.5 },
+                ridge: { value: CAV.ridge }, valley: { value: CAV.valley }
+            },
+            vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+            fragmentShader: `
+                uniform sampler2D tColor, tNormal; uniform vec2 px; uniform float radius, ridge, valley;
+                varying vec2 vUv;
+                vec3 nAt(vec2 uv, vec3 fallback) {
+                    vec4 t = texture2D(tNormal, uv);
+                    return t.a > 0.5 ? normalize(t.xyz * 2.0 - 1.0) : fallback;
+                }
+                float curv(vec3 n, float r) {
+                    vec2 d = px * r;
+                    vec3 l = nAt(vUv - vec2(d.x, 0.0), n), rr = nAt(vUv + vec2(d.x, 0.0), n);
+                    vec3 u = nAt(vUv + vec2(0.0, d.y), n), dn = nAt(vUv - vec2(0.0, d.y), n);
+                    return (rr.x - l.x) + (u.y - dn.y);   // > 0 convex (ridge), < 0 concave (crease)
+                }
+                void main() {
+                    vec4 c = texture2D(tColor, vUv);
+                    vec4 nt = texture2D(tNormal, vUv);
+                    float f = 1.0;
+                    if (nt.a > 0.5) {
+                        vec3 n = normalize(nt.xyz * 2.0 - 1.0);
+                        float cv = curv(n, radius) * 0.65 + curv(n, radius * 3.0) * 0.35;
+                        f = 1.0 + max(cv, 0.0) * ridge - max(-cv, 0.0) * valley;
+                        f = clamp(f, 0.35, 1.5);
+                    }
+                    vec3 col = c.a > 0.001 ? c.rgb / c.a : vec3(0.0);
+                    gl_FragColor = vec4(col * f, c.a);
+                    #include <colorspace_fragment>
+                    gl_FragColor.rgb *= gl_FragColor.a;
+                }`
+        });
+        const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), cavMat);
+        quad.frustumCulled = false;
+        const quadScene = new THREE.Scene();
+        quadScene.add(quad);
+        const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+        let cavityOn = Q.get('cav') !== '0';
+
+        function draw() {
+            if (!cavityOn) { renderer.setRenderTarget(null); renderer.render(scene, camera); return; }
+            renderer.setRenderTarget(rtColor);
+            renderer.render(scene, camera);
+            const fv = floor.visible;
+            floor.visible = false;
+            scene.overrideMaterial = normalMat;
+            renderer.setRenderTarget(rtNormal);
+            renderer.render(scene, camera);
+            scene.overrideMaterial = null;
+            floor.visible = fv;
+            renderer.setRenderTarget(null);
+            renderer.render(quadScene, quadCam);
+        }
+
+        // ---- orientation: a quaternion, so the model can turn any way (or just around the vertical axis)
+        const AX = new THREE.Vector3(1, 0, 0), AY = new THREE.Vector3(0, 1, 0);
+        const qBase = new THREE.Quaternion().setFromAxisAngle(AY, rad(BASE_YAW));
+        const q = qBase.clone(), tq = new THREE.Quaternion(), yawOnly = new THREE.Quaternion(), eu = new THREE.Euler();
+        let velX = 0, velY = 0;
+        let zoom = num('zoom', 1), zoomT = zoom;
+        const look = new THREE.Vector3(0, 0.17, 0), camDir = new THREE.Vector3(0, 1, 1);
+        let camDist = 2.2;
+        let dragging = false, dragX = 0, dragY = 0, lastInput = 0;
+
+        const flatten = () => {                       // the same turn, minus any tilt
+            eu.setFromQuaternion(q, 'YXZ');
+            return yawOnly.setFromAxisAngle(AY, eu.y);
+        };
+        function spin(dYaw, dPitch) {                 // degrees, about the world axes
+            q.premultiply(tq.setFromAxisAngle(AY, rad(dYaw)));
+            q.normalize();
+            dirty = true;
+        }
+
+        function frame() {
+            pivot.quaternion.copy(q);
+            floor.visible = q.angleTo(flatten()) < 0.05;   // the shadow floor only makes sense while it sits upright
+            camera.position.copy(look).addScaledVector(camDir, camDist / zoom);
+            camera.updateMatrixWorld();
+        }
+
+        // distance + view offset so the silhouette lands on TARGET at the rest angle
+        function place() {
+            q.copy(qBase);
+            pivot.quaternion.copy(q);
+            pivot.updateMatrixWorld(true);
+            const verts = [];
+            model.traverse(o => {
+                if (!o.isMesh || o.userData.noFit) return;
+                const p = o.geometry.attributes.position, v = new THREE.Vector3();
+                const step = Math.max(1, Math.floor(p.count / 400));
+                for (let i = 0; i < p.count; i += step) verts.push(v.fromBufferAttribute(p, i).applyMatrix4(o.matrixWorld).clone());
+            });
+            const el = rad(ELEV);
+            camDir.set(0, Math.sin(el), Math.cos(el));
+            let dist = 2.2;
+            const bounds = () => {
+                camera.position.copy(look).addScaledVector(camDir, dist);
+                camera.lookAt(look);
+                camera.clearViewOffset();
+                camera.updateMatrixWorld(true);
+                camera.updateProjectionMatrix();
+                let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+                for (const v of verts) {
+                    const n = v.clone().project(camera);
+                    x0 = Math.min(x0, n.x); x1 = Math.max(x1, n.x); y0 = Math.min(y0, n.y); y1 = Math.max(y1, n.y);
+                }
+                return { w: (x1 - x0) / 2 * W, h: (y1 - y0) / 2 * H, cx: (x0 + x1) / 4 * W + W / 2, cy: H / 2 - (y0 + y1) / 4 * H };
+            };
+            for (let i = 0; i < 6; i++) dist *= bounds().h / TARGET.h;
+            const b = bounds();
+            camera.setViewOffset(W, H, b.cx - TARGET.cx, b.cy - TARGET.cy, W, H);
+            camera.updateProjectionMatrix();
+            camDist = dist;
+            if (Q.has('debug')) console.log('silhouette', b.w.toFixed(0), b.h.toFixed(0));
+        }
+
+        // =============================================================== retro terminal (drawn on the screen)
+        const term = (() => {
+            const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+            const tex = new THREE.CanvasTexture(cv);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.anisotropy = 4;
+            const COLORS = { green: '#6dff86', amber: '#ffb840' };
+            const FS = 28, LH = 34, PX = 62, PY = 44;
+            let CW = 640, CH = 480, cols = 40, rows = 12;
+            let color = 'green', lines = [], input = '', shift = false, lastKey = '-', blink = true, busy = true, on = false;
+            const changed = () => { tex.needsUpdate = true; dirty = true; };
+
+            function init(aspect) {
+                CW = 640; CH = Math.round(CW / aspect);
+                cv.width = CW; cv.height = CH;
+                cols = Math.floor((CW - PX * 2) / (FS * 0.6));
+                rows = Math.floor((CH - PY * 2 - LH * 2) / LH);
+                paint();
+            }
+            function print(t = '') {
+                String(t).split('\n').forEach(s => {
+                    do { lines.push(s.slice(0, cols)); s = s.slice(cols); } while (s.length);
+                });
+                while (lines.length > rows) lines.shift();
+            }
+            function paint() {
+                if (!on) {   // powered off: dark glass with a faint reflection until the screen is touched
+                    ctx.fillStyle = '#030605'; ctx.fillRect(0, 0, CW, CH);
+                    const g = ctx.createLinearGradient(0, 0, CW, CH);
+                    g.addColorStop(0, 'rgba(120,150,130,.10)'); g.addColorStop(.5, 'rgba(120,150,130,0)');
+                    ctx.fillStyle = g; ctx.fillRect(0, 0, CW, CH);
+                    changed(); return;
+                }
+                const fg = COLORS[color];
+                ctx.fillStyle = '#04100a'; ctx.fillRect(0, 0, CW, CH);
+                ctx.font = 'bold ' + FS + 'px "Courier New", monospace';
+                ctx.textBaseline = 'top';
+                ctx.fillStyle = fg; ctx.shadowColor = fg; ctx.shadowBlur = 9;
+                let y = PY;
+                for (const l of lines) { ctx.fillText(l, PX, y); y += LH; }
+                if (!busy) ctx.fillText('> ' + input + (blink ? '█' : ' '), PX, y);
+                ctx.shadowBlur = 0;
+                ctx.font = 'bold 20px "Courier New", monospace';
+                ctx.globalAlpha = .75;
+                ctx.fillText('KEY: ' + lastKey, PX, CH - PY - 14);
+                ctx.fillText(color.toUpperCase(), CW - PX - 60, CH - PY - 14);
+                ctx.globalAlpha = 1;
+                // scanlines + vignette
+                ctx.fillStyle = 'rgba(0,0,0,.22)';
+                for (let sy = 0; sy < CH; sy += 3) ctx.fillRect(0, sy, CW, 1);
+                const vg = ctx.createRadialGradient(CW / 2, CH / 2, CH * .25, CW / 2, CH / 2, CH * .75);
+                vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.6)');
+                ctx.fillStyle = vg; ctx.fillRect(0, 0, CW, CH);
+                changed();
+            }
+            function boot() {
+                busy = true; lines = []; input = '';
+                const seq = ['A-83 PERSONAL COMPUTER', 'BASIC V1.0   (C) 1983', '', '48K BYTES FREE', '', 'TYPE HELP', ''];
+                let i = 0;
+                (function next() {
+                    if (i < seq.length) { print(seq[i++]); paint(); setTimeout(next, 140); }
+                    else { busy = false; paint(); }
+                })();
+            }
+            function run(cmd) {
+                const parts = cmd.trim().split(/\s+/), c = parts.shift() || '', arg = parts.join(' ');
+                switch (c.toLowerCase()) {
+                    case '': break;
+                    case 'help': print('HELP ABOUT PROJECTS DATE\nCOLOR [GREEN|AMBER] ECHO TEXT\nCLEAR REBOOT'); break;
+                    case 'about': print('A-83 WITH 3D KEYS AND SCREEN.\nTAP KEYS OR USE YOUR KEYBOARD.\nDRAG TO SPIN, SCROLL TO ZOOM.'); break;
+                    case 'projects': print('10 FUJI POSTER\n12 COMPUTER A-83'); break;
+                    case 'date': print(new Date().toDateString().toUpperCase()); break;
+                    case 'color': {
+                        const n = arg.toLowerCase();
+                        if (COLORS[n]) color = n; else color = color === 'green' ? 'amber' : 'green';
+                        print('COLOR ' + color.toUpperCase()); break;
+                    }
+                    case 'echo': print(arg); break;
+                    case 'clear': lines = []; break;
+                    case 'hello': print('HELLO, WORLD'); break;
+                    case 'reboot': boot(); return;
+                    default: print('?SYNTAX ERROR');
+                }
+            }
+            // ch: a printable character, or ENTER / BKSP / ESC
+            function type(ch) {
+                if (!on || busy) return;
+                if (ch === 'ENTER') { print('> ' + input); const c = input; input = ''; run(c); }
+                else if (ch === 'BKSP') input = input.slice(0, -1);
+                else if (ch === 'ESC') input = '';
+                else if (ch.length === 1 && input.length < cols - 3) input += ch;
+                paint();
+            }
+            // a key was pressed: label is what the keycap says, realChar is set for the physical keyboard
+            function key(label, realChar) {
+                if (!on) return;   // keys do nothing until the screen has been touched
+                lastKey = label;
+                if (label === 'SHIFT') { shift = !shift; paint(); return; }
+                if (label === 'CTRL') { paint(); return; }
+                if (label === 'SPACE') return type(' ');
+                if (label === 'ENTER' || label === 'BKSP' || label === 'ESC') return type(label);
+                let ch = realChar || (/^[A-Z]$/.test(label) ? label.toLowerCase() : label);
+                if (shift && !realChar) { ch = ch.toUpperCase(); shift = false; }
+                type(ch);
+            }
+            setInterval(() => { blink = !blink; if (on && !busy) paint(); }, 530);
+            function start() { if (!on) { on = true; boot(); } }
+            return { tex, init, key, start };
+        })();
+
+        // =============================================================== model, keys, screen
+        // keycap labels by row (back row first); each row is sorted left to right
+        const LAYOUT = [
+            ['ESC', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '-', '=', 'BKSP'],
+            ['CTRL', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'", 'ENTER'],
+            ['SHIFT', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 'SHIFT'],
+            ['SPACE']
+        ];
+        const keys = [], keyByLabel = new Map(), labelMeshes = [];
+        let screenMesh = null, labelsOn = Q.get('labels') === '1';
+
+        // a small decal on top of a key, in its own texture; hidden unless labels are on
+        function makeLabel(k) {
+            const geo = k.geometry;
+            geo.computeBoundingBox();
+            const b = geo.boundingBox, w = b.max.x - b.min.x, d = b.max.z - b.min.z;
+            const cw = Math.round(Math.min(256, Math.max(64, 64 * w / d))), ch = 64;
+            const c = document.createElement('canvas');
+            c.width = cw; c.height = ch;
+            const g = c.getContext('2d');
+            const text = k.userData.label === 'BKSP' ? 'DEL' : k.userData.label;
+            let fs = 34;
+            g.font = `bold ${fs}px system-ui, Arial, sans-serif`;
+            while (g.measureText(text).width > cw * 0.86 && fs > 10) { fs -= 2; g.font = `bold ${fs}px system-ui, Arial, sans-serif`; }
+            g.fillStyle = '#efe6d2';
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText(text, cw / 2, ch / 2 + 2);
+            const tex = new THREE.CanvasTexture(c);
+            tex.colorSpace = THREE.SRGBColorSpace;
+            tex.anisotropy = 8;
+            const m = new THREE.Mesh(
+                new THREE.PlaneGeometry(w * 0.9, d * 0.9),
+                new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })
+            );
+            m.rotation.x = -Math.PI / 2;           // lies on the keytop, text reads from the front
+            m.position.set((b.max.x + b.min.x) / 2, b.max.y + 0.0004, (b.max.z + b.min.z) / 2);
+            m.raycast = () => {};                  // never steal clicks from the key itself
+            m.userData.noFit = true;
+            m.visible = labelsOn;
+            k.add(m);
+            labelMeshes.push(m);
+        }
+
+        new GLTFLoader().load('old_computer.glb', g => {
+            // the file also carries leftover props (room, floor, spare copies); only HEAD is the computer
+            const head = g.scene.getObjectByName('HEAD');
+            head.traverse(o => {
+                if (!o.isMesh) return;
+                // the exported normals are wrong: rebuild them, keeping hard edges where faces meet at a sharp angle
+                o.geometry = toCreasedNormals(o.geometry, rad(35));
+                o.castShadow = true;
+                o.receiveShadow = true;
+                if (o.material && o.material.map) o.material.color.setRGB(0.86, 0.9, 0.96);  // cool the beige a touch
+            });
+
+            // ---- screen: planar UVs over the glass, emissive terminal texture
+            screenMesh = head.getObjectByName('SCREEN');
+            {
+                const geo = screenMesh.geometry, p = geo.attributes.position;
+                geo.computeBoundingBox();
+                const b = geo.boundingBox, w = b.max.x - b.min.x, h = b.max.y - b.min.y;
+                const uv = new Float32Array(p.count * 2);
+                for (let i = 0; i < p.count; i++) {
+                    uv[i * 2] = (p.getX(i) - b.min.x) / w;
+                    uv[i * 2 + 1] = (p.getY(i) - b.min.y) / h;
+                }
+                geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+                term.init(w / h);
+                screenMesh.material = new THREE.MeshStandardMaterial({
+                    color: 0x050805, emissive: 0xffffff, emissiveMap: term.tex, emissiveIntensity: 1.1, roughness: 0.28, metalness: 0
+                });
+            }
+
+            // ---- keys: label each by its position on the board
+            const kbd = head.getObjectByName('KEYBOARD');
+            const meshes = kbd.children.filter(c => c.isMesh);
+            const zs = [...new Set(meshes.map(k => Math.round(k.position.z / 0.008)))].sort((a, b) => a - b);
+            zs.forEach((z, r) => {
+                const row = meshes.filter(k => Math.round(k.position.z / 0.008) === z).sort((a, b) => a.position.x - b.position.x);
+                if (!LAYOUT[r] || row.length !== LAYOUT[r].length) console.warn('key row', r, 'has', row.length, 'keys');
+                row.forEach((k, i) => {
+                    k.material = k.material.clone();
+                    k.material.emissive.setHex(0xff7a30);
+                    k.material.emissiveIntensity = 0;
+                    Object.assign(k.userData, { label: (LAYOUT[r] && LAYOUT[r][i]) || '?', y0: k.position.y, cur: 0, until: 0 });
+                    keys.push(k);
+                    if (!keyByLabel.has(k.userData.label)) keyByLabel.set(k.userData.label, k);
+                    makeLabel(k);
+                });
+            });
+
+            const box = new THREE.Box3().setFromObject(head);
+            head.position.x -= (box.min.x + box.max.x) / 2;
+            head.position.z -= (box.min.z + box.max.z) / 2;
+            head.position.y -= box.min.y;
+            model = head;
+            pivot.add(model);
+            fit();
+            place();
+            stage.classList.add('ready');
+            dirty = true;
+            window.__ready = true;
+        });
+
+        // ---- picking: what is under the pointer (keys and screen, with proper occlusion)
+        const rc = new THREE.Raycaster(), ndc = new THREE.Vector2();
+        const toPoster = e => {
+            const r = stage.getBoundingClientRect();
+            return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
+        };
+        const overModel = e => {                            // is the pointer on any part of the computer?
+            if (!model) return false;
+            const p = toPoster(e);
+            ndc.set(p.x / W * 2 - 1, -(p.y / H * 2 - 1));
+            rc.setFromCamera(ndc, camera);
+            return rc.intersectObject(model, true).length > 0;
+        };
+        function pick(e) {
+            if (!model) return null;
+            const p = toPoster(e);
+            ndc.set(p.x / W * 2 - 1, -(p.y / H * 2 - 1));
+            rc.setFromCamera(ndc, camera);
+            const hit = rc.intersectObject(model, true)[0];
+            if (!hit) return null;
+            if (hit.object === screenMesh) return { type: 'screen' };
+            if (keys.includes(hit.object)) return { type: 'key', key: hit.object };
+            return null;
+        }
+        const press = (k, ms) => { k.userData.until = performance.now() + ms; dirty = true; };
+
+        // ---- controls
+        const $ = id => document.getElementById(id);
+        const hitEl = $('hit');
+        function updateHit() {                              // the area that owns touch gestures
+            const full = zoomT > 1.15;
+            const L = full ? 0 : TARGET.cx - 300, T = full ? 0 : TARGET.cy - TARGET.h * 0.56;
+            hitEl.style.cssText = `left:${L}px;top:${T}px;width:${full ? W : 600}px;height:${full ? H : TARGET.h * 1.12}px`;
+        }
+        const setZoom = z => { zoomT = Math.min(ZMAX, Math.max(ZMIN, z)); updateHit(); dirty = true; };
+        updateHit();
+        function setCavity(on) {
+            cavityOn = on;
+            $('bCav').textContent = 'Cavity: ' + (on ? 'on' : 'off');
+            $('bCav').classList.toggle('on', on);
+            dirty = true;
+        }
+        function setLabels(on) {
+            labelsOn = on;
+            labelMeshes.forEach(m => { m.visible = on; });
+            $('bLab').textContent = 'Key labels: ' + (on ? 'on' : 'off');
+            $('bLab').classList.toggle('on', on);
+            dirty = true;
+        }
+        $('bCav').onclick = e => { setCavity(!cavityOn); e.target.blur(); };
+        $('bLab').onclick = e => { setLabels(!labelsOn); e.target.blur(); };
+        $('bIn').onclick = e => { setZoom(zoomT * 1.35); e.target.blur(); };
+        $('bOut').onclick = e => { setZoom(zoomT / 1.35); e.target.blur(); };
+        $('bReset').onclick = e => { setZoom(1); lastInput = 0; velX = 0; q.copy(qBase); dirty = true; e.target.blur(); };
+        setCavity(cavityOn); setLabels(labelsOn);
+
+        // ---- interaction: drag to spin, tap a key to type, wheel / pinch to zoom
+        const pointers = new Map();
+        let pinch0 = 0, pinchZ = 1, moved = 0, down = null;
+        const inUI = e => e.target.closest && e.target.closest('#ui');
+        const onComp = e => {
+            if (!model) return false;
+            if (zoomT > 1.15) return true;
+            const p = toPoster(e);
+            return Math.abs(p.x - TARGET.cx) < 300 && Math.abs(p.y - TARGET.cy) < TARGET.h * 0.56;
+        };
+        stage.addEventListener('wheel', e => {
+            if (!model || inUI(e) || !overModel(e)) return;      // not over the computer: let the page scroll as normal
+            e.preventDefault();
+            setZoom(zoomT * Math.exp(-e.deltaY * 0.0016));
+            hint.classList.add('gone');
+        }, { passive: false });
+
+        stage.addEventListener('pointerdown', e => {
+            if (inUI(e) || !model) return;
+            pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (pointers.size === 2) {                      // second finger: pinch instead of spin
+                const [a, b] = [...pointers.values()];
+                pinch0 = Math.hypot(a.x - b.x, a.y - b.y); pinchZ = zoomT;
+                dragging = false; down = null;
+                return;
+            }
+            if (!onComp(e)) return;
+            dragging = true; dragX = e.clientX; dragY = e.clientY; velX = 0; moved = 0; lastInput = performance.now();
+            down = pick(e);
+            if (down && down.type === 'key') press(down.key, 120);
+            stage.setPointerCapture(e.pointerId);
+            stage.classList.add('dragging');
+            hint.classList.add('gone');
+        });
+        stage.addEventListener('pointermove', e => {
+            if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+            if (pointers.size === 2) {
+                const [a, b] = [...pointers.values()];
+                if (pinch0) setZoom(pinchZ * Math.hypot(a.x - b.x, a.y - b.y) / pinch0);
+                return;
+            }
+            if (!dragging) {
+                if (inUI(e)) { stage.style.cursor = ''; return; }
+                stage.classList.toggle('oncomp', onComp(e));
+                stage.style.cursor = pick(e) ? 'pointer' : '';
+                return;
+            }
+            const dx = e.clientX - dragX, dy = e.clientY - dragY;
+            dragX = e.clientX; dragY = e.clientY;
+            moved += Math.abs(dx) + Math.abs(dy);
+            if (moved < TAP_PX) return;                     // still a tap, not a drag
+            const k = DEG_PER_PX / scale / Math.sqrt(zoom);
+            velX = dx * k;
+            spin(velX, 0);
+            lastInput = performance.now();
+        });
+        const up = e => {
+            pointers.delete(e.pointerId);
+            if (pointers.size < 2) pinch0 = 0;
+            if (!dragging) return;
+            dragging = false;
+            stage.classList.remove('dragging');
+            if (moved < TAP_PX && down && e.type === 'pointerup' && down.type === 'screen') term.start();
+            if (moved < TAP_PX && down && e.type === 'pointerup' && down.type === 'key') {
+                lastInput = performance.now();
+                press(down.key, 160);
+                term.key(down.key.userData.label);
+            }
+            down = null;
+        };
+        stage.addEventListener('pointerup', up);
+        stage.addEventListener('pointercancel', up);
+
+        // real keyboard types into the terminal and moves the matching 3D key
+        const SPECIAL = { Enter: 'ENTER', Backspace: 'BKSP', Escape: 'ESC', ' ': 'SPACE', Shift: 'SHIFT', Control: 'CTRL' };
+        addEventListener('keydown', e => {
+            if (e.key === 'ArrowLeft') { spin(-STEP, 0); lastInput = performance.now(); return; }
+            if (e.key === 'ArrowRight') { spin(STEP, 0); lastInput = performance.now(); return; }
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            const label = SPECIAL[e.key] || (e.key.length === 1 ? e.key.toUpperCase() : null);
+            if (!label) return;
+            e.preventDefault();
+            const k = keyByLabel.get(label);
+            if (k) press(k, 140);
+            if (e.key === 'Shift' || e.key === 'Control') return;
+            term.key(label, e.key.length === 1 ? e.key : undefined);
+        });
+        addEventListener('resize', fit);
+
+        function tick() {
+            requestAnimationFrame(tick);
+            if (!model) return;
+            const now = performance.now();
+            if (!dragging) {
+                if (velX) {                          // coast after a flick
+                    spin(velX, 0);
+                    velX *= 0.92;
+                    if (Math.abs(velX) < 0.01) velX = 0;
+                }
+                                if (now - lastInput > RETURN_AFTER && q.angleTo(qBase) > 0.002) {
+                    q.slerp(qBase, 0.05); dirty = true;      // shortest way back to the poster angle
+                }
+            }
+            if (Math.abs(zoomT - zoom) > 0.0005) { zoom += (zoomT - zoom) * 0.25; dirty = true; }
+            // key travel + glow
+            for (const k of keys) {
+                const u = k.userData, target = now < u.until ? 1 : 0;
+                if (u.cur !== target) {
+                    u.cur = Math.abs(u.cur - target) < 0.02 ? target : u.cur + (target - u.cur) * 0.45;
+                    k.position.y = u.y0 - 0.0035 * u.cur;
+                    k.material.emissiveIntensity = u.cur * 0.9;
+                    dirty = true;
+                }
+            }
+            if (!dirty) return;
+            dirty = false;
+            frame();
+            draw();
+        }
+        requestAnimationFrame(tick);
+        if (document.documentElement.classList.contains('embed')) addEventListener('pointerdown', () => hint.classList.add('gone'), { once: true });
+        else setTimeout(() => hint.classList.add('gone'), 8000);
+    })();
+    </script>
+</body>
+
+</html>

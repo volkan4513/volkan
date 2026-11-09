@@ -1077,6 +1077,46 @@
             object-position: right center;
         }
 
+        /* three live pages under the BMW card; JS sizes them from the card's width (layoutPanels) */
+        #panels {
+            position: relative;
+            z-index: 3;   /* above the "more stuff" section (z-index 2) */
+            display: flex;
+            align-items: flex-start;
+            width: 93.6vw;
+            margin: 0 0 -40px;   /* hangs over the top of the section below */
+            gap: 8px;
+            background: #0d0d0d;   /* fills the gaps so the white page edge never shows through */
+        }
+        #panels .panel {
+            flex: 1 1 0;
+            min-width: 0;
+            aspect-ratio: 2 / 3;
+            position: relative;
+            overflow: hidden;
+            background: #000;
+        }
+        @media (max-width: 768px) {
+            #panels .placeholder { display: none; }
+            #panels .open { right: 4px; bottom: 4px; padding: 4px 6px; font-size: 8px; border-width: 1px; }
+        }
+        #panels .open {
+            position: absolute;
+            right: 8px;
+            bottom: 8px;
+            z-index: 2;
+            padding: 5px 8px;
+            background: #111;
+            color: #fff;
+            border: 2px solid #fff;
+            font: bold 10px/1 ui-monospace, 'Courier New', monospace;
+            letter-spacing: .06em;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #panels .open:hover { background: #ff6050; }
+        #panels iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #000; }
+
         .stack-wrapper {
             position: relative;
             width: 100vw;
@@ -1598,6 +1638,13 @@
 
     <div class="stack-wrapper" id="wrapper"></div>
 
+    <!-- project pages running live under the BMW card -->
+    <section id="panels" aria-label="Live projects">
+        <div class="panel"><iframe title="Fuji poster" src="projects/10/index.html?embed=1" loading="lazy"></iframe><a class="open" href="projects/10/index.html" onclick="PixelTransition.go(this.href); return false;">OPEN &#9654;</a></div>
+        <div class="panel"><iframe title="Computer A-83 poster" src="projects/12/index.html?embed=1" loading="lazy"></iframe><a class="open" href="projects/12/index.html" onclick="PixelTransition.go(this.href); return false;">OPEN &#9654;</a></div>
+        <div class="panel placeholder" aria-hidden="true"></div>
+    </section>
+
     <!-- everything else: project cards, about, puzzle progress (content from site.json) -->
     <section class="more" id="more" aria-labelledby="more-title">
         <div class="more-inner">
@@ -1975,11 +2022,26 @@
                 starHintOn = false;
                 starHint.remove();
             }
+            // the three panels take the BMW card's width (design x 35, width 1026) and sit just under it
+            const panelsEl = document.getElementById('panels');
+            function layoutPanels(s, ox, oy, ch) {
+                panelsEl.style.width = (1026 * s) + 'px';
+                // line the panels up with the BMW card itself: the wrapper is 100vw (wider than the page when a
+                // scrollbar shows), so centring in the body would drift by a few pixels
+                const bodyLeft = document.body.getBoundingClientRect().left;
+                panelsEl.style.alignSelf = 'flex-start';
+                panelsEl.style.marginLeft = (wrapper.getBoundingClientRect().left - bodyLeft + ox + 35 * s) + 'px';
+                // phones: two panels side by side (the black placeholder is hidden by CSS)
+                panelsEl.style.gap = (8 * s) + 'px';
+                panelsEl.style.marginBottom = (-40 * s) + 'px';
+                panelsEl.style.marginTop = (oy + 2119 * s - ch - 2 * s) + 'px';   // flush under the card
+            }
             function layoutCropped() {
                 const cw = wrapper.clientWidth, ch = wrapper.clientHeight;
                 if (!cw || !ch) return;
                 const s = Math.min(cw / DW, ch / DH);
                 const ox = (cw - DW * s) / 2, oy = (ch - DH * s) / 2;
+                layoutPanels(s, ox, oy, ch);
                 const place = (node, x, y, w, h) => {
                     node.style.left = ((ox + x * s) / cw * 100) + '%';
                     node.style.top = ((oy + y * s) / ch * 100) + '%';

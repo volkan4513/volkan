@@ -110,8 +110,8 @@
  ],
  "car": {
   "cx": 960,
-  "bottom": 2242,
-  "ground": 2190,
+  "bottom": 2150,
+  "ground": 2098,
   "poster": 79,
   "frames": [
    {

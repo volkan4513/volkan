@@ -3,6 +3,7 @@
 //   <script src="../../site-nav.js" data-home="../../index.html"></script>
 // Optional: data-position="top-right" (default top-left), data-label="HOME".
 (function () {
+    if (/[?&]embed=1/.test(location.search)) return;   // running inside the main page: no HOME button
     const me = document.currentScript;
     const home = (me && me.dataset.home) || '../../index.html';
     const label = (me && me.dataset.label) || 'HOME';

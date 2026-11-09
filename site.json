@@ -133,20 +133,6 @@
             "slug": "racer"
         },
         {
-            "title": "Fuji Poster",
-            "subtitle": "Parallax poster scene",
-            "tags": [
-                "Parallax",
-                "JavaScript"
-            ],
-            "desc": "A Mt. Fuji print come to life: layers drift as you move, and you can drag the car around.",
-            "thumb": "projects/10/images/0.webp",
-            "href": "projects/10/index.html",
-            "color": "red",
-            "sticker": "Try this!",
-            "slug": "fuji"
-        },
-        {
             "title": "Cut-Out Studio",
             "subtitle": "AI background remover",
             "tags": [
