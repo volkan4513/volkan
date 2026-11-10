@@ -145,6 +145,20 @@
             "color": "blue",
             "sticker": "Try this!",
             "slug": "cutout"
+        },
+        {
+            "title": "Computer A-83",
+            "subtitle": "Interactive 3D retro computer",
+            "tags": [
+                "Three.js",
+                "3D"
+            ],
+            "desc": "A 1980s computer poster you can spin and zoom. Tap the 3D keys or type on your own keyboard to use its retro terminal.",
+            "thumb": "projects/12/shot.webp",
+            "href": "projects/12/index.html",
+            "color": "red",
+            "sticker": "Type on it!",
+            "slug": "computer"
         }
     ],
     "skills": [
@@ -458,6 +472,26 @@
                 "projects/11/images/0.webp"
             ],
             "href": "projects/11/index.html"
+        },
+        "computer": {
+            "title": "Computer A-83",
+            "tagline": "A retro computer poster you can type on.",
+            "tools": [
+                "Three.js",
+                "Canvas 2D",
+                "JavaScript"
+            ],
+            "overview": "A 3D A-83 computer on a 1980s-style poster. Spin it, zoom in, and tap its keys to type into a glowing green terminal, or use your own keyboard.",
+            "how": "A GLB model is loaded with Three.js. The screen shows a live canvas texture, every keycap is its own mesh that you can click, and a cavity filter adds the Blender-style edge shading.",
+            "highlights": [
+                "Working terminal with a calculator, games and jokes",
+                "3D keys press down as you type, CTRL or Alt switches to numbers and symbols",
+                "Drag to spin, wheel or pinch to zoom"
+            ],
+            "gallery": [
+                "projects/12/shot.webp"
+            ],
+            "href": "projects/12/index.html"
         }
     }
 }

@@ -36,6 +36,8 @@ CORE = [
     'projects/09/index.html', 'projects/09/*.js', 'projects/09/lib/*', 'projects/09/images/0.webp',
     'projects/11/index.html', 'projects/11/images/*.webp',
     'projects/10/index.html', 'projects/10/scene.json', 'projects/10/images/*.webp', 'projects/10/lib/*', 'projects/10/models/*.glb',
+    'projects/10/shot.webp',
+    'projects/12/index.html', 'projects/12/lib/*', 'projects/12/old_computer.glb', 'projects/12/shot.webp',
     'projects/07/unblur_page.html', 'projects/07/lots_of_square_cursor.html', 'projects/07/images/lab_*.webp',
     'projects/07/page_images/w_*.webp', 'projects/07/wd/*', 'projects/07/wd/win/*', 'projects/07/wd/win/apps/*',
 ]

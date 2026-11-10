@@ -126,6 +126,7 @@
         </div>
     </div>
     <div id="hint">drag to spin &middot; scroll or pinch to zoom &middot; tap the screen to power on &middot; tap the keys to type</div>
+    <script>if (document.documentElement.classList.contains('embed')) document.getElementById('hint').innerHTML = 'drag to spin &middot; open the page to use the terminal';</script>
 
     <script type="module">
     import * as THREE from './lib/three.module.min.js';
@@ -388,7 +389,7 @@
                 ctx.font = 'bold 20px "Courier New", monospace';
                 ctx.globalAlpha = .75;
                 ctx.fillText('KEY: ' + lastKey, PX, CH - PY - 14);
-                ctx.fillText(color.toUpperCase(), CW - PX - 60, CH - PY - 14);
+                ctx.textAlign = 'right'; ctx.fillText((numOn ? 'NUM ' : '') + color.toUpperCase(), CW - PX, CH - PY - 14); ctx.textAlign = 'left';
                 ctx.globalAlpha = 1;
                 // scanlines + vignette
                 ctx.fillStyle = 'rgba(0,0,0,.22)';
@@ -407,25 +408,90 @@
                     else { busy = false; paint(); }
                 })();
             }
+            // ---- number/symbol layer, history, little games
+            const NUM = { Q:'1',W:'2',E:'3',R:'4',T:'5',Y:'6',U:'7',I:'8',O:'9',P:'0',
+                A:'+',S:'*',D:'/',F:'(',G:')',H:'.',J:'%',K:'^',L:'?',';':':',"'":'"',
+                Z:'!',X:'@',C:'#',V:'$',B:'&',N:'_',M:'=',',':'<','.':'>','/':'\\' };
+            let numOn = false, onNum = () => {}, hist = [], hpos = 0, game = null, t0 = Date.now(), cmdCount = 0;
+            const FILES = {
+                'README.TXT': 'WELCOME TO THE A-83.\nTHIS IS A 3D COMPUTER. TAP THE\nKEYS OR USE YOUR OWN KEYBOARD.',
+                'NUMBERS.TXT': 'TAP CTRL (OR PRESS ALT) TO SWITCH\nTHE KEYS TO NUMBERS AND SYMBOLS.\nTOP ROW = 1234567890.',
+                'JOKES.TXT': 'TYPE JOKE FOR A RANDOM ONE.',
+                'SECRET.TXT': 'TRY THE COMMAND: XYZZY'
+            };
+            const JOKES = ['WHY DO PROGRAMMERS PREFER DARK MODE?\nLIGHT ATTRACTS BUGS.', 'THERE ARE 10 KINDS OF PEOPLE:\nTHOSE WHO GET BINARY AND THOSE\nWHO DO NOT.', 'MY CODE WORKS. I DO NOT KNOW WHY.\nMY CODE FAILS. I DO NOT KNOW WHY.', 'A BYTE WALKS INTO A BAR AND\nORDERS A BIT OF BEER.', '!FALSE IS FUNNY BECAUSE IT IS TRUE.'];
+            const FORTUNES = ['YOU WILL FIX A BUG TODAY.', 'A NEW KEYBOARD IS IN YOUR FUTURE.', 'SAVE YOUR WORK. ALWAYS.', 'THE ANSWER IS 42.', 'SOMEONE IS THINKING OF YOUR CODE.'];
+            const pick = a => a[Math.floor(Math.random() * a.length)];
+            const HELP = [
+                'HELP 1/3\nHELP [1-3]   ABOUT   PROJECTS\nDATE   TIME   UPTIME   VER\nCLEAR   REBOOT   HISTORY',
+                'HELP 2/3\nCOLOR [GREEN|AMBER|WHITE|CYAN]\nECHO TEXT   CALC 2+3*4\nRAND [MAX]   ROLL [SIDES]   FLIP',
+                'HELP 3/3\nLS   CAT FILE   WHOAMI   MEM\nJOKE   FORTUNE   BANNER TEXT\nGUESS (GAME)   XYZZY   NUMBERS'
+            ];
+            COLORS.white = '#e8f0ea'; COLORS.cyan = '#6df0ff';
+            function calc(expr) {
+                if (!expr) return 'USAGE: CALC 2+3*4';
+                if (!/^[0-9+\-*/().%^\s]+$/.test(expr)) return '?BAD EXPRESSION';
+                try {
+                    const v = Function('"use strict";return (' + expr.replace(/\^/g, '**') + ')')();
+                    return Number.isFinite(v) ? '= ' + +v.toPrecision(12) : '?MATH ERROR';
+                } catch (e) { return '?SYNTAX ERROR'; }
+            }
             function run(cmd) {
+                if (cmd.trim()) { hist.push(cmd); if (hist.length > 30) hist.shift(); }
+                hpos = hist.length; cmdCount++;
+                if (game) {                                  // guess-the-number is running
+                    const t = cmd.trim().toLowerCase();
+                    if (t === 'quit' || t === 'q') { print('GAME OVER. IT WAS ' + game.n); game = null; return; }
+                    const g = parseInt(t, 10);
+                    if (isNaN(g)) { print('TYPE A NUMBER, OR QUIT'); return; }
+                    game.tries++;
+                    if (g === game.n) { print('YES! ' + game.n + ' IN ' + game.tries + ' TRIES'); game = null; }
+                    else print(g < game.n ? 'HIGHER' : 'LOWER');
+                    return;
+                }
                 const parts = cmd.trim().split(/\s+/), c = parts.shift() || '', arg = parts.join(' ');
                 switch (c.toLowerCase()) {
                     case '': break;
-                    case 'help': print('HELP ABOUT PROJECTS DATE\nCOLOR [GREEN|AMBER] ECHO TEXT\nCLEAR REBOOT'); break;
+                    case 'help': case '?': print(HELP[Math.min(3, Math.max(1, parseInt(arg, 10) || 1)) - 1]); break;
                     case 'about': print('A-83 WITH 3D KEYS AND SCREEN.\nTAP KEYS OR USE YOUR KEYBOARD.\nDRAG TO SPIN, SCROLL TO ZOOM.'); break;
                     case 'projects': print('10 FUJI POSTER\n12 COMPUTER A-83'); break;
                     case 'date': print(new Date().toDateString().toUpperCase()); break;
+                    case 'time': print(new Date().toTimeString().slice(0, 8)); break;
+                    case 'uptime': { const s = Math.floor((Date.now() - t0) / 1000); print('UP ' + Math.floor(s / 60) + ' MIN ' + (s % 60) + ' SEC'); break; }
+                    case 'ver': case 'version': print('A-83 BASIC V1.0 (C) 1983\nROM 3.2   48K RAM'); break;
+                    case 'mem': print('48K BYTES TOTAL\n' + (48 - Math.min(40, 4 + cmdCount)) + 'K BYTES FREE'); break;
+                    case 'whoami': print('GUEST@A-83'); break;
+                    case 'history': print(hist.length ? hist.slice(-8).map((h, i) => (hist.length - Math.min(8, hist.length) + i + 1) + ' ' + h).join('\n') : 'EMPTY'); break;
                     case 'color': {
                         const n = arg.toLowerCase();
-                        if (COLORS[n]) color = n; else color = color === 'green' ? 'amber' : 'green';
+                        if (COLORS[n]) color = n;
+                        else { const l = Object.keys(COLORS); color = l[(l.indexOf(color) + 1) % l.length]; }
                         print('COLOR ' + color.toUpperCase()); break;
                     }
                     case 'echo': print(arg); break;
-                    case 'clear': lines = []; break;
+                    case 'calc': case 'math': print(calc(arg)); break;
+                    case 'rand': { const m = Math.max(1, parseInt(arg, 10) || 100); print(String(1 + Math.floor(Math.random() * m))); break; }
+                    case 'roll': { const m = Math.max(2, parseInt(arg, 10) || 6); print('D' + m + ': ' + (1 + Math.floor(Math.random() * m))); break; }
+                    case 'flip': print(Math.random() < .5 ? 'HEADS' : 'TAILS'); break;
+                    case 'ls': case 'dir': print(Object.keys(FILES).join('\n')); break;
+                    case 'cat': case 'type': { const f = FILES[arg.toUpperCase()]; print(f || (arg ? '?FILE NOT FOUND' : 'USAGE: CAT README.TXT')); break; }
+                    case 'numbers': print(FILES['NUMBERS.TXT']); break;
+                    case 'joke': print(pick(JOKES)); break;
+                    case 'fortune': print(pick(FORTUNES)); break;
+                    case 'banner': { const w = Math.min(cols, arg.length + 4); print(arg ? '*'.repeat(w) + '\n* ' + arg.toUpperCase().slice(0, cols - 4) + ' *\n' + '*'.repeat(w) : 'USAGE: BANNER HI'); break; }
+                    case 'guess': game = { n: 1 + Math.floor(Math.random() * 100), tries: 0 }; print('I PICKED 1-100. GUESS IT!\n(TYPE QUIT TO STOP)'); break;
+                    case 'xyzzy': print('NOTHING HAPPENS.'); break;
                     case 'hello': print('HELLO, WORLD'); break;
+                    case 'clear': case 'cls': lines = []; break;
                     case 'reboot': boot(); return;
                     default: print('?SYNTAX ERROR');
                 }
+            }
+            function setNum(v) { numOn = v; onNum(v); paint(); }
+            function histNav(d) {
+                if (!on || busy || !hist.length) return;
+                hpos = Math.min(hist.length, Math.max(0, hpos + d));
+                input = hist[hpos] || ''; paint();
             }
             // ch: a printable character, or ENTER / BKSP / ESC
             function type(ch) {
@@ -441,16 +507,17 @@
                 if (!on) return;   // keys do nothing until the screen has been touched
                 lastKey = label;
                 if (label === 'SHIFT') { shift = !shift; paint(); return; }
-                if (label === 'CTRL') { paint(); return; }
+                if (label === 'CTRL' || label === 'ALT') { setNum(!numOn); return; }
                 if (label === 'SPACE') return type(' ');
                 if (label === 'ENTER' || label === 'BKSP' || label === 'ESC') return type(label);
+                if (numOn && !realChar && NUM[label]) { type(NUM[label]); return; }
                 let ch = realChar || (/^[A-Z]$/.test(label) ? label.toLowerCase() : label);
                 if (shift && !realChar) { ch = ch.toUpperCase(); shift = false; }
                 type(ch);
             }
             setInterval(() => { blink = !blink; if (gate.run && on && !busy && performance.now() - gate.last < 20000) paint(); }, 530);   // the cursor stops blinking once nobody has touched it for 20 s
-            function start() { if (!on) { on = true; boot(); } }
-            return { tex, init, key, start };
+            function start() { if (!on && !document.documentElement.classList.contains('embed')) { on = true; boot(); } }   // embedded in the main page the screen stays off: the terminal only works on the standalone page
+            return { tex, init, key, start, NUM, setNum, histNav, set onNum(f) { onNum = f; } };
         })();
 
         // =============================================================== model, keys, screen
@@ -473,14 +540,21 @@
             const c = document.createElement('canvas');
             c.width = cw; c.height = ch;
             const g = c.getContext('2d');
-            const text = k.userData.label === 'BKSP' ? 'DEL' : k.userData.label;
-            let fs = 34;
-            g.font = `bold ${fs}px system-ui, Arial, sans-serif`;
-            while (g.measureText(text).width > cw * 0.86 && fs > 10) { fs -= 2; g.font = `bold ${fs}px system-ui, Arial, sans-serif`; }
-            g.fillStyle = '#efe6d2';
-            g.textAlign = 'center'; g.textBaseline = 'middle';
-            g.fillText(text, cw / 2, ch / 2 + 2);
             const tex = new THREE.CanvasTexture(c);
+            const draw = num => {
+                const L = k.userData.label, sym = num && term.NUM[L];
+                const text = sym || (L === 'BKSP' ? 'DEL' : (L === 'CTRL' && num) ? 'ABC' : L);
+                g.clearRect(0, 0, cw, ch);
+                let fs = 34;
+                g.font = `bold ${fs}px system-ui, Arial, sans-serif`;
+                while (g.measureText(text).width > cw * 0.86 && fs > 10) { fs -= 2; g.font = `bold ${fs}px system-ui, Arial, sans-serif`; }
+                g.fillStyle = sym || (L === 'CTRL' && num) ? '#ffb070' : '#efe6d2';
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillText(text, cw / 2, ch / 2 + 2);
+                tex.needsUpdate = true;
+            };
+            draw(false);
+            k.userData.drawLabel = draw;
             tex.colorSpace = THREE.SRGBColorSpace;
             tex.anisotropy = 8;
             const m = new THREE.Mesh(
@@ -689,8 +763,11 @@
         // real keyboard types into the terminal and moves the matching 3D key
         const SPECIAL = { Enter: 'ENTER', Backspace: 'BKSP', Escape: 'ESC', ' ': 'SPACE', Shift: 'SHIFT', Control: 'CTRL' };
         addEventListener('keydown', e => {
+            if (document.documentElement.classList.contains('embed')) return;   // never grab keys from the main page
             if (e.key === 'ArrowLeft') { spin(-STEP, 0); lastInput = performance.now(); return; }
             if (e.key === 'ArrowRight') { spin(STEP, 0); lastInput = performance.now(); return; }
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); term.histNav(e.key === 'ArrowUp' ? -1 : 1); return; }
+            if (e.key === 'Alt') { e.preventDefault(); if (!e.repeat) { const k = keyByLabel.get('CTRL'); if (k) press(k, 140); term.key('ALT'); } return; }
             if (e.ctrlKey || e.metaKey || e.altKey) return;
             const label = SPECIAL[e.key] || (e.key.length === 1 ? e.key.toUpperCase() : null);
             if (!label) return;
@@ -700,6 +777,7 @@
             if (e.key === 'Shift' || e.key === 'Control') return;
             term.key(label, e.key.length === 1 ? e.key : undefined);
         });
+        term.onNum = on => { keys.forEach(k => k.userData.drawLabel && k.userData.drawLabel(on)); dirty = true; };
         addEventListener('resize', fit);
 
         // pause: no frames at all while the tab is hidden or the panel is off screen; wake() restarts the loop

@@ -659,26 +659,38 @@
         }
 
         /* ---------- phones ---------- */
-        /* phones: the player stays put and only the track list scrolls; the
-           shuffle / repeat / mute / lyrics buttons become an icon column
-           beside the device */
+        /* phones: compact player on top, the track list always gets at least half
+           the screen and scrolls on its own. The cover keeps its size (--dh); the
+           title, transport and the four shape buttons sit beside it. */
         @media (max-width: 900px) {
             .app {
                 grid-template-columns: minmax(0, 1fr);
-                grid-template-rows: auto auto minmax(0, 1fr);
-                gap: 8px;
+                grid-template-rows: auto minmax(min-content, 1fr) 50dvh;
+                gap: 6px;
                 padding-top: max(10px, env(safe-area-inset-top));
+                padding-bottom: max(8px, env(safe-area-inset-bottom));
             }
 
             .top {
                 flex-wrap: wrap;
                 padding-left: 0;
-                padding-top: 46px; /* HOME button sits above */
-                gap: 8px;
+                align-content: flex-start;
+                padding-top: 0;
+                gap: 4px 6px;
+            }
+
+            .logo {
+                margin-left: 92px; /* the HOME button sits on the same row */
+                min-height: 46px;   /* the row is as tall as HOME plus its shadow, so the search box starts below it */
             }
 
             .logo h1 {
-                font-size: 14px;
+                font-size: 13px;
+            }
+
+            .shapes img {
+                width: 16px;
+                height: 16px;
             }
 
             .search-row {
@@ -692,60 +704,64 @@
 
             #searchBox {
                 max-width: none;
+                padding-top: 6px;
+                padding-bottom: 6px;
             }
 
             .deck {
+                --dh: min(28vh, 230px, 39vw);
                 display: grid;
-                grid-template-columns: minmax(0, 1fr) auto;
+                grid-template-columns: auto minmax(0, 1fr);
                 grid-template-areas:
+                    "device now"
+                    "device transport"
                     "device face"
-                    "vis vis"
-                    "now now"
-                    "progress progress"
-                    "transport transport";
+                    "progress progress";
                 align-items: center;
-                padding: 10px;
-                gap: 8px;
+                align-content: space-evenly;
+                padding: 8px;
+                gap: 4px 10px;
             }
 
             .device-wrap {
                 grid-area: device;
                 flex: none;
-                height: min(24vh, 210px);
+                align-self: center;
+                justify-self: center;
+                margin-left: 10px;
+                width: var(--dh);
+                height: var(--dh);
             }
 
             .face {
                 grid-area: face;
-                flex-direction: column;
                 flex-wrap: nowrap;
-                gap: 8px;
+                justify-content: center;
+                gap: 5px;
             }
 
             .face .px-btn {
-                width: 46px;
-                height: 42px;
+                width: 36px;
+                height: 32px;
                 min-height: 0;
                 padding: 0;
             }
 
             .face .px-btn span,
             .hints,
-            .volume {
+            .volume,
+            #visualizer {
                 display: none;
             }
 
             .face .px-btn img {
-                width: 20px;
-                height: 20px;
-            }
-
-            #visualizer {
-                grid-area: vis;
-                height: 22px;
+                width: 18px;
+                height: 18px;
             }
 
             .now {
                 grid-area: now;
+                min-width: 0;
             }
 
             .progress {
@@ -755,40 +771,41 @@
             .transport {
                 grid-area: transport;
                 justify-self: center;
+                gap: 8px;
             }
 
             .transport .px-btn {
-                width: 50px;
-                height: 44px;
+                width: 44px;
+                height: 38px;
             }
 
             .transport .play {
-                width: 66px;
-                height: 52px;
+                width: 58px;
+                height: 44px;
             }
 
             .np-title {
-                font-size: 14px;
+                font-size: 13px;
             }
 
             .lib-head {
-                padding: 10px 12px 6px;
+                padding: 8px 12px 4px;
             }
 
             .list {
-                padding: 4px 12px 12px;
+                padding: 4px 12px 10px;
             }
 
             .track {
-                grid-template-columns: 44px minmax(0, 1fr) auto;
+                grid-template-columns: 40px minmax(0, 1fr) auto;
                 gap: 10px;
-                padding: 6px 8px 6px 6px;
-                margin-bottom: 8px;
+                padding: 5px 8px 5px 5px;
+                margin-bottom: 6px;
             }
 
             .track canvas {
-                width: 44px;
-                height: 44px;
+                width: 40px;
+                height: 40px;
             }
 
             .t-title {
@@ -796,23 +813,10 @@
             }
         }
 
-        /* short phones: shrink the device and drop the visualizer so the list
-           keeps some room */
+        /* short phones: the cover keeps the size it had before (19vh, max 150px) */
         @media (max-width: 900px) and (max-height: 720px) {
-            .device-wrap {
-                height: min(19vh, 150px);
-            }
-
-            .face {
-                gap: 4px;
-            }
-
-            .face .px-btn {
-                height: 34px;
-            }
-
-            #visualizer {
-                display: none;
+            .deck {
+                --dh: min(23vh, 175px, 39vw);
             }
         }
 

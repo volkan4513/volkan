@@ -75,14 +75,12 @@ Pages should run **directly inside the main page**. Panel size is fixed and deri
 - [x] White repaint tried and reverted (looked off). The user will supply a new body texture; swap it into `models/car.glb`
 - Headless Chrome never finishes the loading screen on page 10 (text.webp decode); real browsers are fine
 
-## To do: page 10 (Fuji poster)
-- [ ] The user has things to adjust. Ask what before starting
-- [ ] Later: fix or add its 3D model (`projects/10/models/car.glb`)
+## Page 10 (Fuji poster): COMPLETE (2026-11-10)
+The user confirmed page 10 is fully done. No further adjustments or model changes pending.
 
 ## Not done / open questions
 - Wording for the placeholder panel
 - Exact panel gap and height ratio (assume the poster ratio, 2:3, unless told otherwise)
-- Page 10 adjustments (unspecified)
 
 ## Notes
 - Poster units: project 12 = 800 x 1200, project 10 = 1684 x 2528. Both scale to fit their container.
@@ -99,3 +97,11 @@ Pages should run **directly inside the main page**. Panel size is fixed and deri
 - [x] Pause: pages 10 and 12 stop their render loop when the tab is hidden or the panel is scrolled out of view, and wake on return. Page 12's terminal cursor stops blinking after 20 s without a touch
 - [x] `?shot=1` hides hints and buttons for taking clean thumbnails (page 12: `projects/12/index.html?embed=1&shot=1`; page 10 needs the main-page route in headless Chrome, its standalone load never finishes there)
 - [ ] Add `projects/10`, `projects/12` and the two `shot.webp` files to the offline manifest
+
+## Update 2026-11-10
+- [x] Page 10 marked complete
+- [x] Page 12 number layer: tap the 3D CTRL key (or press Alt on a real keyboard) to toggle. Q-P become 1-0, other keys become symbols, keycap labels redraw (orange), screen shows NUM. Physical digits already worked
+- [x] Page 12 terminal: HELP 1-3 pages, TIME, UPTIME, VER, MEM, WHOAMI, HISTORY (and Up/Down arrows), CALC, RAND, ROLL, FLIP, LS, CAT, JOKE, FORTUNE, BANNER, GUESS game, XYZZY, colors white/cyan
+- [x] Offline manifest: added `projects/10/shot.webp`, `projects/12/` (index, lib, old_computer.glb, shot.webp) to CORE; regenerated `sw-manifest.js`
+- [x] `site.json`: added "Computer A-83" card (slug `computer`) and its detail entry
+- Not tested in a real browser yet (no run done this session)
