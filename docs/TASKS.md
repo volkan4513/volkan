@@ -160,3 +160,24 @@ Other pages: use the per-project notes gathered on 2026-11-12 (controls, key log
 - [x] Page 12: "Key labels" button removed; labels now switch on when the screen is tapped to power on (and stay on). New "Numbers" button toggles the number layer like the Alt key, so it works on phones. Boot text shows "ALT KEY = NUMBERS / LETTERS" and the bottom hint mentions Alt / the Numbers button
 - [x] Page 12: all buttons (Cavity, Numbers, zoom, reset) are hidden in the main-page panel (`embed=1`) and only show on the full page. Info page 12 updated. Headless Chrome: no script errors, button hidden in embed, Numbers toggles. Not tried on a real phone
 - Decision: the `old_computer.glb` re-export is NOT needed; the Alt-key number layer is the final answer for digits (both optional items closed)
+
+## Update 2026-11-12 (project 03 rewrite)
+- [x] `projects/03/index.html` rewritten. Fixed: upload not redrawing, drag-leave wiping the Original picture, scanline slider at 1 going black, ASCII top row clipped / fixed 6px font, invisible ASCII slider thumb in Firefox, wrong page title (now "Retro Image Effects Studio")
+- [x] Drawing: real canvases on the page (no `toDataURL` per slider tick), `devicePixelRatio` up to 2, one redraw per frame, debounced resize, downloads at the picture's own resolution (max 4096px, opaque PNG)
+- [x] New: each of the three effect panels can show Scanline, CRT, ASCII (plain or colour, Copy text), Pixel Art (median-cut palette or Game Boy / CGA / PICO-8 / 1-bit, Bayer or Floyd-Steinberg dither) or Halftone. Expand a panel (Esc closes), Reset, slider value readouts, webcam input (Stop keeps a snapshot), paste from clipboard, four samples (default, `projects/10/shot.webp`, `projects/12/shot.webp`, a sunset drawn in code)
+- [x] Layout: controls sit under each picture; phones get one scrolling column, short windows two columns. Info button moved into the top bar (`data-slot=".bar"`)
+- [x] `projects/03/info.html` rewritten to match; offline manifest regenerated
+- Tested in headless Chrome at 1280 wide: page loads with no script errors; CRT, Halftone (plain and colour), colour ASCII, Game Boy + Bayer, 1-bit and PICO-8 + Floyd-Steinberg, sample switching and Expand all draw correctly. NOT tested: real phone, Firefox/Safari, webcam, upload/drop/paste, Download and Copy text clicks (headless cannot do these)
+- `site.json` card text for 03 still says "Scanline, ASCII and pixel-art effects, live." (left as is)
+
+## Update 2026-11-12 (project 03, second pass)
+- [x] Webcam confirmed working by the user
+- [x] Fit mode in the top bar: fill (crop) or whole image (letterboxed; downloads are then uncropped)
+- [x] Compare checkbox per effect panel: original left / effect right of a draggable divider
+- [x] Settings remembered in `localStorage` key `retro-fx-studio`; "Copy link" builds `#fit=..&img=..&p1=..&p2=..&p3=..&cmp=...` (applied on open, then removed from the address bar)
+- [x] "Save all" = one 2x2 PNG (`retro-effects.png`); "Share" button per panel where the browser can share image files
+- [x] Pixel Art controls are a 2x2 grid
+- [x] Card thumbnails `projects/03/images/0.webp` (pixel art), `1.webp` (colour ASCII), `2.webp` (CRT) re-rendered from the default F1 picture with the new effects, 1265x411 as before
+- [x] Info page 03 updated, offline manifest regenerated
+- Tested in headless Chrome: a settings link applies (fit, sample, effects, sliders, compare) and is removed from the address; settings survive a reload; Reset clears effects and Compare; whole-image fit and the compare divider draw correctly; about 500px wide layout wraps without overlap. NOT tested: dragging the divider by hand, Save all / Download / Share / Copy link clicks, real phone, Firefox/Safari
+- Open question: `images/f1_pitstop.jpg` (now also on the main-page card) shows a real F1 team car with sponsor logos; rights not checked

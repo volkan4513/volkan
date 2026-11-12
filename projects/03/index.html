@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Responsive Image Effects Grid</title>
+  <title>Retro Image Effects Studio</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
+    [hidden] { display: none !important; }
 
     html, body {
       width: 100%;
@@ -15,162 +16,157 @@
       color: #fff;
       overflow: hidden;
     }
+    body { display: flex; flex-direction: column; }
 
-    .container {
-      display: grid;
-      width: 100%;
-      height: calc(100% - 60px);
-      gap: 10px;
+    /* ---------- top bar ---------- */
+    .bar {
+      flex: none;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      min-height: 56px;
       padding: 10px;
-      grid-template-columns: repeat(2, 1fr);
-      grid-template-rows: repeat(2, 1fr);
-      margin-top: 60px;
+      padding-left: max(10px, env(safe-area-inset-left));
+      padding-right: max(10px, env(safe-area-inset-right));
     }
+    .bar .gap { flex: none; width: 100px; height: 36px; }   /* room for the fixed HOME button */
+    .bar .title { font: bold 14px/1 ui-monospace, 'Courier New', monospace; letter-spacing: 1px; margin-right: 6px; white-space: nowrap; }
+    .bar a.site-info-btn.inline { margin-left: auto; min-height: 36px; }
 
+    .btn, .sbtn {
+      font: bold 12px/1 ui-monospace, 'Courier New', monospace;
+      letter-spacing: 1px;
+      color: #fff;
+      background: #3a3a3a;
+      border: 3px solid #000;
+      box-shadow: 3px 3px 0 #000;
+      min-height: 36px;
+      padding: 0 12px;
+      cursor: pointer;
+      touch-action: manipulation;
+      white-space: nowrap;
+    }
+    .btn:hover, .sbtn:hover { background: #3b63ae; }
+    .btn:active, .sbtn:active { transform: translate(3px, 3px); box-shadow: none; }
+    .btn:focus-visible, .sbtn:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+    .btn.on { background: #c0392b; }
+    .sbtn { font-size: 11px; min-height: 28px; padding: 0 8px; border-width: 2px; box-shadow: 2px 2px 0 #000; letter-spacing: 0; }
+    .sbtn:active { transform: translate(2px, 2px); }
+
+    .bar select { min-height: 36px; background: #3a3a3a; border: 3px solid #000; box-shadow: 3px 3px 0 #000; }
+    .samples { display: flex; gap: 6px; }
+    .samples button {
+      width: 36px; height: 36px; padding: 0; overflow: hidden; cursor: pointer;
+      background: #111; border: 3px solid #000; box-shadow: 3px 3px 0 #000;
+    }
+    .samples button.sel { border-color: #ffd23f; }
+    .samples img, .samples canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    /* ---------- panels ---------- */
+    .container {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      gap: 10px;
+      padding: 0 10px 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+    }
     .section {
       border-radius: 10px;
       overflow: hidden;
-      position: relative;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      background-size: cover;
-      background-position: center;
-      width: 100%;
-      height: 100%;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      background: #1a1a1a;
+    }
+    .section.drop { outline: 3px dashed #0af; outline-offset: -3px; }
+
+    .head { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 8px; min-height: 40px; }
+    .chk { display: inline-flex; align-items: center; gap: 4px; font: bold 11px ui-monospace, 'Courier New', monospace; cursor: pointer; min-height: 28px; padding: 0 2px; white-space: nowrap; }
+    .chk input { width: 16px; height: 16px; accent-color: #ffd23f; cursor: pointer; }
+    .head .name { font-size: 1rem; font-weight: bold; }
+    .head .sp { flex: 1; }
+    .head .note { font: 12px ui-monospace, 'Courier New', monospace; color: #aaa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+    select {
+      font: bold 12px ui-monospace, 'Courier New', monospace;
+      color: #fff; background: #000; border: 2px solid #fff; padding: 4px 6px; min-height: 28px; cursor: pointer; max-width: 100%;
+    }
+    select:disabled, input:disabled { opacity: .35; cursor: default; }
+
+    .wrap { position: relative; flex: 1; min-height: 0; background: #111; }
+    /* .stage is the rectangle the picture occupies inside .wrap (all of it when cropping, letterboxed for "whole image") */
+    .stage { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+    .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    /* compare: the original sits on top of the effect, clipped to the left of a draggable divider */
+    .stage canvas.orig, .divider { display: none; }
+    .cmp .stage canvas.orig, .cmp .divider { display: block; }
+    .cmp .wrap { cursor: ew-resize; touch-action: pan-y; }
+    .divider { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 0 1px #000; pointer-events: none; }
+    .divider::after { content: ''; position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); background: #ffd23f; border: 2px solid #000; box-shadow: 2px 2px 0 #000; }
+    #p0 .wrap { cursor: pointer; }
+    .pill {
+      position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+      background: rgba(0,0,0,.72); color: #fff; border: 2px solid #fff; padding: 6px 10px;
+      font: bold 12px ui-monospace, 'Courier New', monospace; white-space: nowrap; pointer-events: none; max-width: 94%; overflow: hidden; text-overflow: ellipsis;
     }
 
-    .header {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      font-size: 1.1rem;
-      font-weight: bold;
-      color: #fff;
-      text-shadow: 0 0 6px #000;
-      z-index: 2;
-    }
+    .ctls { flex: none; display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 6px 10px 8px; }
+    .ctls:empty { display: none; }
+    .ctl { flex: 1 1 170px; min-width: 0; display: flex; align-items: center; gap: 6px; font: 12px ui-monospace, 'Courier New', monospace; min-height: 28px; }
+    .ctl > span { flex: none; }
+    .ctl output { flex: none; width: 3ch; text-align: right; color: #ffd23f; }
+    .ctl.check { flex: 0 0 auto; cursor: pointer; }
+    .ctl input[type=checkbox] { width: 18px; height: 18px; accent-color: #ffd23f; cursor: pointer; }
+    .ctl select { flex: 1; min-width: 0; }
+    .ctls[data-n="4"] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }   /* four controls: a tidy 2 x 2 */
 
-    .download-btn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(0, 0, 0, 0);
-      color: #fff;
-      border: 1px solid #ffffff00;
-      padding: 4px 8px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      z-index: 3;
-    }
-    .download-btn:hover {
-      background: #3b63ae;
-    }
-
-    .slider-container {
-      position: absolute;
-      bottom: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 90%;
-      z-index: 2;
-    }
-
-    /* Common blocky slider style */
+    /* blocky slider, same look in every browser */
     input[type=range] {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
-      height: 20px;
-      margin-top: 6px;
-      cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+      flex: 1; min-width: 0; height: 18px; cursor: pointer;
+      background: repeating-linear-gradient(90deg, #222, #222 2px, #555 2px, #555 4px);
+      border: 2px solid #fff;
     }
-
     input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 20px;
-      height: 20px;
-      background: #fff;
-      border: 2px solid #000;
-      box-shadow: 2px 2px 0 #000;
-      cursor: pointer;
+      -webkit-appearance: none; appearance: none;
+      width: 16px; height: 24px; background: #fff; border: 2px solid #000; box-shadow: 2px 2px 0 #000; cursor: pointer;
     }
     input[type=range]::-moz-range-thumb {
-      width: 20px;
-      height: 20px;
-      background: #fff;
-      border: 2px solid #000;
-      box-shadow: 2px 2px 0 #000;
-      cursor: pointer;
+      width: 14px; height: 22px; border-radius: 0; background: #fff; border: 2px solid #000; box-shadow: 2px 2px 0 #000; cursor: pointer;
     }
+    input[type=range]::-moz-range-track { background: transparent; }
 
-    /* Scanline theme slider */
-    #scanlineSlider {
-      background: repeating-linear-gradient(
-        0deg,
-        #222,
-        #222 2px,
-        #555 2px,
-        #555 4px
-      );
-      border: 2px solid #fff;
-    }
+    /* one panel expanded */
+    .container.has-max { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+    .container.has-max .section:not(.max) { display: none; }
 
-    /* ASCII black & white slider */
-    #asciiSlider {
-      background: #000;
-      border: 2px solid #fff;
+    #video { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    #toast {
+      position: fixed; left: 50%; bottom: max(16px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+      background: #000; color: #fff; border: 2px solid #fff; padding: 8px 12px; z-index: 9000;
+      font: bold 12px ui-monospace, 'Courier New', monospace; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 92vw; text-align: center;
     }
-    #asciiSlider::-webkit-slider-thumb {
-      background: #fff;
-      border: 2px solid #fff;
-    }
-    #asciiSlider::-moz-range-thumb {
-      background: #000;
-      border: 2px solid #fff;
-    }
+    #toast.show { opacity: 1; }
 
-    /* Pixel-art chunky colorful sliders */
-    #pixelSlider, #colorSlider {
-      background: repeating-linear-gradient(
-        0deg,
-        #222,
-        #222 2px,
-        #555 2px,
-        #555 4px
-      );
-      border: 2px solid #222;
-      image-rendering: pixelated;
-      box-shadow: inset 0 0 4px #000, 2px 2px 0 #000;
-    }
-    #pixelSlider::-webkit-slider-thumb,
-    #colorSlider::-webkit-slider-thumb {
-      background: #222;
-      border: 2px solid #fff;
-      width: 24px;
-      height: 24px;
-      image-rendering: pixelated;
-    }
-    #pixelSlider::-moz-range-thumb,
-    #colorSlider::-moz-range-thumb {
-      background: #222;
-      border: 2px solid #fff;
-      width: 24px;
-      height: 24px;
-      image-rendering: pixelated;
-    }
+    @media (max-width: 1180px) { .bar .title { display: none; } }
 
-    /* Blocky retro label text */
-    .slider-container label {
-      font-family: monospace;
-      display: block;
-      font-size: 0.9rem;
-      margin-bottom: 2px;
+    /* phones and short windows: the panels become a scrolling list instead of a squeezed 2x2 grid */
+    @media (max-width: 700px), (max-height: 520px) {
+      .container:not(.has-max) { grid-template-rows: none; grid-auto-rows: min-content; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+      .container:not(.has-max) .wrap { flex: none; height: 70vh; }
     }
-
-    input[type=file] { display: none; }
+    @media (max-width: 700px) {
+      .container:not(.has-max) { grid-template-columns: minmax(0, 1fr); }
+      .container:not(.has-max) .wrap { height: 62vw; min-height: 200px; }
+      .samples { order: 5; }
+      .bar a.site-info-btn.inline { order: 6; }
+      .bar { gap: 6px; }
+      .btn { padding: 0 9px; }
+    }
   </style>
 </head>
 <body>
@@ -179,266 +175,814 @@
     <script>PixelTransition.reveal();</script>
     <script src="../../site-nav.js" data-home="../../index.html"></script>
 
-<div class="container">
-  <!-- Section 1: Original -->
-  <div class="section" id="uploadSection">
-    <div class="header">Original</div>
-    <input type="file" id="fileInput" accept="image/*">
-    <label for="fileInput" style="cursor:pointer; color:#0af; position:absolute; bottom:40px;">Click to select</label>
-    <p style="font-size:0.8rem; color:#aaa; position:absolute; bottom:20px;">or drag image here</p>
-  </div>
-
-  <!-- Section 2: Scanline -->
-  <div class="section" id="scanlineSection">
-    <div class="header">Scanline</div>
-    <button class="download-btn" id="downloadScanline">Download</button>
-    <div class="slider-container">
-      <label>Scanline Density:
-        <input type="range" id="scanlineSlider" min="1" max="10" value="2">
-      </label>
-    </div>
-  </div>
-
-  <!-- Section 3: ASCII -->
-  <div class="section" id="asciiSection">
-    <div class="header">ASCII</div>
-    <button class="download-btn" id="downloadASCII">Download</button>
-    <div class="slider-container">
-      <label>ASCII Scale:
-        <input type="range" id="asciiSlider" min="20" max="200" value="100">
-      </label>
-    </div>
-  </div>
-
-  <!-- Section 4: Pixel Art -->
-  <div class="section" id="pixelSection">
-    <div class="header">Pixel Art</div>
-    <button class="download-btn" id="downloadPixel">Download</button>
-    <div class="slider-container">
-      <label>Pixel Block Size:
-        <input type="range" id="pixelSlider" min="1" max="20" value="3">
-      </label>
-      <label>Colors:
-        <input type="range" id="colorSlider" min="4" max="40" value="20">
-      </label>
-    </div>
-  </div>
+<div class="bar">
+  <span class="gap"></span>
+  <span class="title">RETRO IMAGE EFFECTS STUDIO</span>
+  <div class="samples" id="samples" role="group" aria-label="Sample images"></div>
+  <button class="btn" id="uploadBtn" type="button">Upload</button>
+  <button class="btn" id="camBtn" type="button" hidden>Webcam</button>
+  <button class="btn" id="resetBtn" type="button" title="Put every effect and slider back to its default">Reset</button>
+  <select id="fitSel" aria-label="How the picture fits the panels" title="Crop the picture to fill each panel, or show the whole picture">
+    <option value="cover">Fit: fill (crop)</option>
+    <option value="contain">Fit: whole image</option>
+  </select>
+  <button class="btn" id="allBtn" type="button" title="Save the original and the three effects as one PNG">Save all</button>
+  <button class="btn" id="linkBtn" type="button" title="Copy a link that opens this page with the same effects and settings">Copy link</button>
 </div>
 
+<div class="container" id="container"></div>
+
+<input type="file" id="fileInput" accept="image/*" hidden>
+<video id="video" playsinline muted></video>
+<div id="toast" role="status"></div>
+
 <script>
-const fileInput = document.getElementById('fileInput');
-const uploadSection = document.getElementById('uploadSection');
-const scanlineSection = document.getElementById('scanlineSection');
-const asciiSection = document.getElementById('asciiSection');
-const pixelSection = document.getElementById('pixelSection');
+(() => {
+'use strict';
 
-const colorSlider = document.getElementById('colorSlider');
-const pixelSlider = document.getElementById('pixelSlider');
-const scanlineSlider = document.getElementById('scanlineSlider');
-const asciiSlider = document.getElementById('asciiSlider');
+const $ = (s, r = document) => r.querySelector(s);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const hex = (list) => list.split(' ').map(h => [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]);
 
-let img = new Image();
-img.src = "./images/f1_pitstop.jpg"; // default image
+const DEFAULT_IMAGE = './images/f1_pitstop.jpg';
+const MAX_DPR = 2;            // preview sharpness cap
+const MAX_EXPORT = 4096;      // longest side of a downloaded PNG
+const LIVE_FRAME_MS = 80;     // webcam redraw interval (about 12 fps)
+const RESIZE_DELAY = 90;      // ms to wait after the last resize before redrawing
 
-// Store canvases for download
-let canvases = {
-  scanline: null,
-  ascii: null,
-  pixel: null
+const container = $('#container');
+const fileInput = $('#fileInput');
+const video = $('#video');
+const camBtn = $('#camBtn');
+
+let source = null;            // { el, w, h }: an <img>, <canvas> or the webcam <video>
+let live = false, stream = null, objectUrl = null;
+let fit = 'cover';            // 'cover' = crop to fill each panel, 'contain' = show the whole picture
+let currentSample = 0;        // index in SAMPLES, or -1 for an upload / the webcam
+const STORE_KEY = 'retro-fx-studio';
+const CAN_SHARE = (() => {    // true where the system share sheet accepts image files (mostly phones)
+  try { return !!navigator.canShare && navigator.canShare({ files: [new File([''], 'a.png', { type: 'image/png' })] }); } catch (e) { return false; }
+})();
+
+/* ---------- helpers ---------- */
+let toastTimer = 0;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// Small reusable off-screen canvases (one per name) for downscaling and pixel reads.
+const scratchCache = {};
+function scratch(name, w, h) {
+  let s = scratchCache[name];
+  if (!s) { const c = document.createElement('canvas'); s = scratchCache[name] = { c, x: c.getContext('2d', { willReadFrequently: true }) }; }
+  if (s.c.width !== w || s.c.height !== h) { s.c.width = w; s.c.height = h; } else s.x.clearRect(0, 0, w, h);
+  s.x.imageSmoothingQuality = 'high';
+  return s;
+}
+
+// Draw the source so it fills w x h (centre crop), like CSS background-size: cover.
+function drawCover(x, w, h) {
+  const sc = Math.max(w / source.w, h / source.h), dw = source.w * sc, dh = source.h * sc;
+  x.drawImage(source.el, (w - dw) / 2, (h - dh) / 2, dw, dh);
+}
+
+const luma = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
+
+/* ---------- palettes and colour reduction ---------- */
+const PALETTES = {
+  gameboy: hex('0f380f 306230 8bac0f 9bbc0f'),
+  cga:     hex('000000 55ffff ff55ff ffffff'),
+  pico8:   hex('000000 1d2b53 7e2553 008751 ab5236 5f574f c2c3c7 fff1e8 ff004d ffa300 ffec27 00e436 29adff 83769c ff77a8 ffccaa'),
+  onebit:  hex('000000 ffffff'),
+};
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+
+// Median cut: split the colour cloud into n boxes, always cutting the box with the widest spread; one colour per box.
+function medianCut(d, n) {
+  const total = d.length >> 2, stride = Math.max(1, Math.floor(total / 16384));
+  const pts = [];
+  for (let i = 0; i < total; i += stride) pts.push([d[i * 4], d[i * 4 + 1], d[i * 4 + 2]]);
+  const spread = (box) => {
+    let best = 0, ch = 0;
+    for (let c = 0; c < 3; c++) {
+      let lo = 255, hi = 0;
+      for (const p of box) { if (p[c] < lo) lo = p[c]; if (p[c] > hi) hi = p[c]; }
+      if (hi - lo > best) { best = hi - lo; ch = c; }
+    }
+    return { range: best, ch };
+  };
+  const boxes = [{ pts, ...spread(pts) }];
+  while (boxes.length < n) {
+    let bi = -1, score = 0;
+    boxes.forEach((b, i) => { const s = b.range * Math.sqrt(b.pts.length); if (b.pts.length > 1 && s > score) { score = s; bi = i; } });
+    if (bi < 0) break;                                   // nothing left to split (fewer real colours than asked for)
+    const b = boxes[bi], ch = b.ch;
+    b.pts.sort((p, q) => p[ch] - q[ch]);
+    const mid = b.pts.length >> 1, lo = b.pts.slice(0, mid), hi = b.pts.slice(mid);
+    boxes.splice(bi, 1, { pts: lo, ...spread(lo) }, { pts: hi, ...spread(hi) });
+  }
+  return boxes.map(b => {
+    let r = 0, g = 0, bl = 0;
+    for (const p of b.pts) { r += p[0]; g += p[1]; bl += p[2]; }
+    const k = b.pts.length || 1;
+    return [Math.round(r / k), Math.round(g / k), Math.round(bl / k)];
+  });
+}
+
+// Nearest palette entry, cached per 5-bit-per-channel colour bucket.
+function makeNearest(pal) {
+  const lut = new Int16Array(32768).fill(-1);
+  return (r, g, b) => {
+    r = r < 0 ? 0 : r > 255 ? 255 : r | 0; g = g < 0 ? 0 : g > 255 ? 255 : g | 0; b = b < 0 ? 0 : b > 255 ? 255 : b | 0;
+    const key = (r >> 3) << 10 | (g >> 3) << 5 | (b >> 3);
+    let i = lut[key];
+    if (i < 0) {
+      const cr = (r & 248) + 4, cg = (g & 248) + 4, cb = (b & 248) + 4;
+      let bd = Infinity;
+      for (let j = 0; j < pal.length; j++) {
+        const p = pal[j], dd = (cr - p[0]) ** 2 + (cg - p[1]) ** 2 + (cb - p[2]) ** 2;
+        if (dd < bd) { bd = dd; i = j; }
+      }
+      lut[key] = i;
+    }
+    return i;
+  };
+}
+
+/* ---------- effects ----------
+   draw(ctx, W, H, s, o, panel): W x H are canvas pixels, s = canvas pixels per CSS pixel
+   (so sizes look the same in the preview and in a full-resolution download), o = this effect's settings. */
+const ASCII_RAMP = ' .:-=+*#%@';   // dark to light
+
+const FX = {
+  scanline: {
+    label: 'Scanline',
+    controls: [
+      { k: 'spacing', label: 'Line spacing', min: 2, max: 12, value: 3 },
+      { k: 'dark', label: 'Darkness', min: 20, max: 100, value: 90, unit: '%' },
+    ],
+    draw(ctx, W, H, s, o) {
+      drawCover(ctx, W, H);
+      const period = Math.max(2, Math.round(o.spacing * s)), thick = Math.max(1, Math.round(period / 3));
+      ctx.fillStyle = `rgba(0,0,0,${o.dark / 100})`;
+      for (let y = 0; y < H; y += period) ctx.fillRect(0, y, W, thick);
+    },
+  },
+
+  crt: {
+    label: 'CRT',
+    controls: [
+      { k: 'curve', label: 'Curvature', min: 0, max: 40, value: 14 },
+      { k: 'glow', label: 'Glow', min: 0, max: 100, value: 45, unit: '%' },
+      { k: 'lines', label: 'Line spacing', min: 2, max: 8, value: 3 },
+    ],
+    draw(ctx, W, H, s, o) {
+      const a = scratch('crt', W, H);
+      drawCover(a.x, W, H);
+      const src = a.x.getImageData(0, 0, W, H).data;
+      const out = ctx.createImageData(W, H), dst = out.data;
+      const k = o.curve / 100, kn = 1 + k;
+      const period = Math.max(2, Math.round(o.lines * s)), thick = Math.max(1, Math.round(period / 3)), mask = Math.max(1, Math.round(s));
+      for (let y = 0; y < H; y++) {
+        const ny = (y + 0.5) / H * 2 - 1, row = (y % period) < thick ? 0.5 : 1;
+        for (let x = 0; x < W; x++) {
+          const nx = (x + 0.5) / W * 2 - 1, r2 = nx * nx + ny * ny, f = (1 + k * r2) / kn;   // barrel distortion
+          const sx = nx * f, sy = ny * f, di = (y * W + x) * 4;
+          dst[di + 3] = 255;
+          if (sx <= -1 || sx >= 1 || sy <= -1 || sy >= 1) continue;                          // outside the tube: black
+          const si = ((((sy + 1) * 0.5 * H) | 0) * W + (((sx + 1) * 0.5 * W) | 0)) * 4;
+          const v = row * (1 - 0.22 * r2), m = ((x / mask) | 0) % 3;                         // scanline, vignette, RGB stripe mask
+          dst[di]     = src[si]     * v * (m === 0 ? 1.2 : 0.86);
+          dst[di + 1] = src[si + 1] * v * (m === 1 ? 1.2 : 0.86);
+          dst[di + 2] = src[si + 2] * v * (m === 2 ? 1.2 : 0.86);
+        }
+      }
+      ctx.putImageData(out, 0, 0);
+      if (o.glow > 0) {                                   // glow: add a blurred (shrunk, then stretched) copy on top
+        const b = scratch('glow', Math.max(1, Math.ceil(W / 10)), Math.max(1, Math.ceil(H / 10)));
+        b.x.drawImage(ctx.canvas, 0, 0, b.c.width, b.c.height);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = o.glow / 100 * 0.7;
+        ctx.drawImage(b.c, 0, 0, W, H);
+        ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+      }
+    },
+  },
+
+  ascii: {
+    label: 'ASCII',
+    controls: [
+      { k: 'cols', label: 'Columns', min: 20, max: 200, value: 100 },
+      { k: 'color', label: 'Colour', type: 'check', value: false },
+    ],
+    draw(ctx, W, H, s, o, p) {
+      const cols = o.cols, cw = W / cols;
+      const rows = Math.max(1, Math.round(H / (cw / 0.6)));     // a monospace glyph is about 0.6 as wide as it is tall
+      const rh = H / rows;
+      const g = scratch('ascii', cols, rows);
+      drawCover(g.x, cols, rows);
+      const d = g.x.getImageData(0, 0, cols, rows).data;
+      ctx.fillStyle = '#0b0b0b'; ctx.fillRect(0, 0, W, H);
+      ctx.font = `${Math.min(rh, cw / 0.6)}px ui-monospace, Menlo, Consolas, 'Courier New', monospace`;
+      ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#d8d8d8';
+      const lines = [], n = ASCII_RAMP.length;
+      for (let y = 0; y < rows; y++) {
+        let line = '';
+        for (let x = 0; x < cols; x++) {
+          const i = (y * cols + x) * 4, r = d[i], gg = d[i + 1], b = d[i + 2];
+          const ch = ASCII_RAMP[Math.min(n - 1, (luma(r, gg, b) / 256 * n) | 0)];
+          line += ch;
+          if (ch === ' ') continue;
+          if (o.color) {                                         // keep the hue, lift dark colours so the glyph stays readable
+            const f = Math.max(1, 170 / Math.max(r, gg, b, 1));
+            ctx.fillStyle = `rgb(${Math.min(255, r * f) | 0},${Math.min(255, gg * f) | 0},${Math.min(255, b * f) | 0})`;
+          }
+          ctx.fillText(ch, (x + 0.5) * cw, (y + 0.5) * rh);
+        }
+        lines.push(line);
+      }
+      if (p) { p.text = lines.join('\n'); p.textSize = `${cols} x ${rows}`; }
+    },
+  },
+
+  pixel: {
+    label: 'Pixel Art',
+    controls: [
+      { k: 'block', label: 'Block size', min: 1, max: 20, value: 4 },
+      { k: 'colors', label: 'Colours', min: 2, max: 40, value: 16, enabled: o => o.palette === 'auto' },
+      { k: 'palette', label: 'Palette', type: 'select', value: 'auto', options: [['auto', 'From image'], ['gameboy', 'Game Boy'], ['cga', 'CGA'], ['pico8', 'PICO-8'], ['onebit', '1-bit']] },
+      { k: 'dither', label: 'Dither', type: 'select', value: 'none', options: [['none', 'None'], ['bayer', 'Bayer'], ['fs', 'Floyd-Steinberg']] },
+    ],
+    draw(ctx, W, H, s, o) {
+      const bs = Math.max(1, Math.round(o.block * s));
+      const gw = Math.ceil(W / bs), gh = Math.ceil(H / bs);
+      const g = scratch('pixel', gw, gh);
+      drawCover(g.x, gw, gh);                                    // shrinking the picture averages each block
+      const id = g.x.getImageData(0, 0, gw, gh), d = id.data;
+      const pal = PALETTES[o.palette] || medianCut(d, o.colors);
+      const near = makeNearest(pal);
+      if (o.dither === 'fs') {                                   // Floyd-Steinberg: push each pixel's rounding error onto its neighbours
+        const n = gw * gh, buf = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) { buf[i * 3] = d[i * 4]; buf[i * 3 + 1] = d[i * 4 + 1]; buf[i * 3 + 2] = d[i * 4 + 2]; }
+        const push = (x, y, er, eg, eb, w) => {
+          if (x < 0 || x >= gw || y >= gh) return;
+          const j = (y * gw + x) * 3; buf[j] += er * w; buf[j + 1] += eg * w; buf[j + 2] += eb * w;
+        };
+        for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+          const i = y * gw + x;
+          const r = clamp(buf[i * 3], 0, 255), gg = clamp(buf[i * 3 + 1], 0, 255), b = clamp(buf[i * 3 + 2], 0, 255);
+          const c = pal[near(r, gg, b)];
+          d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2];
+          const er = r - c[0], eg = gg - c[1], eb = b - c[2];
+          push(x + 1, y, er, eg, eb, 7 / 16); push(x - 1, y + 1, er, eg, eb, 3 / 16);
+          push(x, y + 1, er, eg, eb, 5 / 16); push(x + 1, y + 1, er, eg, eb, 1 / 16);
+        }
+      } else {                                                   // none, or Bayer: add a fixed 4x4 threshold pattern first
+        const spread = o.dither === 'bayer' ? 255 / Math.cbrt(pal.length) : 0;
+        for (let y = 0; y < gh; y++) for (let x = 0; x < gw; x++) {
+          const i = (y * gw + x) * 4, t = spread ? ((BAYER4[(y & 3) * 4 + (x & 3)] + 0.5) / 16 - 0.5) * spread : 0;
+          const c = pal[near(d[i] + t, d[i + 1] + t, d[i + 2] + t)];
+          d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2];
+        }
+      }
+      g.x.putImageData(id, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(g.c, 0, 0, gw * bs, gh * bs);
+      ctx.imageSmoothingEnabled = true;
+    },
+  },
+
+  halftone: {
+    label: 'Halftone',
+    controls: [
+      { k: 'dot', label: 'Dot size', min: 3, max: 30, value: 8 },
+      { k: 'color', label: 'Colour', type: 'check', value: false },
+    ],
+    draw(ctx, W, H, s, o) {
+      const cell = Math.max(2, o.dot * s);
+      const gw = Math.ceil(W / cell), gh = Math.ceil(H / cell);
+      const g = scratch('halftone', gw, gh);
+      drawCover(g.x, gw, gh);
+      const d = g.x.getImageData(0, 0, gw, gh).data;
+      ctx.fillStyle = o.color ? '#0c0c0c' : '#f1ead9';           // colour dots on black, or ink dots on paper
+      ctx.fillRect(0, 0, W, H);
+      const cx = W / 2, cy = H / 2, N = Math.ceil(Math.hypot(W, H) / cell / 2) + 1, rot = Math.SQRT1_2;   // grid turned 45 degrees
+      if (!o.color) { ctx.fillStyle = '#161616'; ctx.beginPath(); }
+      for (let j = -N; j <= N; j++) for (let i = -N; i <= N; i++) {
+        const x = cx + (i - j) * rot * cell, y = cy + (i + j) * rot * cell;
+        if (x < -cell || y < -cell || x > W + cell || y > H + cell) continue;
+        const k = (clamp((y / cell) | 0, 0, gh - 1) * gw + clamp((x / cell) | 0, 0, gw - 1)) * 4;
+        const r = d[k], gg = d[k + 1], b = d[k + 2];
+        if (o.color) {
+          const m = Math.max(r, gg, b);
+          const rad = cell * 0.72 * Math.sqrt(m / 255);
+          if (rad < 0.3) continue;
+          const f = 255 / m;
+          ctx.fillStyle = `rgb(${(r * f) | 0},${(gg * f) | 0},${(b * f) | 0})`;
+          ctx.beginPath(); ctx.arc(x, y, rad, 0, 6.2832); ctx.fill();
+        } else {
+          const rad = cell * 0.72 * Math.sqrt(1 - luma(r, gg, b) / 255);   // dot area follows darkness
+          if (rad < 0.3) continue;
+          ctx.moveTo(x + rad, y); ctx.arc(x, y, rad, 0, 6.2832);
+        }
+      }
+      if (!o.color) ctx.fill();
+    },
+  },
 };
 
-// Draw default image immediately (even if cached)
-function processDefaultImage() {
-  uploadSection.style.backgroundImage = `url(${img.src})`;
-  uploadSection.style.backgroundSize = "cover";
-  uploadSection.style.backgroundPosition = "center";
-  drawScanline();
-  drawPixelArt();
-  drawASCII();
+const DEFAULT_FX = ['scanline', 'ascii', 'pixel'];
+const defaultsOf = (fx) => Object.fromEntries(FX[fx].controls.map(c => [c.k, c.value]));
+
+/* ---------- panels ---------- */
+const panels = [];
+
+function makePanel(index) {
+  const fx = index === 0 ? null : DEFAULT_FX[index - 1];
+  const sec = el('section', 'section'); sec.id = 'p' + index;
+  const head = el('div', 'head'), wrap = el('div', 'wrap'), stage = el('div', 'stage'), ctls = el('div', 'ctls');
+  const canvas = el('canvas'); stage.append(canvas); wrap.append(stage);
+  sec.append(head, wrap, ctls);
+  const p = { index, fx, sec, wrap, stage, ctls, canvas, ctx: canvas.getContext('2d'), params: {}, text: '', textSize: '', queued: false, resizeTimer: 0, sync: [], compare: false, wipe: 0.5 };
+
+  const maxBtn = el('button', 'sbtn', 'Expand'); maxBtn.type = 'button';
+  maxBtn.addEventListener('click', () => toggleMax(p));
+  p.maxBtn = maxBtn;
+
+  if (fx === null) {
+    p.note = el('span', 'note');
+    head.append(el('span', 'name', 'Original'), p.note, el('span', 'sp'), maxBtn);
+    wrap.append(el('div', 'pill', 'Click, drop or paste an image'));
+    wrap.setAttribute('role', 'button'); wrap.tabIndex = 0; wrap.setAttribute('aria-label', 'Choose an image');
+    wrap.addEventListener('click', () => fileInput.click());
+    wrap.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+  } else {
+    const sel = el('select'); sel.setAttribute('aria-label', 'Effect');
+    for (const key in FX) { const o = el('option', null, FX[key].label); o.value = key; sel.append(o); p.params[key] = defaultsOf(key); }
+    sel.value = fx;
+    sel.addEventListener('change', () => { p.fx = sel.value; buildControls(p); schedule(p); save(); });
+    p.fxSel = sel;
+
+    // Compare: a copy of the original on top of the effect, shown only left of the divider.
+    p.orig = el('canvas', 'orig'); p.octx = p.orig.getContext('2d'); p.divider = el('div', 'divider');
+    stage.append(p.orig, p.divider);
+    const cmpLab = el('label', 'chk'); cmpLab.title = 'Drag across the picture: original on the left, effect on the right';
+    p.cmpBox = el('input'); p.cmpBox.type = 'checkbox';
+    cmpLab.append(p.cmpBox, el('span', null, 'Compare'));
+    p.cmpBox.addEventListener('change', () => { p.compare = p.cmpBox.checked; syncCompare(p); schedule(p); save(); });
+    let dragging = false;
+    const move = (e) => { const b = stage.getBoundingClientRect(); if (b.width) setWipe(p, (e.clientX - b.left) / b.width); };
+    wrap.addEventListener('pointerdown', e => {
+      if (!p.compare || e.button) return;
+      dragging = true; try { wrap.setPointerCapture(e.pointerId); } catch (err) {}
+      move(e);
+    });
+    wrap.addEventListener('pointermove', e => { if (dragging) move(e); });
+    const endDrag = () => { if (dragging) { dragging = false; save(); } };
+    wrap.addEventListener('pointerup', endDrag); wrap.addEventListener('pointercancel', endDrag);
+
+    p.copyBtn = el('button', 'sbtn', 'Copy text'); p.copyBtn.type = 'button';
+    p.copyBtn.addEventListener('click', () => copyText(p));
+    const dl = el('button', 'sbtn', 'Download'); dl.type = 'button';
+    dl.addEventListener('click', () => download(p));
+    head.append(sel, cmpLab, el('span', 'sp'), p.copyBtn, dl);
+    if (CAN_SHARE) {
+      const sh = el('button', 'sbtn', 'Share'); sh.type = 'button';
+      sh.addEventListener('click', () => share(p));
+      head.append(sh);
+    }
+    head.append(maxBtn);
+    wrap.addEventListener('dblclick', () => toggleMax(p));
+    buildControls(p);
+  }
+
+  // The panel changed size: redraw once the resizing has settled.
+  new ResizeObserver(() => { clearTimeout(p.resizeTimer); p.resizeTimer = setTimeout(() => schedule(p), RESIZE_DELAY); }).observe(wrap);
+
+  container.append(sec);
+  panels.push(p);
 }
 
-if (img.complete) {
-  processDefaultImage();
-} else {
-  img.onload = processDefaultImage;
+function buildControls(p) {
+  const fx = FX[p.fx], o = p.params[p.fx];
+  p.ctls.textContent = ''; p.sync = [];
+  p.ctls.dataset.n = fx.controls.length;
+  p.copyBtn.hidden = p.fx !== 'ascii';
+  const changed = () => { p.sync.forEach(f => f()); schedule(p); save(); };
+  for (const c of fx.controls) {
+    const lab = el('label', 'ctl' + (c.type === 'check' ? ' check' : ''));
+    lab.append(el('span', null, c.label));
+    let input;
+    if (c.type === 'select') {
+      input = el('select');
+      for (const [v, name] of c.options) { const op = el('option', null, name); op.value = v; input.append(op); }
+      input.value = o[c.k];
+      input.addEventListener('change', () => { o[c.k] = input.value; changed(); });
+      lab.append(input);
+    } else if (c.type === 'check') {
+      input = el('input'); input.type = 'checkbox'; input.checked = o[c.k];
+      input.addEventListener('change', () => { o[c.k] = input.checked; changed(); });
+      lab.append(input);
+    } else {
+      input = el('input'); input.type = 'range'; input.min = c.min; input.max = c.max; input.step = 1; input.value = o[c.k];
+      const out = el('output', null, o[c.k]);
+      if (c.unit) lab.title = c.label + ' in ' + c.unit;
+      input.addEventListener('input', () => { o[c.k] = +input.value; out.textContent = input.value; changed(); });
+      lab.append(input, out);
+    }
+    if (c.enabled) p.sync.push(() => { const on = c.enabled(o); input.disabled = !on; lab.style.opacity = on ? '' : '.5'; });
+    p.ctls.append(lab);
+  }
+  p.sync.forEach(f => f());
 }
 
-// Drag & drop
-uploadSection.addEventListener('dragover', e => { e.preventDefault(); uploadSection.style.background = "#333"; });
-uploadSection.addEventListener('dragleave', e => { e.preventDefault(); uploadSection.style.background = "#252525"; });
-uploadSection.addEventListener('drop', e => {
-  e.preventDefault();
-  const file = e.dataTransfer.files[0];
-  if(file && file.type.startsWith('image/')) loadImage(file);
+function toggleMax(p) {
+  const on = !p.sec.classList.contains('max');
+  panels.forEach(q => { q.sec.classList.remove('max'); q.maxBtn.textContent = 'Expand'; });
+  if (on) { p.sec.classList.add('max'); p.maxBtn.textContent = 'Close'; }
+  container.classList.toggle('has-max', on);
+}
+
+/* ---------- drawing ---------- */
+function paint(p, ctx, W, H, s) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.clearRect(0, 0, W, H);
+  if (!source || !source.w || !source.h) return;
+  if (p.fx === null) drawCover(ctx, W, H);
+  else FX[p.fx].draw(ctx, W, H, s, p.params[p.fx], p);
+}
+
+// The rectangle (CSS pixels, inside .wrap) the picture occupies: the whole panel when cropping,
+// or the largest centred box with the picture's own shape for "whole image".
+function rectOf(p) {
+  const cw = p.wrap.clientWidth, ch = p.wrap.clientHeight;
+  if (!cw || !ch) return null;                             // hidden (another panel is expanded)
+  if (fit !== 'contain' || !source || !source.w || !source.h) return { x: 0, y: 0, w: cw, h: ch };
+  const sc = Math.min(cw / source.w, ch / source.h), w = Math.max(1, source.w * sc), h = Math.max(1, source.h * sc);
+  return { x: (cw - w) / 2, y: (ch - h) / 2, w, h };
+}
+
+function render(p) {
+  const r = rectOf(p);
+  if (!r) return;
+  const st = p.stage.style;
+  st.left = r.x + 'px'; st.top = r.y + 'px'; st.width = r.w + 'px'; st.height = r.h + 'px';
+  const s = live ? 1 : Math.min(window.devicePixelRatio || 1, MAX_DPR);
+  const W = Math.max(1, Math.round(r.w * s)), H = Math.max(1, Math.round(r.h * s));
+  if (p.canvas.width !== W || p.canvas.height !== H) { p.canvas.width = W; p.canvas.height = H; }
+  paint(p, p.ctx, W, H, s);
+  if (p.compare) {
+    if (p.orig.width !== W || p.orig.height !== H) { p.orig.width = W; p.orig.height = H; } else p.octx.clearRect(0, 0, W, H);
+    if (source && source.w && source.h) drawCover(p.octx, W, H);
+  }
+}
+
+function setWipe(p, pos) {
+  p.wipe = clamp(pos, 0, 1);
+  p.orig.style.clipPath = `inset(0 ${(1 - p.wipe) * 100}% 0 0)`;
+  p.divider.style.left = p.wipe * 100 + '%';
+}
+function syncCompare(p) { p.cmpBox.checked = p.compare; p.sec.classList.toggle('cmp', p.compare); setWipe(p, p.wipe); }
+function syncPanel(p) { p.fxSel.value = p.fx; buildControls(p); syncCompare(p); }
+
+// Many slider events in one frame become a single redraw.
+function schedule(p) {
+  if (p.queued) return;
+  p.queued = true;
+  requestAnimationFrame(() => { p.queued = false; render(p); });
+}
+const scheduleAll = () => panels.forEach(schedule);
+
+/* ---------- download and copy ---------- */
+// Draw a panel off-screen in the shape of rect r (CSS pixels), at the picture's own resolution:
+// never below screen sharpness, longest side capped at maxSide. With "whole image" r has the picture's shape, so nothing is cropped.
+function renderExport(p, r, maxSide) {
+  const cover = Math.max(r.w / source.w, r.h / source.h);
+  let s = Math.max(1 / cover, Math.min(window.devicePixelRatio || 1, MAX_DPR));
+  s = Math.min(s, maxSide / Math.max(r.w, r.h));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(r.w * s)); c.height = Math.max(1, Math.round(r.h * s));
+  paint(p, c.getContext('2d'), c.width, c.height, s);
+  return c;
+}
+const toBlob = (c) => new Promise(res => c.toBlob(res, 'image/png'));
+function saveBlob(blob, name) {
+  const a = el('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+}
+
+async function download(p) {
+  const r = rectOf(p);
+  if (!r || !source) return;
+  const c = renderExport(p, r, MAX_EXPORT), blob = await toBlob(c);
+  if (!blob) { toast('Could not make the PNG'); return; }
+  saveBlob(blob, p.fx + '.png');
+  toast(`Saved ${p.fx}.png (${c.width} x ${c.height})`);
+}
+
+// Phones: hand the PNG to the system share sheet.
+async function share(p) {
+  const r = rectOf(p);
+  if (!r || !source) return;
+  const blob = await toBlob(renderExport(p, r, MAX_EXPORT));
+  if (!blob) { toast('Could not make the PNG'); return; }
+  try { await navigator.share({ files: [new File([blob], p.fx + '.png', { type: 'image/png' })], title: 'Retro Image Effects Studio' }); }
+  catch (err) { if (err.name !== 'AbortError') toast('Sharing did not work here; use Download'); }
+}
+
+// One PNG with the original and the three effects in a 2 x 2 sheet.
+async function saveAll() {
+  if (!source) return;
+  const r = panels.map(rectOf).find(Boolean);              // all tiles use the shape of the first visible panel
+  if (!r) return;
+  const tiles = panels.map(p => renderExport(p, r, MAX_EXPORT / 2));
+  const tw = tiles[0].width, th = tiles[0].height, gap = Math.max(2, Math.round(tw / 150));
+  const c = document.createElement('canvas');
+  c.width = tw * 2 + gap * 3; c.height = th * 2 + gap * 3;
+  const x = c.getContext('2d');
+  x.fillStyle = '#111'; x.fillRect(0, 0, c.width, c.height);
+  tiles.forEach((t, i) => x.drawImage(t, gap + (i % 2) * (tw + gap), gap + (i >> 1) * (th + gap)));
+  const blob = await toBlob(c);
+  if (!blob) { toast('Could not make the PNG'); return; }
+  saveBlob(blob, 'retro-effects.png');
+  toast(`Saved retro-effects.png (${c.width} x ${c.height})`);
+}
+$('#allBtn').addEventListener('click', saveAll);
+
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch (err) {
+    const t = el('textarea'); t.value = text; t.style.cssText = 'position:fixed;opacity:0';
+    document.body.append(t); t.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    t.remove();
+    return ok;
+  }
+}
+async function copyText(p) {
+  if (!p.text) return;
+  toast(await copy(p.text) ? `Copied ${p.textSize} characters` : 'Copy is blocked in this browser');
+}
+
+/* ---------- saved settings and links ----------
+   Settings (fit mode, sample, each panel's effect, sliders, compare) are kept in localStorage and restored on the next visit.
+   "Copy link" puts the visible settings in the URL after '#', for example
+   #fit=contain&img=3&p1=crt,14,45,3&p2=ascii,100,1&p3=pixel,4,16,gameboy,bayer&cmp=010
+   (pN = effect, then its controls in order; cmp = compare on/off per panel). An uploaded picture cannot travel in a link. */
+function coerce(c, v) {
+  if (c.type === 'check') return v === true || v === 1 || v === '1' || v === 'true';
+  if (c.type === 'select') return c.options.some(o => o[0] === v) ? v : c.value;
+  const n = Math.round(+v);
+  return Number.isFinite(n) ? clamp(n, c.min, c.max) : c.value;
+}
+
+let saveTimer = 0;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const state = { fit, img: currentSample, panels: panels.slice(1).map(p => ({ fx: p.fx, params: p.params, compare: p.compare, wipe: +p.wipe.toFixed(3) })) };
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}   // private mode / storage off: just don't remember
+  }, 300);
+}
+
+function applyState(st) {
+  if (!st || typeof st !== 'object') return;
+  if (st.fit === 'cover' || st.fit === 'contain') fit = st.fit;
+  if (Number.isInteger(st.img) && st.img >= -1 && st.img < SAMPLES.length) currentSample = st.img;
+  (Array.isArray(st.panels) ? st.panels : []).forEach((sp, i) => {
+    const p = panels[i + 1];
+    if (!p || !sp || typeof sp !== 'object') return;
+    if (FX[sp.fx]) p.fx = sp.fx;
+    for (const key in FX) {
+      const from = sp.params && sp.params[key];
+      if (from && typeof from === 'object') FX[key].controls.forEach(c => { if (c.k in from) p.params[key][c.k] = coerce(c, from[c.k]); });
+    }
+    p.compare = !!sp.compare;
+    if (Number.isFinite(+sp.wipe)) p.wipe = clamp(+sp.wipe, 0, 1);
+  });
+}
+
+function linkHash() {
+  const parts = ['fit=' + fit];
+  if (currentSample >= 0) parts.push('img=' + currentSample);
+  panels.slice(1).forEach((p, i) => {
+    const o = p.params[p.fx];
+    parts.push(`p${i + 1}=` + [p.fx, ...FX[p.fx].controls.map(c => c.type === 'check' ? (o[c.k] ? 1 : 0) : o[c.k])].join(','));
+  });
+  parts.push('cmp=' + panels.slice(1).map(p => p.compare ? 1 : 0).join(''));
+  return '#' + parts.join('&');
+}
+
+function parseHash() {
+  if (location.hash.length < 2) return null;
+  const q = new URLSearchParams(location.hash.slice(1));
+  if (!['fit', 'img', 'p1', 'p2', 'p3'].some(k => q.has(k))) return null;
+  const st = { fit: q.get('fit'), img: q.has('img') ? parseInt(q.get('img'), 10) : undefined, panels: [] };
+  const cmp = q.get('cmp') || '';
+  for (let i = 1; i <= 3; i++) {
+    const parts = (q.get('p' + i) || '').split(','), fx = parts[0];
+    if (!FX[fx]) { st.panels.push(null); continue; }
+    const o = {};
+    FX[fx].controls.forEach((c, j) => { if (parts[j + 1] !== undefined && parts[j + 1] !== '') o[c.k] = parts[j + 1]; });
+    st.panels.push({ fx, params: { [fx]: o }, compare: cmp[i - 1] === '1', wipe: 0.5 });
+  }
+  return st;
+}
+
+$('#linkBtn').addEventListener('click', async () => {
+  const url = location.origin + location.pathname + location.search + linkHash();
+  const note = currentSample < 0 ? ' (settings only: your own picture is not in the link)' : '';
+  toast(await copy(url) ? 'Link copied' + note : url);
 });
 
-fileInput.addEventListener('change', e => { const file = e.target.files[0]; if(file) loadImage(file); });
+const fitSel = $('#fitSel');
+fitSel.addEventListener('change', () => { fit = fitSel.value; scheduleAll(); save(); });
 
-function loadImage(file) {
-  const reader = new FileReader();
-  reader.onload = ev => { 
-    img.src = ev.target.result;
-    uploadSection.style.backgroundImage = `url(${ev.target.result})`;
-    uploadSection.style.backgroundSize = "cover";
-    uploadSection.style.backgroundPosition = "center";
+/* ---------- image sources ---------- */
+function setSource(elm, w, h, note) {
+  source = { el: elm, w, h };
+  panels[0].note.textContent = note || '';
+  scheduleAll();
+}
+
+function loadUrl(url, note, isObjectUrl) {
+  const im = new Image();
+  im.onload = () => {
+    stopCam(false);
+    if (objectUrl && objectUrl !== url) URL.revokeObjectURL(objectUrl);
+    objectUrl = isObjectUrl ? url : null;
+    setSource(im, im.naturalWidth, im.naturalHeight, `${note ? note + ' · ' : ''}${im.naturalWidth} x ${im.naturalHeight}`);
   };
-  reader.readAsDataURL(file);
+  im.onerror = () => { if (isObjectUrl) URL.revokeObjectURL(url); toast('Could not load that image'); };
+  im.src = url;
 }
 
-function setSectionBackground(canvas, section, key) {
-  section.style.backgroundImage = `url(${canvas.toDataURL()})`;
-  canvases[key] = canvas; // save for download
+function loadFile(file) {
+  if (!file || !file.type.startsWith('image/')) { toast('That file is not an image'); return; }
+  markSample(null); currentSample = -1; save();
+  loadUrl(URL.createObjectURL(file), file.name, true);
 }
 
-// Scanline
-function drawScanline() {
-  const canvas = document.createElement('canvas');
-  const w = scanlineSection.clientWidth;
-  const h = scanlineSection.clientHeight;
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d');
+fileInput.addEventListener('change', () => { loadFile(fileInput.files[0]); fileInput.value = ''; });   // cleared so the same file can be picked again
+$('#uploadBtn').addEventListener('click', () => fileInput.click());
 
-  const scale = Math.max(w/img.width, h/img.height);
-  const sw = img.width*scale; const sh = img.height*scale;
-  const sx = (w-sw)/2; const sy = (h-sh)/2;
+// Drop anywhere on the page; the Original panel shows an outline while a file is dragged over the window.
+let dragDepth = 0;
+const hasFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; panels[0].sec.classList.add('drop'); });
+addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+addEventListener('dragleave', e => { if (!hasFiles(e)) return; if (--dragDepth <= 0) { dragDepth = 0; panels[0].sec.classList.remove('drop'); } });
+addEventListener('drop', e => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); dragDepth = 0; panels[0].sec.classList.remove('drop');
+  loadFile(e.dataTransfer.files[0]);
+});
+addEventListener('paste', e => {
+  const f = Array.from((e.clipboardData && e.clipboardData.files) || []).find(x => x.type.startsWith('image/'));
+  if (f) { e.preventDefault(); loadFile(f); }
+});
+addEventListener('keydown', e => { if (e.key === 'Escape' && container.classList.contains('has-max')) toggleMax(panels.find(p => p.sec.classList.contains('max'))); });
 
-  ctx.drawImage(img, sx, sy, sw, sh);
-  let imageData = ctx.getImageData(0,0,w,h);
-  let data = imageData.data;
-  const density = parseInt(scanlineSlider.value);
-  for(let y=0;y<h;y++){
-    if(y%density===0){
-      for(let x=0;x<w;x++){
-        let idx=(y*w+x)*4;
-        data[idx]=data[idx+1]=data[idx+2]=0;
-      }
-    }
+/* ---------- samples ---------- */
+// Drawn in code so there is always one sample that needs no file.
+function makeSunset() {
+  const c = document.createElement('canvas'); c.width = 960; c.height = 600;
+  const g = c.getContext('2d'), W = c.width, H = c.height, hz = 380;
+  let grad = g.createLinearGradient(0, 0, 0, hz);
+  grad.addColorStop(0, '#12063b'); grad.addColorStop(0.55, '#7b1fa2'); grad.addColorStop(0.85, '#ff5e62'); grad.addColorStop(1, '#ffc371');
+  g.fillStyle = grad; g.fillRect(0, 0, W, hz);
+  g.fillStyle = '#fff';
+  for (let i = 0; i < 90; i++) g.fillRect((i * 197.3) % W, (i * 89.7) % (hz * 0.6), 1 + (i % 3 === 0), 1 + (i % 3 === 0));
+  grad = g.createLinearGradient(0, hz - 250, 0, hz);
+  grad.addColorStop(0, '#fff176'); grad.addColorStop(0.6, '#ff9800'); grad.addColorStop(1, '#e91e63');
+  g.save(); g.beginPath(); g.arc(W / 2, hz - 60, 170, 0, 6.2832); g.clip();
+  g.fillStyle = grad; g.fillRect(0, 0, W, hz);
+  g.globalCompositeOperation = 'destination-out';
+  for (let i = 0; i < 6; i++) g.fillRect(0, hz - 110 + i * 22, W, 4 + i * 2);
+  g.restore();
+  g.globalCompositeOperation = 'destination-over'; g.fillStyle = '#b13b8e'; g.fillRect(0, 0, W, hz); g.globalCompositeOperation = 'source-over';
+  g.fillStyle = '#1b0b3a'; g.beginPath(); g.moveTo(0, hz);
+  [[0, 300], [90, 250], [170, 310], [260, 230], [350, 330], [600, 320], [700, 240], [790, 300], [880, 255], [960, 310], [960, hz]].forEach(([x, y]) => g.lineTo(x, y));
+  g.fill();
+  g.fillStyle = '#0d0221'; g.fillRect(0, hz, W, H - hz);
+  g.strokeStyle = '#ff2fd0'; g.lineWidth = 2; g.beginPath();
+  for (let i = -20; i <= 20; i++) { g.moveTo(W / 2 + i * 14, hz); g.lineTo(W / 2 + i * 150, H); }
+  for (let i = 0; i < 12; i++) { const y = hz + (H - hz) * Math.pow(i / 12, 2.2); g.moveTo(0, y); g.lineTo(W, y); }
+  g.stroke();
+  return c;
+}
+
+const SAMPLES = [
+  { name: 'F1 pit stop', url: DEFAULT_IMAGE },
+  { name: 'Fuji poster', url: '../10/shot.webp' },
+  { name: 'Computer A-83', url: '../12/shot.webp' },
+  { name: 'Sunset grid', make: makeSunset },
+];
+function markSample(btn) { document.querySelectorAll('#samples button').forEach(b => b.classList.toggle('sel', b === btn)); }
+function pickSample(i) {
+  const smp = SAMPLES[i];
+  if (!smp) return;
+  currentSample = i; markSample(smp.btn); save();
+  if (smp.canvas) { stopCam(false); setSource(smp.canvas, smp.canvas.width, smp.canvas.height, `${smp.name} · ${smp.canvas.width} x ${smp.canvas.height}`); }
+  else loadUrl(smp.url, smp.name, false);
+}
+SAMPLES.forEach((smp, i) => {
+  const b = el('button'); b.type = 'button'; b.title = smp.name; b.setAttribute('aria-label', 'Sample: ' + smp.name);
+  if (smp.make) {
+    smp.canvas = smp.make();
+    const t = el('canvas'); t.width = t.height = 72;
+    const sc = 72 / smp.canvas.height;
+    t.getContext('2d').drawImage(smp.canvas, (72 - smp.canvas.width * sc) / 2, 0, smp.canvas.width * sc, 72);
+    b.append(t);
+  } else {
+    const im = el('img'); im.src = smp.url; im.alt = ''; im.loading = 'lazy';
+    im.onerror = () => { b.hidden = true; };               // sample file missing: just drop its button
+    b.append(im);
   }
-  ctx.putImageData(imageData,0,0);
-  setSectionBackground(canvas, scanlineSection, "scanline");
-}
-
-// Pixel Art
-function drawPixelArt() {
-  const canvas = document.createElement('canvas');
-  const w = pixelSection.clientWidth; const h = pixelSection.clientHeight;
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d');
-
-  const scale = Math.max(w/img.width, h/img.height);
-  const sw = img.width*scale; const sh = img.height*scale;
-  const sx = (w-sw)/2; const sy = (h-sh)/2;
-
-  const blockSize = parseInt(pixelSlider.value);
-  ctx.drawImage(img, sx, sy, sw, sh);
-  let imageData = ctx.getImageData(0,0,w,h);
-  let data = imageData.data;
-
-  const numColors = parseInt(colorSlider.value);
-  const colors = [];
-  for(let i=0;i<data.length;i+=4) colors.push([data[i],data[i+1],data[i+2]]);
-
-  function getClosestColor(r,g,b,palette){
-    let minDist=Infinity, closest=palette[0];
-    for(const c of palette){
-      const d=(r-c[0])**2+(g-c[1])**2+(b-c[2])**2;
-      if(d<minDist){ minDist=d; closest=c;}
-    }
-    return closest;
-  }
-
-  const palette=[]; const step=Math.floor(colors.length/numColors);
-  for(let i=0;i<colors.length && palette.length<numColors;i+=step) palette.push(colors[i]);
-
-  for(let y=0;y<h;y+=blockSize){
-    for(let x=0;x<w;x+=blockSize){
-      let r=0,g=0,b=0,count=0;
-      for(let by=0;by<blockSize;by++){
-        for(let bx=0;bx<blockSize;bx++){
-          let px=x+bx, py=y+by;
-          if(px>=w || py>=h) continue;
-          let idx=(py*w+px)*4;
-          r+=data[idx]; g+=data[idx+1]; b+=data[idx+2]; count++;
-        }
-      }
-      r=Math.floor(r/count); g=Math.floor(g/count); b=Math.floor(b/count);
-      const [nr,ng,nb] = getClosestColor(r,g,b,palette);
-      for(let by=0;by<blockSize;by++){
-        for(let bx=0;bx<blockSize;bx++){
-          let px=x+bx, py=y+by;
-          if(px>=w || py>=h) continue;
-          let idx=(py*w+px)*4;
-          data[idx]=nr; data[idx+1]=ng; data[idx+2]=nb;
-        }
-      }
-    }
-  }
-  ctx.putImageData(imageData,0,0);
-  setSectionBackground(canvas, pixelSection, "pixel");
-}
-
-// ASCII
-function drawASCII() {
-  const canvas = document.createElement('canvas');
-  const w = asciiSection.clientWidth; const h = asciiSection.clientHeight;
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d');
-
-  const tempCanvas = document.createElement('canvas');
-  const scaleVal = parseInt(asciiSlider.value);
-  tempCanvas.width = scaleVal; tempCanvas.height = Math.floor(scaleVal*0.6);
-  const tempCtx = tempCanvas.getContext('2d');
-
-  const scale = Math.max(tempCanvas.width/img.width, tempCanvas.height/img.height);
-  const sw = img.width*scale; const sh = img.height*scale;
-  const sx = (tempCanvas.width-sw)/2; const sy = (tempCanvas.height-sh)/2;
-  tempCtx.drawImage(img, sx, sy, sw, sh);
-
-  let imgData = tempCtx.getImageData(0,0,tempCanvas.width,tempCanvas.height).data;
-  const chars=" .:-=+*#%@";
-  ctx.font = "6px monospace"; ctx.fillStyle = "#aaa";
-
-  for(let y=0;y<tempCanvas.height;y++){
-    for(let x=0;x<tempCanvas.width;x++){
-      let idx=(y*tempCanvas.width+x)*4;
-      let avg=(imgData[idx]+imgData[idx+1]+imgData[idx+2])/3;
-      let char = chars[Math.floor((avg/255)*(chars.length-1))];
-      ctx.fillText(char, x*(w/tempCanvas.width), y*(h/tempCanvas.height));
-    }
-  }
-  setSectionBackground(canvas, asciiSection, "ascii");
-}
-
-// Event listeners
-scanlineSlider.addEventListener('input', drawScanline);
-pixelSlider.addEventListener('input', drawPixelArt);
-colorSlider.addEventListener('input', drawPixelArt);
-asciiSlider.addEventListener('input', drawASCII);
-
-window.addEventListener('resize', () => {
-  if(img.src) { drawScanline(); drawPixelArt(); drawASCII(); }
+  smp.btn = b;
+  b.addEventListener('click', () => pickSample(i));
+  $('#samples').append(b);
 });
 
-// Download handlers
-document.getElementById("downloadScanline").addEventListener("click", () => {
-  downloadCanvas(canvases.scanline, "scanline.png");
-});
-document.getElementById("downloadASCII").addEventListener("click", () => {
-  downloadCanvas(canvases.ascii, "ascii.png");
-});
-document.getElementById("downloadPixel").addEventListener("click", () => {
-  downloadCanvas(canvases.pixel, "pixel.png");
+/* ---------- webcam ---------- */
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) camBtn.hidden = false;
+
+async function startCam() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (err) {
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    toast('Camera not available (blocked, in use, or the page is not on https)');
+    return;
+  }
+  live = true;
+  camBtn.textContent = 'Stop cam'; camBtn.classList.add('on');
+  markSample(null); currentSample = -1; save();
+  setSource(video, video.videoWidth, video.videoHeight, 'Webcam (live)');
+  let last = 0;
+  const tick = (now) => {
+    if (!live) return;
+    if (now - last >= LIVE_FRAME_MS) {
+      last = now;
+      source.w = video.videoWidth; source.h = video.videoHeight;
+      panels.forEach(render);
+    }
+    requestAnimationFrame(tick);                           // the browser pauses this while the tab is hidden
+  };
+  requestAnimationFrame(tick);
+}
+
+// freeze = true keeps the last camera frame as a still picture to keep editing.
+function stopCam(freeze) {
+  if (!live) return;
+  live = false;
+  let still = null;
+  if (freeze && video.videoWidth) {
+    still = document.createElement('canvas'); still.width = video.videoWidth; still.height = video.videoHeight;
+    still.getContext('2d').drawImage(video, 0, 0);
+  }
+  stream.getTracks().forEach(t => t.stop()); stream = null; video.srcObject = null;
+  camBtn.textContent = 'Webcam'; camBtn.classList.remove('on');
+  if (still) setSource(still, still.width, still.height, `Webcam snapshot · ${still.width} x ${still.height}`);
+}
+camBtn.addEventListener('click', () => { if (live) stopCam(true); else startCam(); });
+
+/* ---------- reset ---------- */
+$('#resetBtn').addEventListener('click', () => {
+  panels.forEach(p => {
+    if (p.fx === null) return;
+    p.fx = DEFAULT_FX[p.index - 1];
+    for (const key in FX) p.params[key] = defaultsOf(key);
+    p.compare = false; p.wipe = 0.5;
+    syncPanel(p);
+  });
+  scheduleAll(); save();
+  toast('Effects reset');
 });
 
-function downloadCanvas(canvas, filename) {
-  if (!canvas) return;
-  const link = document.createElement("a");
-  link.download = filename;
-  link.href = canvas.toDataURL();
-  link.click();
+/* ---------- start ---------- */
+for (let i = 0; i < 4; i++) makePanel(i);
+try { applyState(JSON.parse(localStorage.getItem(STORE_KEY))); } catch (e) {}   // last visit's settings
+const linked = parseHash();
+if (linked) {                                              // a shared link wins; then drop it from the address bar so later changes are not overridden on reload
+  applyState(linked);
+  history.replaceState(null, '', location.pathname + location.search);
+  save();
 }
+fitSel.value = fit;
+panels.slice(1).forEach(syncPanel);
+pickSample(currentSample >= 0 ? currentSample : 0);        // an upload or webcam picture is not kept: fall back to the default
+})();
 </script>
 
-    <script src="../../info-link.js" data-info="info.html"></script>
+    <script src="../../info-link.js" data-info="info.html" data-slot=".bar"></script>
 </body>
 </html>

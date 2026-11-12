@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Image Effects Studio - How it works</title>
+    <title>Retro Image Effects Studio - How it works</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
@@ -16,89 +16,142 @@
         <a class="alt" href="../../index.html">PORTFOLIO</a>
     </div>
     <span class="chip">How it works &middot; Project 03</span>
-    <h1>Image Effects Studio</h1>
-    <p class="tagline">Scanline, ASCII and pixel-art effects, live in the browser.</p>
+    <h1>Retro Image Effects Studio</h1>
+    <p class="tagline">Scanline, CRT, ASCII, pixel-art and halftone effects, live in the browser.</p>
     <section class="panel hl">
         <h2>What it is</h2>
-        <p>Load a picture (or use the sample) and see it as the original plus three retro effects at once in a 2&times;2 grid. Sliders change each effect live and each result can be downloaded as a PNG.</p>
+        <p>Load a picture (upload, drop, paste, a sample, or the webcam) and see it as the original plus three retro effects at once. Each of the three effect panels can show any of five effects. Sliders change the effect live, and each result can be downloaded as a PNG at the picture's own resolution.</p>
     </section>
     <section class="panel">
         <h2>Files and loading</h2>
         <ul>
-            <li>One page, plain JavaScript and canvas. No libraries.</li>
+            <li>One page (<code>index.html</code>), plain JavaScript and canvas. No libraries.</li>
             <li>The default picture is <code>images/f1_pitstop.jpg</code>, also kept in the offline cache.</li>
+            <li>Sample pictures in the top bar: the default, <code>../10/shot.webp</code> (Fuji poster), <code>../12/shot.webp</code> (Computer A-83) and a "Sunset grid" drawn in code by <code>makeSunset()</code> (needs no file). A sample whose file fails to load hides its own button.</li>
+            <li>The page must be served over http(s). Opened straight from disk (<code>file://</code>) the browser blocks reading canvas pixels, so the pixel-reading effects fail.</li>
         </ul>
     </section>
     <section class="panel">
         <h2>Controls</h2>
         <ul>
-            <li>Choose a file, or <b>drag and drop</b> an image onto the Original section.</li>
-            <li>Sliders: scanline density (1-10), ASCII scale (20-200), pixel block size (1-20), number of colours (4-40).</li>
-            <li>A <b>Download</b> button under each effect saves it as a PNG.</li>
-            <li>Resizing the window redraws everything.</li>
+            <li><b>Picture:</b> the <b>Upload</b> button, a click anywhere on the Original picture, <b>drag and drop</b> anywhere on the page (the Original panel gets a dashed outline), or <b>paste</b> an image from the clipboard. Only the first file is used and it must be an image.</li>
+            <li><b>Samples:</b> the four small thumbnails in the top bar. The chosen one has a yellow border.</li>
+            <li><b>Webcam:</b> starts the camera and all four panels update live (about 12 times a second). <b>Stop cam</b> keeps the last frame as a still picture to keep editing. The button is hidden when the browser has no camera API; the camera needs https or localhost.</li>
+            <li><b>Effect list</b> in each panel header: Scanline, CRT, ASCII, Pixel Art, Halftone. Each panel remembers its settings per effect.</li>
+            <li><b>Download</b> saves that panel as a PNG. <b>Copy text</b> (ASCII only) copies the characters to the clipboard. <b>Share</b> (only shown where the browser can share image files, mostly phones) sends the PNG to the system share sheet.</li>
+            <li><b>Compare</b> checkbox in each effect panel: shows the original on the left and the effect on the right of a divider. Drag anywhere across the picture to move the divider. Downloads are not affected.</li>
+            <li><b>Fit</b> (top bar): <i>fill (crop)</i> crops the picture to fill each panel; <i>whole image</i> shows all of it with empty bars at the sides or top, and downloads are then the full uncropped picture.</li>
+            <li><b>Save all</b> saves one PNG, <code>retro-effects.png</code>, with the original and the three effects in a 2&times;2 sheet.</li>
+            <li><b>Copy link</b> copies an address that opens the page with the same effects and settings (see Saved settings and links).</li>
+            <li><b>Expand</b> (or a double-click on an effect picture) shows one panel over the whole page; <b>Close</b> or <kbd>Esc</kbd> goes back.</li>
+            <li><b>Reset</b> puts every panel back to its default effect and default slider values and switches Compare off. The picture and the Fit mode stay.</li>
         </ul>
     </section>
     <section class="panel">
-        <h2>How each effect works</h2>
-        <table><tr><th>Effect</th><th>Logic</th></tr><tr><td>Scanline</td><td><code>drawScanline</code> blacks out every Nth row of pixels.</td></tr><tr><td>Pixel art</td><td><code>drawPixelArt</code> averages blocks of pixels, then snaps each block to a small palette taken evenly from the picture's own colours.</td></tr><tr><td>ASCII</td><td><code>drawASCII</code> shrinks the picture to a tiny canvas and maps each pixel's brightness to a character from <code> .:-=+*#%@</code> (darkest is a space), drawn in 6px monospace.</td></tr></table>
+        <h2>The five effects</h2>
+        <table><tr><th>Effect</th><th>Controls (range, default)</th><th>Logic</th></tr>
+        <tr><td>Scanline</td><td>Line spacing 2-12 (3), Darkness 20-100% (90)</td><td>Draws the picture, then a dark stripe every <i>spacing</i> pixels. Stripe thickness is a third of the spacing (at least 1 pixel).</td></tr>
+        <tr><td>CRT</td><td>Curvature 0-40 (14), Glow 0-100% (45), Line spacing 2-8 (3)</td><td>Bends the picture like a tube screen, adds scanlines, a red/green/blue stripe mask and darker corners, then adds a blurred copy on top for glow.</td></tr>
+        <tr><td>ASCII</td><td>Columns 20-200 (100), Colour on/off (off)</td><td>Shrinks the picture to one pixel per character and maps brightness to a character from <code> .:-=+*#%@</code> (darkest is a space).</td></tr>
+        <tr><td>Pixel Art</td><td>Block size 1-20 (4), Colours 2-40 (16), Palette (From image), Dither (None)</td><td>Shrinks the picture to one pixel per block, reduces it to a small palette, then scales it back up with hard edges.</td></tr>
+        <tr><td>Halftone</td><td>Dot size 3-30 (8), Colour on/off (off)</td><td>A grid of dots turned 45 degrees. Dot size follows how dark (or, in colour mode, how bright) the picture is at that spot.</td></tr></table>
+        <p>Default panels: Scanline (top right), ASCII (bottom left), Pixel Art (bottom right).</p>
     </section>
     <section class="panel">
-        <h2>Page layout and state</h2>
+        <h2>Page layout</h2>
         <ul>
-            <li>A 2&times;2 CSS grid (<code>.container</code>) below the 60px site bar, 10px gap and padding. <code>html, body</code> are <code>overflow:hidden</code>, so the page never scrolls; each cell is one quarter of the window.</li>
-            <li>Each effect canvas is created off-screen at the exact pixel size of its cell (<code>clientWidth</code> x <code>clientHeight</code>), converted with <code>toDataURL()</code> and set as the cell's CSS <code>background-image</code> (<code>cover</code>, centred). The <b>Original</b> cell simply shows the image as a CSS background.</li>
-            <li>The last canvas of each effect is kept in the <code>canvases</code> object (<code>scanline</code>, <code>ascii</code>, <code>pixel</code>) for the download buttons. Nothing is saved to <code>localStorage</code>; reloading restores the default picture and default slider values.</li>
-            <li>Every effect first draws the picture with a <b>cover</b> fit: <code>scale = max(w/img.width, h/img.height)</code>, centred, so the picture fills the cell and the overflow is cropped.</li>
+            <li><b>Top bar</b> (<code>.bar</code>): a 100px gap for the fixed HOME button, the title (hidden under 1180px wide), sample thumbnails, Upload, Webcam, Reset, Fit, Save all, Copy link, and the INFO button, which <code>info-link.js</code> puts inside the bar (<code>data-slot=".bar"</code>). The bar wraps onto more rows on narrow screens.</li>
+            <li>An effect with four controls (Pixel Art) lays them out as a 2&times;2 grid (<code>.ctls[data-n="4"]</code>); the others sit in one row.</li>
+            <li><b>Desktop:</b> a 2&times;2 CSS grid that fills the rest of the window; the page does not scroll.</li>
+            <li><b>Phones (700px wide or less):</b> one column that scrolls; each picture is 62% of the screen width tall (at least 200px). <b>Short windows (520px tall or less)</b>, such as a phone on its side: two columns that scroll, pictures 70% of the window height.</li>
+            <li>Each panel is a column: header row, picture, then the controls <b>below</b> the picture, so nothing covers the image.</li>
+            <li>Every slider shows its current value in yellow next to it. The <b>Colours</b> slider is greyed out unless the palette is "From image".</li>
         </ul>
     </section>
     <section class="panel">
-        <h2>Controls in detail</h2>
-        <table><tr><th>Control</th><th>Range / default</th><th>Redraws</th></tr>
-        <tr><td>Scanline Density</td><td>1-10, default 2</td><td>Scanline only</td></tr>
-        <tr><td>ASCII Scale</td><td>20-200, default 100</td><td>ASCII only</td></tr>
-        <tr><td>Pixel Block Size</td><td>1-20, default 3</td><td>Pixel Art only</td></tr>
-        <tr><td>Colors</td><td>4-40, default 20</td><td>Pixel Art only</td></tr>
-        <tr><td>Window resize</td><td>-</td><td>All three effects (not debounced)</td></tr></table>
+        <h2>How drawing works</h2>
         <ul>
-            <li>Sliders use the <code>input</code> event, so effects update continuously while dragging.</li>
-            <li><b>Loading:</b> the hidden <code>&lt;input type=file accept="image/*"&gt;</code> is triggered by the <i>Click to select</i> label; dropping a file on the Original cell takes only the first file and only if its MIME type starts with <code>image/</code>. The file is read with <code>FileReader.readAsDataURL</code> and assigned to <code>img.src</code>.</li>
-            <li>While a file is dragged over the Original cell its background turns <code>#333</code>; on <code>dragleave</code> it is set to <code>#252525</code> (this replaces the shorthand background, so the picture may disappear until the next load).</li>
-            <li><b>Download</b> buttons save <code>scanline.png</code>, <code>ascii.png</code> and <code>pixel.png</code> at the on-screen cell size (not the original resolution). The ASCII PNG has a transparent background with grey text.</li>
+            <li>Each panel has a real <code>&lt;canvas&gt;</code> on the page. Effects draw straight into it; there is no <code>toDataURL()</code> step while you drag a slider.</li>
+            <li>The canvas is sized to the panel in device pixels: CSS size &times; <code>devicePixelRatio</code>, capped at <code>MAX_DPR = 2</code>. In webcam mode the factor is 1 to keep it fast.</li>
+            <li><code>schedule(panel)</code> queues one redraw per animation frame, so many slider events in one frame cost a single draw. Only the panel you changed is redrawn.</li>
+            <li>A <code>ResizeObserver</code> on each picture redraws that panel <code>RESIZE_DELAY = 90</code> ms after the last size change (debounced).</li>
+            <li>Every effect starts with a <b>cover</b> fit (<code>drawCover</code>): <code>scale = max(w / imageWidth, h / imageHeight)</code>, centred, so the picture fills the panel and the overflow is cropped.</li>
+            <li>Effect functions have the form <code>draw(ctx, W, H, s, o, panel)</code>: <code>W</code>&times;<code>H</code> in canvas pixels, <code>s</code> = canvas pixels per CSS pixel, <code>o</code> = the settings. All sizes are multiplied by <code>s</code>, so an effect looks the same on screen and in a large download.</li>
+            <li><b>Download</b> draws the effect again on an off-screen canvas with the same crop as the preview but at the picture's own resolution: <code>s = max(1 / coverScale, screen factor)</code>, with the longest side capped at <code>MAX_EXPORT = 4096</code>. It is saved with <code>toBlob</code> as <code>scanline.png</code>, <code>crt.png</code>, <code>ascii.png</code>, <code>pixel.png</code> or <code>halftone.png</code>. All PNGs are opaque (ASCII has a near-black background).</li>
+            <li><b>Fit:</b> <code>rectOf(panel)</code> gives the rectangle the picture occupies inside the panel: the whole panel for <i>fill</i>, or the largest centred box with the picture's own shape for <i>whole image</i>. The <code>.stage</code> element (which holds the canvas) is moved to that rectangle, so the effects themselves do not change. A download uses the same rectangle, which is why <i>whole image</i> downloads are uncropped.</li>
+            <li><b>Compare:</b> a second canvas (<code>canvas.orig</code>) with the plain picture lies on top of the effect and is cut with <code>clip-path: inset(0 X% 0 0)</code>; the divider is a thin element at the same position. <code>setWipe(panel, 0..1)</code> moves both.</li>
+            <li><b>Save all:</b> every panel is drawn off-screen in the shape of the first visible panel (longest side up to 2048px) and the four tiles are placed on one canvas with a small dark gap.</li>
         </ul>
     </section>
     <section class="panel">
-        <h2>Algorithm details and constants</h2>
-        <h3>Scanline</h3>
-        <p>Loop over rows <code>y</code>; when <code>y % density === 0</code> the R, G and B bytes of the whole row are set to 0 (alpha stays 255). Density 1 therefore blacks out every row; density 10 blacks out one row in ten.</p>
-        <h3>Pixel art</h3>
-        <ol>
-            <li>All pixels of the cropped canvas are read into an array of <code>[r,g,b]</code>.</li>
-            <li>The palette is built by sampling that array every <code>step = floor(pixelCount / numColors)</code> pixels until <code>numColors</code> entries exist. It is a plain even sampling in scan order, not a clustering algorithm like k-means, so the palette mostly contains colours from the upper part of the picture and the same colour can appear several times.</li>
-            <li>The canvas is walked in blocks of <code>blockSize</code>; the block's average (<code>Math.floor</code> per channel, edge blocks only count pixels inside the canvas) is replaced by the nearest palette entry using squared RGB distance, and the whole block is filled with it.</li>
-            <li>Cost is roughly (pixels) + (blocks x palette size), which is why block size 1 with 40 colours is the slowest setting.</li>
-        </ol>
+        <h2>Saved settings and links</h2>
+        <ul>
+            <li>Settings are saved in <code>localStorage</code> under <code>retro-fx-studio</code>, 300 ms after any change, and restored on the next visit: Fit mode, the chosen sample, and per effect panel the effect, the slider values of <b>every</b> effect, Compare on/off and the divider position.</li>
+            <li>An uploaded or webcam picture is <b>not</b> saved; the next visit starts with the default picture (settings are kept).</li>
+            <li><b>Copy link</b> puts the visible settings after <code>#</code> in the address, for example <code>#fit=contain&amp;img=3&amp;p1=crt,14,45,3&amp;p2=ascii,100,1&amp;p3=pixel,4,16,gameboy,bayer&amp;cmp=010</code>.</li>
+        </ul>
+        <table><tr><th>Part</th><th>Meaning</th></tr>
+        <tr><td><code>fit</code></td><td><code>cover</code> (fill, crop) or <code>contain</code> (whole image)</td></tr>
+        <tr><td><code>img</code></td><td>Sample number 0-3 in the order of the top bar. Left out for an uploaded or webcam picture, which cannot travel in a link.</td></tr>
+        <tr><td><code>p1</code>, <code>p2</code>, <code>p3</code></td><td>The three effect panels: effect key (<code>scanline</code>, <code>crt</code>, <code>ascii</code>, <code>pixel</code>, <code>halftone</code>), then that effect's controls in the order shown on the page. Checkboxes are 0 or 1; palettes are <code>auto</code>, <code>gameboy</code>, <code>cga</code>, <code>pico8</code>, <code>onebit</code>; dither is <code>none</code>, <code>bayer</code>, <code>fs</code>.</td></tr>
+        <tr><td><code>cmp</code></td><td>Three digits, Compare on (1) or off (0) per effect panel.</td></tr></table>
+        <ul>
+            <li>On opening a link the settings are applied on top of the saved ones, saved, and the <code>#...</code> part is removed from the address bar, so later changes are not undone by a reload.</li>
+            <li>Every value is checked: numbers are rounded and limited to the slider's range, unknown effect or option names fall back to the default.</li>
+            <li>If you change the order of an effect's <code>controls</code>, old links for that effect will read the wrong values.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Algorithm details</h2>
+        <h3>CRT</h3>
+        <ul>
+            <li>For every output pixel, position is turned into <code>nx, ny</code> in -1..1. With <code>k = curvature / 100</code> and <code>r2 = nx&sup2; + ny&sup2;</code>, the source position is <code>(nx, ny) &times; (1 + k&middot;r2) / (1 + k)</code>. Positions outside -1..1 are black, which gives the rounded corners.</li>
+            <li>Brightness is multiplied by 0.5 on scanline rows and by <code>1 - 0.22&middot;r2</code> (vignette). Every third column boosts one of red, green or blue (&times;1.2) and dims the other two (&times;0.86).</li>
+            <li>Glow: the result is shrunk to a tenth of its size, stretched back (which blurs it) and added with <code>'lighter'</code> blending at <code>glow% &times; 0.7</code> strength. This avoids <code>ctx.filter</code>, which older Safari lacks.</li>
+        </ul>
         <h3>ASCII</h3>
         <ul>
-            <li>The picture is drawn (cover fit) into a tiny temporary canvas of <code>scale</code> x <code>floor(scale*0.6)</code> pixels, where <code>scale</code> is the slider value. The 0.6 factor compensates for characters being taller than they are wide.</li>
-            <li>Each tiny pixel gives brightness <code>avg = (r+g+b)/3</code>; the character is <code>chars[floor(avg/255 * (chars.length-1))]</code> with <code>chars = " .:-=+*#%@"</code> (starting with a space for the darkest tone).</li>
-            <li>Characters are drawn with <code>fillText</code> in <code>6px monospace</code>, colour <code>#aaa</code>, at x = column x (cell width / columns) and y = row x (cell height / rows). A larger slider means more, denser characters; a small one gives a coarse, large-spaced result.</li>
+            <li>Cell width is <code>W / columns</code>. Rows are <code>round(H / (cellWidth / 0.6))</code>, because a monospace character is about 0.6 as wide as it is tall. So the number of rows follows the panel's shape.</li>
+            <li>The font size is set from the cell size and each character is drawn centred in its cell, so nothing is clipped at the top and the text fills the panel at every slider value.</li>
+            <li>Brightness uses <code>0.299r + 0.587g + 0.114b</code>. Colour mode draws each character in the cell's colour, lifted so the brightest channel is at least 170.</li>
+            <li>The same characters are kept as plain text (<code>panel.text</code>) for <b>Copy text</b>.</li>
+        </ul>
+        <h3>Pixel Art</h3>
+        <ol>
+            <li>The picture is drawn into a tiny canvas with one pixel per block; the browser's downscaling averages each block.</li>
+            <li><b>Palette "From image":</b> <code>medianCut</code> takes up to 16,384 sample pixels, puts them in one box, and keeps splitting the box with the widest colour spread at its median until there are as many boxes as colours. Each box's average is one palette colour. Fixed palettes: Game Boy (4 greens), CGA (black, cyan, magenta, white), PICO-8 (16 colours), 1-bit (black, white).</li>
+            <li>Each pixel snaps to the nearest palette colour (squared RGB distance). <code>makeNearest</code> caches the answer per 5-bit-per-channel colour, so it stays fast.</li>
+            <li><b>Dither Bayer:</b> a fixed 4&times;4 threshold pattern is added before snapping; its strength is <code>255 / cbrt(paletteSize)</code>. <b>Floyd-Steinberg:</b> each pixel's rounding error is passed to its right and lower neighbours (7/16, 3/16, 5/16, 1/16).</li>
+            <li>The tiny canvas is drawn back at full size with image smoothing off.</li>
+        </ol>
+        <h3>Halftone</h3>
+        <ul>
+            <li>The picture is shrunk to one pixel per dot cell. Dots sit on a grid rotated 45 degrees around the centre.</li>
+            <li>Plain mode: dark ink dots on a paper colour, radius <code>cell &times; 0.72 &times; sqrt(darkness)</code>, so dot <i>area</i> follows darkness. Dark pictures therefore look mostly ink with small paper gaps.</li>
+            <li>Colour mode: dots on black, coloured with the cell's hue at full brightness, radius from the brightest channel.</li>
         </ul>
     </section>
     <section class="panel">
         <h2>Edge cases</h2>
         <ul>
-            <li>The default image is drawn when <code>img.complete</code> is true at script time; otherwise <code>img.onload</code> is set to redraw. Because that handler exists only in the second case, an uploaded file redraws the effects automatically only if the default image had not been cached when the script ran; in the other case move any slider or resize the window to refresh the effects.</li>
-            <li>All processing is synchronous on the main thread, so very large photos or huge windows can make slider dragging feel heavy.</li>
-            <li>The page is touch friendly through the native range inputs; there is no keyboard shortcut of its own.</li>
+            <li>Every picture is loaded into a new <code>Image</code> and the effects redraw from its <code>onload</code>, so an upload always refreshes all panels. A file that is not an image, or fails to decode, shows a short message and keeps the current picture.</li>
+            <li>If the camera is blocked, in use, or the page is not on https, a message is shown and nothing else changes. The live loop uses <code>requestAnimationFrame</code>, so it pauses while the tab is hidden.</li>
+            <li>CRT and Pixel Art with Floyd-Steinberg run a loop over every pixel on the main thread. They are the slowest settings, most noticeable with the webcam on or in a 4096px download.</li>
+            <li>With Fit set to <i>fill</i>, a download uses the panel's current shape; expand the panel first for a wider crop, or switch Fit to <i>whole image</i> for no crop.</li>
+            <li>If storage is blocked (private mode) settings are simply not remembered. If the clipboard is blocked, Copy link shows the address in the message instead.</li>
+            <li>The card pictures on the main page (<code>images/0.webp</code> pixel art, <code>1.webp</code> colour ASCII, <code>2.webp</code> CRT, each 1265&times;411) are effect outputs of the default picture made with this page; make them again if the default picture or the effects change.</li>
+            <li>While a panel is expanded the other three are hidden and are not redrawn; they redraw when you close it.</li>
         </ul>
     </section>
     <section class="panel">
         <h2>Customising</h2>
         <ul>
-            <li><b>Default picture:</b> change the path in <code>img.src = "./images/f1_pitstop.jpg"</code> (and keep it in the offline manifest).</li>
-            <li><b>Slider ranges and defaults:</b> the <code>min</code>, <code>max</code> and <code>value</code> attributes on the four <code>input type=range</code> elements.</li>
-            <li><b>ASCII look:</b> the <code>chars</code> string (dark to light), the <code>0.6</code> aspect factor, the font string and <code>fillStyle</code> in <code>drawASCII</code>.</li>
-            <li><b>Add an effect:</b> add a <code>.section</code> block in the HTML, write a <code>drawX</code> function that ends with <code>setSectionBackground(canvas, section, key)</code>, call it in <code>processDefaultImage</code> and the resize handler, and add a download button calling <code>downloadCanvas</code>.</li>
+            <li><b>Default picture:</b> <code>DEFAULT_IMAGE</code> (keep it in the offline manifest). <b>Samples:</b> the <code>SAMPLES</code> list.</li>
+            <li><b>Slider ranges and defaults:</b> the <code>controls</code> list of each entry in <code>FX</code>. <b>Default effect per panel:</b> <code>DEFAULT_FX</code>.</li>
+            <li><b>ASCII look:</b> <code>ASCII_RAMP</code> (dark to light), the <code>0.6</code> aspect factor, the font string and colours in <code>FX.ascii.draw</code>.</li>
+            <li><b>Add a palette:</b> add a line to <code>PALETTES</code> and an option to the Palette control in <code>FX.pixel</code>.</li>
+            <li><b>Add an effect:</b> add an entry to <code>FX</code> with <code>label</code>, <code>controls</code> (type <code>range</code> by default, or <code>select</code> / <code>check</code>) and a <code>draw</code> function. It then appears in every panel's list with working controls, download and reset; no HTML changes are needed.</li>
+            <li><b>Speed and quality limits:</b> <code>MAX_DPR</code>, <code>MAX_EXPORT</code>, <code>LIVE_FRAME_MS</code>, <code>RESIZE_DELAY</code> at the top of the script.</li>
         </ul>
     </section>
     <section class="panel">
