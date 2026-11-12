@@ -781,7 +781,7 @@ const NOTIF_GEN = [
     () => ({ app: 'Pixel Racer', icon: '🏎️', color: '#ff6050', title: 'New lap record on Chicago', text: 'A rival just beat your time. Take it back?', act: 'go:../09/index.html' }),
     () => ({ app: 'Low-Poly Strike', icon: '🎯', color: '#e74c3c', title: 'Match ready', text: 'Three bots are waiting in Free Area.', act: 'go:../08/index.html' }),
     () => ({ app: 'Windows 98', icon: '🖥️', color: '#008080', title: 'You’ve got mail!', text: 'A message is waiting on the 98 desktop.', act: 'go:../05/index.html' }),
-    () => ({ app: 'Parking Puzzle', icon: '🚗', color: '#e6b800', title: 'Daily puzzle', text: 'Free the red car in par moves for 3 stars.', act: 'go:../../page2.html' }),
+    () => ({ app: 'Parking Puzzle', icon: '🚗', color: '#e6b800', title: 'Daily puzzle', text: 'Free the red car in par moves for 3 stars.', act: 'go:../06/index.html' }),
     () => ({ app: 'PS Music Player', icon: '💿', color: '#e84393', title: 'Spin a disc', text: 'Your playlist misses you.', act: 'go:../04/index.html' }),
     () => ({ app: 'Retro FX', icon: '📺', color: '#00a5ff', title: 'Try ASCII mode', text: 'Turn any photo into scanlines or text art.', act: 'go:../03/index.html' }),
     () => { const n = store.get('todos', []).filter(t => !t.d).length; return n ? { app: 'To-do', icon: '✅', color: '#00cec9', title: `${n} task${n > 1 ? 's' : ''} left`, text: 'Tick one off before the day ends.', act: 'app:todo' } : null; },

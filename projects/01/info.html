@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BMW M3 GTR - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="index.html">&#9664; Back to the scene</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 01</span>
+    <h1>BMW M3 GTR</h1>
+    <p class="tagline">A car configurator built in the Godot engine and exported to the web.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>A 3D BMW M3 GTR you can orbit, repaint, change wheels on, steer, open the doors of and sit inside. The whole interface is built by code in Godot and the result runs in the browser as WebAssembly. A CRT-style filter gives it a retro look.</p>
+    </section>
+    <section class="panel">
+        <h2>Files and loading</h2>
+        <table><tr><th>File</th><th>Role</th></tr><tr><td><code>projects/01/index.html</code></td><td>Godot web page: loads the engine, shows a progress bar.</td></tr><tr><td><code>index.js</code>, <code>index.wasm</code> (about 43 MB), <code>index.pck</code> (about 24 MB)</td><td>The engine, and the packed game data (models, textures, scripts).</td></tr><tr><td><code>godot_project/BMW_M3_GTR/</code></td><td>The Godot source project: scene, scripts, shader and web export settings.</td></tr></table>
+        <ul>
+            <li>Single-threaded web export, so it needs no special server headers.</li>
+            <li>The three big files are in the offline "heavy" list: saved on first use, or all at once from the main page.</li>
+            <li>The page does not load the shared HOME button, so use the browser back button.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Controls</h2>
+        <ul>
+            <li><b>Drag</b> to orbit the car. <b>Mouse wheel</b> or <b>two-finger pinch</b> zooms (limits 2.5 to 6 units).</li>
+            <li><b>Interior view:</b> the camera moves to the driver's seat. Drag to look around (full turn sideways, 85&deg; up and down), wheel changes field of view (60&deg; to 110&deg;).</li>
+        </ul>
+        <table><tr><th>Tab</th><th>What you can change</th></tr><tr><td>PAINT</td><td>6 body colours, finish (gloss, matte, metallic), stripe style (original, none, centre, dual, original plus centre) and stripe colour</td></tr><tr><td>WHEELS</td><td>Rims (chrome, black, gold), brake calipers (red, yellow, blue), steer left, centre or right</td></tr><tr><td>CAR</td><td>Headlights, doors, windows</td></tr><tr><td>VIEW</td><td>Turn 90&deg; left or right, top view, low view, interior or exterior, auto rotate, labels, SHOT (saves a PNG)</td></tr><tr><td>SETTINGS</td><td>Metric or imperial units, theme, reset scene</td></tr><tr><td>INFO</td><td>Specs and live FPS, draw-call and memory stats</td></tr></table>
+        <p>A <b>FILTER</b> button cycles the look: CRT, off, noir, warm, cinema, vivid.</p>
+    </section>
+    <section class="panel">
+        <h2>How it works</h2>
+        <ul>
+            <li><b>Scripts</b> (all in <code>godot_project/BMW_M3_GTR/Scripts/</code>): <code>hud.gd</code> builds the whole interface in code, <code>camera_3d3.gd</code> is the orbit and interior camera, <code>reset_scene.gd</code>, <code>rotate_object_multiple.gd</code> (swings the doors) and <code>FPS.gd</code>.</li>
+            <li><b>Paint shader:</b> a custom spatial shader swaps the body colour and the stripe colour of the car's paint texture independently. It finds the navy stripe pixels by how blue they are, and can draw centre or dual stripes from the texture's horizontal coordinate.</li>
+            <li><b>Steering:</b> the front wheels are part of merged meshes, so at startup the game splits them out by measuring each triangle's distance from the wheel centre. That lets them turn.</li>
+            <li><b>Speed:</b> <code>tools/merge_car_meshes.gd</code> is an editor script that merges the car meshes by material, cutting roughly 195 draw calls to about 30. A black veil hides the first-frame hitch.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Changing it</h2>
+        <ul>
+            <li>Open <code>godot_project/BMW_M3_GTR/project.godot</code> in Godot 4, edit, then export for web into <code>export/</code>.</li>
+            <li>Copy the exported <code>index.html</code>, <code>.js</code>, <code>.wasm</code>, <code>.pck</code> and the audio worklet into <code>projects/01/</code>, then run <code>python tools/build_offline_manifest.py</code>.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Page startup in detail</h2>
+        <p>This <code>index.html</code> is the standard Godot 4 web export template; the configuration object it passes to <code>new Engine()</code> is worth knowing.</p>
+        <table><tr><th>Setting</th><th>Value</th><th>Meaning</th></tr>
+        <tr><td><code>executable</code></td><td><code>"index"</code></td><td>The engine loads <code>index.wasm</code> and <code>index.pck</code> by this base name.</td></tr>
+        <tr><td><code>fileSizes</code></td><td>pck 24,056,752 bytes, wasm 43,016,933 bytes</td><td>Used for the progress bar total. If you re-export, these numbers are regenerated.</td></tr>
+        <tr><td><code>GODOT_THREADS_ENABLED</code></td><td><code>false</code></td><td>Single-threaded build; <code>ensureCrossOriginIsolationHeaders</code> is also false, so no service worker or COOP/COEP headers are needed.</td></tr>
+        <tr><td><code>canvasResizePolicy</code></td><td><code>2</code></td><td>Adaptive: the canvas follows the window size.</td></tr>
+        <tr><td><code>focusCanvas</code></td><td><code>true</code></td><td>The canvas takes keyboard focus on start.</td></tr>
+        <tr><td><code>args</code>, <code>gdextensionLibs</code></td><td>both empty</td><td>No command-line arguments and no native extensions.</td></tr></table>
+        <ol>
+            <li>The page first calls <code>Engine.getMissingFeatures()</code>. If the browser lacks something (for example WebGL2 or WebAssembly), a red notice lists the missing features instead of starting the game.</li>
+            <li>Otherwise the overlay shows <code>index.png</code> as a splash and a <code>&lt;progress&gt;</code> bar. <code>onProgress(current, total)</code> sets its value, or makes it indeterminate when the size is unknown.</li>
+            <li>When <code>startGame()</code> resolves the overlay is removed; if it rejects, the error text is shown in the notice box.</li>
+        </ol>
+        <ul>
+            <li>The viewport meta has <code>user-scalable=no</code> and the body has <code>touch-action: none</code> and <code>overflow: hidden</code>, so the page itself never scrolls or pinch-zooms; touch gestures go to the game (orbit and pinch zoom).</li>
+            <li>The page includes <code>../../info-link.js</code> with <code>data-info="info.html"</code>, which adds the link to this page.</li>
+            <li>Icons: <code>index.icon.png</code> is the tab icon and <code>index.apple-touch-icon.png</code> the iOS home-screen icon.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Limits and edge cases</h2>
+        <ul>
+            <li>The download is about 67 MB (wasm + pck), so first load on a slow connection shows the progress bar for a long time; later loads depend on the browser or offline cache.</li>
+            <li>The engine handles all of the car code, input, stats and persistence internally. Nothing on the web page reads or writes <code>localStorage</code>, and there are no URL options.</li>
+            <li>The Godot source project (<code>godot_project/</code>) is not inside <code>projects/01/</code>; only the exported build is here, so the script details above come from the author's source, not from files in this folder.</li>
+            <li>If the engine throws while starting (out-of-memory on a weak phone, no WebGL2), the notice box shows the error message and the game does not start.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <p>The only project made with a full game engine (Godot) rather than hand-written JavaScript, so it is by far the heaviest download, about 67 MB, but gets real engine features like shaders and a scene editor for free.</p>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>A full in-engine car configurator with a custom paint shader, steering wheels and an interior view, with a retro CRT filter.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>

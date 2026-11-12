@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Image Effects Studio - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="index.html">&#9664; Back to the tool</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 03</span>
+    <h1>Image Effects Studio</h1>
+    <p class="tagline">Scanline, ASCII and pixel-art effects, live in the browser.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>Load a picture (or use the sample) and see it as the original plus three retro effects at once in a 2&times;2 grid. Sliders change each effect live and each result can be downloaded as a PNG.</p>
+    </section>
+    <section class="panel">
+        <h2>Files and loading</h2>
+        <ul>
+            <li>One page, plain JavaScript and canvas. No libraries.</li>
+            <li>The default picture is <code>images/f1_pitstop.jpg</code>, also kept in the offline cache.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Controls</h2>
+        <ul>
+            <li>Choose a file, or <b>drag and drop</b> an image onto the Original section.</li>
+            <li>Sliders: scanline density (1-10), ASCII scale (20-200), pixel block size (1-20), number of colours (4-40).</li>
+            <li>A <b>Download</b> button under each effect saves it as a PNG.</li>
+            <li>Resizing the window redraws everything.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How each effect works</h2>
+        <table><tr><th>Effect</th><th>Logic</th></tr><tr><td>Scanline</td><td><code>drawScanline</code> blacks out every Nth row of pixels.</td></tr><tr><td>Pixel art</td><td><code>drawPixelArt</code> averages blocks of pixels, then snaps each block to a small palette taken evenly from the picture's own colours.</td></tr><tr><td>ASCII</td><td><code>drawASCII</code> shrinks the picture to a tiny canvas and maps each pixel's brightness to a character from <code> .:-=+*#%@</code> (darkest is a space), drawn in 6px monospace.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>Page layout and state</h2>
+        <ul>
+            <li>A 2&times;2 CSS grid (<code>.container</code>) below the 60px site bar, 10px gap and padding. <code>html, body</code> are <code>overflow:hidden</code>, so the page never scrolls; each cell is one quarter of the window.</li>
+            <li>Each effect canvas is created off-screen at the exact pixel size of its cell (<code>clientWidth</code> x <code>clientHeight</code>), converted with <code>toDataURL()</code> and set as the cell's CSS <code>background-image</code> (<code>cover</code>, centred). The <b>Original</b> cell simply shows the image as a CSS background.</li>
+            <li>The last canvas of each effect is kept in the <code>canvases</code> object (<code>scanline</code>, <code>ascii</code>, <code>pixel</code>) for the download buttons. Nothing is saved to <code>localStorage</code>; reloading restores the default picture and default slider values.</li>
+            <li>Every effect first draws the picture with a <b>cover</b> fit: <code>scale = max(w/img.width, h/img.height)</code>, centred, so the picture fills the cell and the overflow is cropped.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Controls in detail</h2>
+        <table><tr><th>Control</th><th>Range / default</th><th>Redraws</th></tr>
+        <tr><td>Scanline Density</td><td>1-10, default 2</td><td>Scanline only</td></tr>
+        <tr><td>ASCII Scale</td><td>20-200, default 100</td><td>ASCII only</td></tr>
+        <tr><td>Pixel Block Size</td><td>1-20, default 3</td><td>Pixel Art only</td></tr>
+        <tr><td>Colors</td><td>4-40, default 20</td><td>Pixel Art only</td></tr>
+        <tr><td>Window resize</td><td>-</td><td>All three effects (not debounced)</td></tr></table>
+        <ul>
+            <li>Sliders use the <code>input</code> event, so effects update continuously while dragging.</li>
+            <li><b>Loading:</b> the hidden <code>&lt;input type=file accept="image/*"&gt;</code> is triggered by the <i>Click to select</i> label; dropping a file on the Original cell takes only the first file and only if its MIME type starts with <code>image/</code>. The file is read with <code>FileReader.readAsDataURL</code> and assigned to <code>img.src</code>.</li>
+            <li>While a file is dragged over the Original cell its background turns <code>#333</code>; on <code>dragleave</code> it is set to <code>#252525</code> (this replaces the shorthand background, so the picture may disappear until the next load).</li>
+            <li><b>Download</b> buttons save <code>scanline.png</code>, <code>ascii.png</code> and <code>pixel.png</code> at the on-screen cell size (not the original resolution). The ASCII PNG has a transparent background with grey text.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Algorithm details and constants</h2>
+        <h3>Scanline</h3>
+        <p>Loop over rows <code>y</code>; when <code>y % density === 0</code> the R, G and B bytes of the whole row are set to 0 (alpha stays 255). Density 1 therefore blacks out every row; density 10 blacks out one row in ten.</p>
+        <h3>Pixel art</h3>
+        <ol>
+            <li>All pixels of the cropped canvas are read into an array of <code>[r,g,b]</code>.</li>
+            <li>The palette is built by sampling that array every <code>step = floor(pixelCount / numColors)</code> pixels until <code>numColors</code> entries exist. It is a plain even sampling in scan order, not a clustering algorithm like k-means, so the palette mostly contains colours from the upper part of the picture and the same colour can appear several times.</li>
+            <li>The canvas is walked in blocks of <code>blockSize</code>; the block's average (<code>Math.floor</code> per channel, edge blocks only count pixels inside the canvas) is replaced by the nearest palette entry using squared RGB distance, and the whole block is filled with it.</li>
+            <li>Cost is roughly (pixels) + (blocks x palette size), which is why block size 1 with 40 colours is the slowest setting.</li>
+        </ol>
+        <h3>ASCII</h3>
+        <ul>
+            <li>The picture is drawn (cover fit) into a tiny temporary canvas of <code>scale</code> x <code>floor(scale*0.6)</code> pixels, where <code>scale</code> is the slider value. The 0.6 factor compensates for characters being taller than they are wide.</li>
+            <li>Each tiny pixel gives brightness <code>avg = (r+g+b)/3</code>; the character is <code>chars[floor(avg/255 * (chars.length-1))]</code> with <code>chars = " .:-=+*#%@"</code> (starting with a space for the darkest tone).</li>
+            <li>Characters are drawn with <code>fillText</code> in <code>6px monospace</code>, colour <code>#aaa</code>, at x = column x (cell width / columns) and y = row x (cell height / rows). A larger slider means more, denser characters; a small one gives a coarse, large-spaced result.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Edge cases</h2>
+        <ul>
+            <li>The default image is drawn when <code>img.complete</code> is true at script time; otherwise <code>img.onload</code> is set to redraw. Because that handler exists only in the second case, an uploaded file redraws the effects automatically only if the default image had not been cached when the script ran; in the other case move any slider or resize the window to refresh the effects.</li>
+            <li>All processing is synchronous on the main thread, so very large photos or huge windows can make slider dragging feel heavy.</li>
+            <li>The page is touch friendly through the native range inputs; there is no keyboard shortcut of its own.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Customising</h2>
+        <ul>
+            <li><b>Default picture:</b> change the path in <code>img.src = "./images/f1_pitstop.jpg"</code> (and keep it in the offline manifest).</li>
+            <li><b>Slider ranges and defaults:</b> the <code>min</code>, <code>max</code> and <code>value</code> attributes on the four <code>input type=range</code> elements.</li>
+            <li><b>ASCII look:</b> the <code>chars</code> string (dark to light), the <code>0.6</code> aspect factor, the font string and <code>fillStyle</code> in <code>drawASCII</code>.</li>
+            <li><b>Add an effect:</b> add a <code>.section</code> block in the HTML, write a <code>drawX</code> function that ends with <code>setSectionBackground(canvas, section, key)</code>, call it in <code>processDefaultImage</code> and the resize handler, and add a download button calling <code>downloadCanvas</code>.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <p>The simplest one technically: pure canvas pixel processing with no 3D, no network and no framework.</p>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>Four-way live comparison: you see the original and three effects side by side while you drag the sliders.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>

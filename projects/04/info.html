@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PS Music Player - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="index.html">&#9664; Back to the player</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 04</span>
+    <h1>PS Music Player</h1>
+    <p class="tagline">A PlayStation-inspired pixel-art music player.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>A music player drawn like a PlayStation: a pixel disc that spins, a visualizer, lyrics, a local playlist and live search of iTunes 30-second previews.</p>
+    </section>
+    <section class="panel">
+        <h2>Files and loading</h2>
+        <table><tr><th>File</th><th>Role</th></tr><tr><td><code>index.html</code></td><td>The whole player: layout, canvas drawing, playback, search, lyrics.</td></tr><tr><td><code>playlist.js</code></td><td>The built-in songs (<code>hardcodedMusicData</code>). Also used by the small player on the main page.</td></tr><tr><td><code>music/*.mp3</code></td><td>7 songs (heavy files, cached on first play or by Save everything).</td></tr><tr><td><code>music/cover/*.webp</code></td><td>Cover art for each song.</td></tr></table>
+        <ul>
+            <li>Outside services: the iTunes Search API (previews) and <code>api.lyrics.ovh</code> (lyrics). Those go straight to the network, never through the offline cache.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Controls</h2>
+        <table><tr><th>Control</th><th>What it does</th></tr><tr><td><span class="k">Space</span></td><td>Play / pause</td></tr><tr><td><span class="k">Left</span> / <span class="k">Right</span></td><td>Previous / next song</td></tr><tr><td><span class="k">Up</span> / <span class="k">Down</span></td><td>Volume</td></tr><tr><td><span class="k">L</span>, <span class="k">S</span>, <span class="k">R</span>, <span class="k">M</span></td><td>Lyrics, shuffle, repeat, mute</td></tr><tr><td>LOCAL / ITUNES tabs</td><td>Switch between the built-in playlist and iTunes previews (search is debounced by 600 ms)</td></tr><tr><td>Search box and genre filters</td><td>Filter the list; click a song to play it</td></tr></table>
+        <p>Keys are ignored while you type in the search box.</p>
+    </section>
+    <section class="panel">
+        <h2>How it works</h2>
+        <ul>
+            <li><b>Pixel covers:</b> <code>pixelate()</code> shrinks the cover, makes the edges hard and reduces the colours with a 4&times;4 Bayer ordered dither.</li>
+            <li><b>Spinning disc:</b> the cover is clipped to a disc and rotated inside a tiny canvas with nearest-neighbour sampling, redrawn at 15 frames per second so it keeps the chunky look.</li>
+            <li><b>Song change:</b> the lid and parts slide down, the next song loads, and they slide back. The page background is tinted from the cover's average colour.</li>
+            <li><b>Visualizer:</b> for local songs it uses real frequency data from a Web Audio <code>AnalyserNode</code>. iTunes previews are cross-origin, so they get a fake bouncing animation instead.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Adding songs</h2>
+        <ul>
+            <li>Put the mp3 in <code>music/</code> and a cover in <code>music/cover/</code> with the same base name, add an entry in <code>playlist.js</code>, then run <code>python tools/build_offline_manifest.py</code>.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Screen layers and the disc</h2>
+        <ul>
+            <li>The device is five stacked canvases (<code>layer1</code>-<code>layer5</code>) built by <code>initDevice()</code> from <code>ps_player_images/</code>: <code>ps_front_cover.webp</code>, <code>ps_disk_cover.webp</code> (the lid), <code>cover_image_outter_part.png</code>, <code>ps_empty_disk.webp</code>, <code>ps_disk_back.webp</code>. Each is pixelated to 160&times;160 (<code>DEV</code>) with 7 colour levels and <code>fit: 'contain'</code>.</li>
+            <li><code>ps_default_disk_00.webp</code> is the disc-shaped mask and also the fallback art. <code>setDiskArt()</code> pixelates the cover at 160 px with 6 levels (<code>cover</code> fit), then clips it to the mask with <code>destination-in</code>.</li>
+            <li><code>pixelate(url, size, {levels, fit})</code>: draws the image centred, then sets each pixel's alpha to 0 if it is under 128 and 255 otherwise, and adds the Bayer value times the step (255/(levels-1)) before rounding each channel to the nearest step. If the pixels cannot be read (cross-origin art without CORS) the plain downscale is kept. Remote images are first tried with <code>crossOrigin=anonymous</code> and retried without it.</li>
+            <li>Spin: a frame is skipped unless 1/15 s has passed; the angle grows by &pi;/24 per step (7.5 degrees, 48 steps per turn). Rotation uses <code>imageSmoothingEnabled = false</code>. The angle resets to 0 on each song load, and the loop is cancelled on pause.</li>
+            <li>Song swap (<code>transitionTo</code>): pause, lid slides down (wait 160 ms), disc and inner layers slide down (320 ms), the new song loads, the parts slide back (320 ms), the lid closes (300 ms). A <code>switching</code> flag ignores clicks and keys during the animation. With <code>prefers-reduced-motion</code> the CSS durations drop to 0.01 ms.</li>
+            <li>Background tint: <code>tintFrom()</code> samples every 4th pixel of the 32 px thumbnail, ignores transparent and very dark or light ones (brightness 25-225), averages the colour and sets <code>--bg</code> to 30% of it.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Audio engine</h2>
+        <ul>
+            <li>Two <code>&lt;audio&gt;</code> tags, both <code>preload="none"</code>: <code>audio</code> for local files and <code>remoteAudio</code> for iTunes. The variable <code>audio</code> points at the active one; events of the other are ignored (<code>live()</code> check). Volume and mute are applied to both.</li>
+            <li>Local file names go through <code>encodeURI</code> with <code>#</code> replaced by <code>%23</code>, so names with spaces or dots work.</li>
+            <li>The Web Audio graph (<code>MediaElementSource</code> of the local tag, to an <code>AnalyserNode</code> with <code>fftSize 64</code>, to the speakers) is created lazily on the first local play, inside the click or key handler, and resumed if suspended. If creation fails the analyser is null and the fake animation is used. Remote previews are not routed through it.</li>
+            <li>Visualizer: 24 bars drawn pixel row by pixel row; green below 45% of the height, yellow up to 75%, red above. Real data is <code>getByteFrequencyData</code> (first 24 of 32 bins). Otherwise: a sine bounce when playing, a flat 4% when paused. Drawing stops while <code>document.hidden</code>.</li>
+            <li>Progress slider: 0-100; dragging sets <code>currentTime</code> as a percentage of <code>duration</code> (ignored until the duration is known). Time text is <code>m:ss</code>, or <code>0:00</code> when the duration is not finite.</li>
+            <li>The loader shows on <code>waiting</code> and hides on <code>playing</code>, <code>canplay</code>, <code>error</code>, <code>stalled</code> and <code>pause</code>.</li>
+            <li>If <code>play()</code> is rejected (autoplay policy) a warning is logged, <code>isPlaying</code> stays false and the icon shows Play. The first song is loaded on boot but never auto-played.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Playlist and library details</h2>
+        <ul>
+            <li><b>LOCAL:</b> <code>initPlaylist()</code> maps <code>hardcodedMusicData</code>. The cover path comes from the mp3 file name: <code>music/cover/&lt;base name&gt;.webp</code>. A missing title becomes the file name with underscores as spaces, a missing artist becomes "Unknown Artist", a missing genre becomes "Other". The list is headed MEMORY CARD 1. The playlist currently has 7 entries.</li>
+            <li><b>ITUNES:</b> switching tabs pauses playback, clears the search box and genre filter, closes the lyrics panel and shows a hint. Typing restarts a 600 ms timer, then requests <code>itunes.apple.com/search?media=music&amp;entity=song&amp;limit=25</code>. Results without a <code>previewUrl</code> are dropped. Artwork <code>100x100bb</code> is swapped to <code>300x300bb</code>. Rows get a "30S" badge instead of a number. Messages: NO RESULTS FOUND, SEARCH FAILED (check your connection), TYPE TO SEARCH ITUNES. Going back to LOCAL rebuilds the playlist from <code>playlist.js</code>.</li>
+            <li>Genre filter buttons are generated from each song's <code>genre</code> and appear only when there are at least 2 genres (the local list has one, so none show). iTunes results use <code>primaryGenreName</code>. The local search box matches title, artist and album text; the counter shows "N SONGS".</li>
+            <li>Row thumbnails are 32 px pixelated covers (5 levels), cached in a <code>Map</code> by cover URL, with the default disc as fallback. Clicking the current row toggles play/pause; clicking another row swaps to it and plays.</li>
+            <li>Shuffle picks a random index and, if it equals the current song, takes the next one instead. Previous always goes back one in list order. Repeat only restarts the current song when it ends; Next still moves on.</li>
+            <li>Nothing is saved: no <code>localStorage</code>, no URL options. Volume, shuffle, repeat and mute reset on reload.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Lyrics, toast and mobile layout</h2>
+        <ul>
+            <li>Lyrics come from <code>api.lyrics.ovh/v1/&lt;artist&gt;/&lt;title&gt;</code>, fetched only when the panel opens (button or <span class="k">L</span>) and again on each song change while it is open. It shows LOADING..., then the text, or NO LYRICS FOUND FOR THIS SONG. on any error or empty reply. Titles are sent as stored, so tags like "(Daytime)" or "Remix" can make a match fail.</li>
+            <li>A toast with the 32 px cover, title and artist appears when playback starts and hides after 3.2 s. A long title scrolls only when it is wider than its box, re-checked on window resize.</li>
+            <li>Volume steps are 0.1 (buttons and <span class="k">Up</span>/<span class="k">Down</span>), clamped to 0-1. Mute toggles both audio tags.</li>
+            <li>Phones (max-width 900 px): one column, a compact player on top and the track list in a 50dvh row, so it always gets half the screen and scrolls by itself. On short phones (max-height 720 px) the cover size is <code>min(23vh, 175px, 39vw)</code>. Safe-area insets are respected.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Where to change what</h2>
+        <table><tr><th>To change</th><th>Edit</th></tr><tr><td>Songs, titles, artists, genres</td><td><code>hardcodedMusicData</code> in <code>playlist.js</code> (add a <code>genre</code> field to get filter buttons)</td></tr><tr><td>Pixel look of covers</td><td>the <code>levels</code> and size arguments of <code>pixelate()</code>; <code>DEV</code> (160) for the device</td></tr><tr><td>Spin speed</td><td>the 1000/15 frame gap and the &pi;/24 step in <code>spinDisk()</code></td></tr><tr><td>Search delay or result count</td><td>600 in the input handler; <code>limit=25</code> in <code>searchItunes()</code></td></tr><tr><td>Visualizer</td><td><code>bars</code>, <code>fftSize</code> and the colour thresholds in <code>drawVis()</code></td></tr><tr><td>Swap animation timing</td><td>the <code>wait()</code> values in <code>transitionTo()</code> and the <code>.slide-down</code> CSS</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <p>Audio-first: it uses the Web Audio API and two outside web services, and its visual identity is hand-built pixel-art canvases.</p>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>A convincing pixel-art device skin where cover art is dithered live and the disc turns in 15 fps steps.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>

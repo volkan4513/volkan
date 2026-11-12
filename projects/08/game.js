@@ -1377,6 +1377,7 @@ function lobbySettings() {
 
 function renderLobby() {
     $('lCode').textContent = lobby.code || '·····';
+    updateInviteQr();
     const fill = (el, team) => {
         el.textContent = '';
         for (const [key, name, t, ping] of lobby.r) {
@@ -1409,6 +1410,19 @@ function renderLobby() {
         : s.mode === 'br' ? `${on}Battle royale, last one standing · zone ${s.zone === false ? 'off' : 'on'} · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`
         : `${on}First to ${s.k} kills or ${Math.round(s.tm / 60)} min · bots ${s.bots ? s.d : 'off'}. Waiting for the host to start...`;
     showMapCredits();
+}
+
+let qrDrawn = '';
+function updateInviteQr() {
+    const box = $('lQrBox');
+    const show = role === 'host' && !!lobby.code && window.JoinQR;
+    box.hidden = !show;
+    if (!show || qrDrawn === lobby.code) return;
+    qrDrawn = lobby.code;
+    const u = new URL(location.href);
+    u.search = `?join=${lobby.code}`;
+    u.hash = '';
+    JoinQR.draw($('lQr'), u.href);
 }
 
 function pushLobby() {
@@ -2067,6 +2081,10 @@ document.addEventListener('visibilitychange', () => {
 // Online menus.
 $('hostBtn').addEventListener('click', startHosting);
 $('jGo').addEventListener('click', startJoining);
+if (window.JoinQR && JoinQR.canScan) {
+    $('jScan').hidden = false;
+    $('jScan').addEventListener('click', () => JoinQR.scan((code) => { $('jCode').value = code; startJoining(); }));
+}
 $('jCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') startJoining(); });
 $('lStart').addEventListener('click', startMatch);
 $('lLeave').addEventListener('click', () => { leaveOnline(); show('menu'); });
@@ -2611,5 +2629,9 @@ function frame(now) {
 }
 
 show('menu');
+{
+    const j = window.JoinQR && JoinQR.codeFrom(new URLSearchParams(location.search).get('join'));
+    if (j) { $('jCode').value = j; show('joinScreen'); setTimeout(startJoining, 0); }
+}
 updateLayers();
 requestAnimationFrame(frame);

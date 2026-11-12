@@ -863,7 +863,7 @@ def((() => {
 const PROJECTS = [
     ['../01/images/0.webp', 'BMW M3 GTR', '../01/index.html'], ['../02/images/0.webp', 'Just Jump It', '../02/index.html'],
     ['../03/images/0.webp', 'Retro Image FX', '../03/index.html'], ['../04/images/0.webp', 'PS Music Player', '../04/index.html'],
-    ['../05/images/0.webp', 'Windows 98', '../05/index.html'], ['../../images_to_use/puzzle_thumb.webp', 'Parking Puzzle', '../../page2.html'],
+    ['../05/images/0.webp', 'Windows 98', '../05/index.html'], ['../../images_to_use/puzzle_thumb.webp', 'Parking Puzzle', '../06/index.html'],
     ['../08/images/0.webp', 'Low-Poly Strike', '../08/index.html'], ['../09/images/0.webp', 'Pixel Racer', '../09/index.html'],
     ['images/lab_cursor.webp', 'Glass Cursor', 'lots_of_square_cursor.html'],
 ];

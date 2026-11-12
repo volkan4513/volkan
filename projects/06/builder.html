@@ -220,7 +220,7 @@
         .sprite-thumb {
             width: 48px;
             height: 24px;
-            background-image: url('images_to_use/tiles_texture.webp');
+            background-image: url('../../images_to_use/tiles_texture.webp');
             background-repeat: no-repeat;
             border: 2px solid #444;
             border-radius: 3px;
@@ -348,7 +348,7 @@
         .sprite-list-item .sprite-list-thumb {
             width: 48px;
             height: 24px;
-            background-image: url('images_to_use/tiles_texture.webp');
+            background-image: url('../../images_to_use/tiles_texture.webp');
             background-repeat: no-repeat;
             border: 1px solid #333;
             flex-shrink: 0;
@@ -407,7 +407,7 @@
         <div id="spriteEditorPanel">
             <div id="spriteSheetWrapper">
                 <div id="spriteSheetGrid">
-                    <img id="spriteSheetImg" src="images_to_use/tiles_texture.webp" alt="vehicle sheet">
+                    <img id="spriteSheetImg" src="../../images_to_use/tiles_texture.webp" alt="vehicle sheet">
                 </div>
             </div>
             <div id="spriteEditorSidebar">
@@ -706,7 +706,7 @@
             const rect = spriteRect(s);
             const scaleX = targetWidthPx / rect.sheetW;
             const scaleY = targetHeightPx / rect.sheetH;
-            el.style.backgroundImage = "url('images_to_use/tiles_texture.webp')";
+            el.style.backgroundImage = "url('../../images_to_use/tiles_texture.webp')";
             el.style.backgroundRepeat = 'no-repeat';
             el.style.backgroundSize = `${SHEET_W * scaleX}px ${SHEET_H * scaleY}px`;
             el.style.backgroundPosition = `-${rect.sheetX * scaleX}px -${rect.sheetY * scaleY}px`;
@@ -991,7 +991,7 @@
         });
 
         document.getElementById('playBtn').addEventListener('click', () => {
-            window.location.href = 'page2.html';
+            window.location.href = 'index.html';
         });
 
         // ---- sprite editor ----

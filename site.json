@@ -99,7 +99,7 @@
             ],
             "desc": "Slide the cars and free the red one. 20 levels, par moves and stars to earn.",
             "thumb": "images_to_use/puzzle_thumb.webp",
-            "href": "page2.html",
+            "href": "projects/06/index.html",
             "color": "yellow",
             "sticker": "Try this!",
             "slug": "puzzle"
@@ -145,20 +145,6 @@
             "color": "blue",
             "sticker": "Try this!",
             "slug": "cutout"
-        },
-        {
-            "title": "Computer A-83",
-            "subtitle": "Interactive 3D retro computer",
-            "tags": [
-                "Three.js",
-                "3D"
-            ],
-            "desc": "A 1980s computer poster you can spin and zoom. Tap the 3D keys or type on your own keyboard to use its retro terminal.",
-            "thumb": "projects/12/shot.webp",
-            "href": "projects/12/index.html",
-            "color": "red",
-            "sticker": "Type on it!",
-            "slug": "computer"
         }
     ],
     "skills": [
@@ -391,7 +377,7 @@
             "gallery": [
                 "images_to_use/puzzle_thumb.webp"
             ],
-            "href": "page2.html"
+            "href": "projects/06/index.html"
         },
         "strike": {
             "title": "Low-Poly Strike",

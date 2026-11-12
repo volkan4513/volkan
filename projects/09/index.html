@@ -91,6 +91,8 @@
         .row.join { margin: 10px 0; }
         .row.join .field { flex: 1; text-transform: uppercase; letter-spacing: 3px; text-align: center; }
         .row.join .btn { flex: 0 0 auto; min-width: 90px; }
+        .qrbox { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0 12px; font-size: 12px; }
+        .qrbox canvas { width: 150px; height: 150px; image-rendering: pixelated; border: 3px solid var(--ink); }
         .code { margin: 4px 0 12px; font-size: 12px; }
         .code b { display: inline-block; margin-left: 8px; padding: 6px 10px; font-size: 20px; letter-spacing: 4px; background: var(--y); border: 3px solid var(--ink); }
         #mpRoster { list-style: none; margin: 0 0 10px; font-size: 9px; line-height: 1.9; }
@@ -311,6 +313,7 @@
                 <button id="menuMp" class="btn" type="button">Multiplayer</button>
             </div>
             <div id="mpLine" class="info" hidden></div>
+            <div class="row small"><a class="btn" href="info.html">How it works</a></div>
             <div class="row">
                 <button id="play" class="btn go" type="button">DRIVE</button>
                 <button id="menuSettings" class="btn gear" type="button" aria-label="Settings">⚙</button>
@@ -341,10 +344,12 @@
             <div class="setting"><span>Your name</span><input id="mpName" class="field" maxlength="12" autocomplete="off" spellcheck="false"></div>
             <div class="setting"><span>Room size</span><button id="mpMax" class="btn" type="button">4 players</button></div>
             <div id="mpCodeBox" class="code" hidden>ROOM <b id="mpCode"></b></div>
+            <div id="mpQrBox" class="qrbox" hidden><canvas id="mpQr" width="100" height="100"></canvas><small>Scan with a phone camera to join</small></div>
             <button id="mpHost" class="btn go" type="button">HOST A ROOM</button>
             <div id="joinRow" class="row join">
                 <input id="mpJoinCode" class="field" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Room code">
                 <button id="mpJoin" class="btn" type="button">JOIN</button>
+                <button id="mpScan" class="btn" type="button" hidden>SCAN QR</button>
             </div>
             <div id="mpStatus" class="info">Not in a room</div>
             <ul id="mpRoster"></ul>
@@ -419,6 +424,8 @@
     <script src="../../pixel-transition.js"></script>
     <script src="../../offline.js"></script>
     <script src="../../site-nav.js" data-home="../../index.html"></script>
+    <script src="qrcode.js"></script>
+    <script src="joinqr.js"></script>
     <script type="module" src="game.js"></script>
 </body>
 </html>

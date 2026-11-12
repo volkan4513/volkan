@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pixel Racer - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="index.html">&#9664; Back to the game</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 09</span>
+    <h1>Pixel Racer</h1>
+    <p class="tagline">A PS1-style arcade racer with bots and room-code multiplayer, all in the browser.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>Pick a pixel-art car, pick a map and drive. Race bots or up to 8 players in a room. Four maps: a 800-metre Chicago sprint and three classic Need for Speed III circuits (Country Woods, Lost Canyons, Rocky Pass). Keyboard, touch or gamepad.</p>
+    </section>
+    <section class="panel">
+        <h2>Files</h2>
+        <table><tr><th>File</th><th>Role</th></tr><tr><td><code>game.js</code></td><td>Renderer, menus, settings, map and car choice, bots, race control, multiplayer glue, main loop. The header comment maps the other files.</td></tr><tr><td><code>drive.js</code></td><td>Arcade handling: bicycle model with grip, drift grip (handbrake), acceleration and braking.</td></tr><tr><td><code>vehicle.js</code>, <code>collision.js</code></td><td>A car against the map: ground, walls, step-up, and collision built from the map's own triangles.</td></tr><tr><td><code>maps.js</code>, <code>tracks.js</code></td><td>Map definitions (file, scale, spawn, sky, fog) and track centre lines.</td></tr><tr><td><code>race.js</code></td><td>Laps, ordered gates, wrong-way flag, ranking, grid and racing line.</td></tr><tr><td><code>bots.js</code></td><td>Ray-fan driver for the bots.</td></tr><tr><td><code>cars.js</code></td><td>Car list and GLB loading with wheel rigs.</td></tr><tr><td><code>net.js</code>, <code>multiplayer.js</code></td><td>PeerJS transport (a copy of the one in 08) and the racing protocol.</td></tr><tr><td><code>input.js</code></td><td>Keyboard, touch and gamepad.</td></tr><tr><td><code>gates.js</code>, <code>minimap.js</code>, <code>backdrop.js</code>, <code>effects.js</code>, <code>textures.js</code>, <code>audio.js</code></td><td>Start gantry, minimap, skyline, particles, texture size control, sound and music.</td></tr><tr><td><code>maps/*.glb</code>, <code>models/*.glb</code></td><td>4 maps and 9 cars (heavy files).</td></tr><tr><td><code>lib/</code></td><td>Three.js, GLTFLoader, meshopt decoder, PeerJS (local copies).</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>How it loads</h2>
+        <ul>
+            <li>Only the selected map and the selected car load at first. A map is fetched when you pick it and kept in memory, so switching back is instant. A failed load clears itself so you can retry.</li>
+            <li>Maps are loaded with GLTFLoader and the meshopt decoder, then merged to one mesh per material to keep the number of draw calls low. Unlit maps use basic materials, the lit NFS III maps use Lambert.</li>
+            <li>Collision is built from the same meshes you see: flat triangles are ground, steep ones become wall segments. Trees and fences only block where their texture is solid.</li>
+            <li>Texture size is reduced at runtime on phones (auto picks 512 px on touch devices). Settings: pixel size, texture size, car filter, anisotropy, draw distance, wheel spin, sound, music, mirror. Saved in <code>localStorage</code> as <code>pixel-racer-settings</code>.</li>
+            <li>The big GLB files are in the offline "heavy" list: saved the first time they are used, or all at once with the Save everything button on the main page.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Controls</h2>
+        <table><tr><th>Input</th><th>Action</th></tr><tr><td><span class="k">W</span> / <span class="k">Up</span>, <span class="k">S</span> / <span class="k">Down</span></td><td>Gas, brake and reverse</td></tr><tr><td><span class="k">A D</span> / arrows</td><td>Steer</td></tr><tr><td><span class="k">Space</span></td><td>Handbrake and drift</td></tr><tr><td><span class="k">C</span></td><td>Change camera</td></tr><tr><td><span class="k">E</span> / <span class="k">Q</span></td><td>Next / previous car</td></tr><tr><td><span class="k">R</span></td><td>Reset the car onto the road</td></tr><tr><td><span class="k">P</span> / <span class="k">T</span> / <span class="k">M</span></td><td>Pixel size / wheel style / mute</td></tr><tr><td><span class="k">Esc</span></td><td>Pause</td></tr><tr><td>Garage: <span class="k">Enter</span>, arrows</td><td>Start, change car (left, right) and map (up, down)</td></tr></table>
+        <p><b>Touch:</b> a steering stick on the left half that moves sideways only, and GAS, BRAKE, DRIFT, PAUSE, CAM and CAR buttons. Starting a race asks for fullscreen and tries to lock landscape.</p>
+        <p><b>Gamepad:</b> left stick steers, right trigger gas, left trigger brake, A drift, Y camera, bumpers change car, Back resets, Start pauses.</p>
+        <p><b>Garage buttons:</b> route (half or full map), bots 0 to 7, laps (Sprint, 1 to 9, free roam), Multiplayer, Settings and DRIVE.</p>
+        <p><b>URL options:</b> <code>?debug</code> (stats overlay), <code>?car=r32|m5|diablo|993|charger|sti|sport|compact|pixel</code>, <code>?map=chicago|woods|canyons|rocky</code>, <code>?laps=0..9</code> (0 is free roam), <code>?bots=0..7</code>, <code>?state=play</code> (start straight away), <code>?join=CODE</code>, <code>?lag=</code>, <code>?loss=</code>.</p>
+    </section>
+    <section class="panel">
+        <h2>Racing rules</h2>
+        <ul>
+            <li>Race types: <b>Sprint</b> (default, half the route), full route, N laps, or free roam (laps are timed but nothing ends). A 3-second countdown with start lights comes first.</li>
+            <li>A track is a centre line resampled every 4 m with a gate roughly every 150 m. Gates must be passed in order, so reversing over the line or cutting across the infield does not count a lap.</li>
+            <li>A wrong-way warning appears after 1 second pointing back along the road.</li>
+            <li>Ranking: finishers by time, everyone else by progress along the track.</li>
+            <li>Bots follow a racing line relaxed up to 6 m to each side of the centre, and reverse out when stuck.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How multiplayer works here</h2>
+        <p>Both games use <b>PeerJS</b> (a small helper around WebRTC) to connect players straight to each other. There is no game server of our own.</p>
+        <h3>Joining by room code</h3>
+        <ol>
+            <li>The host taps <b>Host</b>. The game makes a random 5-character code (letters and digits without I, L, O, 0 and 1, so it is easy to read out loud) and registers it with the free PeerJS cloud under an id such as <code>lpstrike-K7QM2</code> (08) or <code>pxracer-K7QM2</code> (09).</li>
+            <li>A friend types the code (or scans the QR code, see below). Their browser asks PeerJS for that id. PeerJS only passes the connection details (the "signalling" step) and then steps out of the way.</li>
+            <li>The two browsers now talk directly over WebRTC data channels. If a direct path is impossible (strict network), PeerJS cloud also offers a relay (TURN) as a fallback.</li>
+            <li>The friend sends <code>hello</code> with their name. The host must receive it within 5 seconds or the link is dropped.</li>
+        </ol>
+        <h3>Two channels per player</h3>
+        <table><tr><th>Channel</th><th>Type</th><th>Carries</th></tr><tr><td><code>rel</code></td><td>Ordered and reliable</td><td>hello, welcome, lobby, roster, start, map choice, buy, team, heartbeat, bye</td></tr><tr><td><code>fast</code></td><td>Unordered, no resends (<code>maxRetransmits: 0</code>)</td><td>Inputs and snapshots (08), car states (09). A late packet is useless, so it is never re-sent.</td></tr></table>
+        <p>The joiner opens <code>fast</code> once <code>rel</code> is up. If <code>fast</code> never opens, everything falls back to <code>rel</code>: slower, but it still works.</p>
+        <h3>Health checks</h3>
+        <ul>
+            <li>A heartbeat every 2 seconds. A link with no data for 6 seconds is closed. The round-trip time (ping) is smoothed and shown.</li>
+            <li>Joiner loses the host: "Lost connection to the host" and back to the menu. Host leaves: everybody is told "The host closed the game". There is no host migration.</li>
+            <li>The PeerJS library is loaded only when someone hosts or joins (a local copy, no CDN).</li>
+        </ul>
+        <h3>QR code and links</h3>
+        <ul>
+            <li>The host lobby shows a QR code that contains a link like <code>.../projects/08/index.html?join=K7QM2</code>.</li>
+            <li>Scanning it with any phone camera opens the game with the code filled in, and it joins automatically.</li>
+            <li>The join screen also has a <b>Scan QR code</b> button that reads the code with the camera. It only appears in browsers that support <code>BarcodeDetector</code> (Android Chrome, macOS). On iPhone and Windows Chrome use the camera app or type the code.</li>
+            <li>The QR link uses the address the page was opened from, so open the game from the real website (not <code>localhost</code>) when hosting for friends.</li>
+            <li>Files: <code>qrcode.js</code> draws the code, <code>joinqr.js</code> has <code>draw</code>, <code>scan</code> and <code>codeFrom</code>.</li>
+        </ul>
+        <h3>Test knobs (URL)</h3>
+        <ul>
+            <li><code>?lag=120</code> delays everything this tab sends by 120 ms. <code>?loss=5</code> drops 5% of the fast packets. Browser DevTools throttling does not touch WebRTC, so use these to test bad connections.</li>
+        </ul>
+        <h3>Different from Low-Poly Strike</h3>
+        <ul>
+            <li><b>Every player drives their own car locally</b>, so there is no input lag. Each peer sends its car state (position, yaw, pitch, roll, speed, steering) about 20 times a second on the fast channel.</li>
+            <li>The host keeps the roster, runs the bots, and sends everyone one snapshot about 20 times a second with every other car. Remote cars are drawn about 110 ms in the past and smoothed. A jump over 15 m counts as a reset and snaps.</li>
+            <li>Cars only push themselves out of each other. Nobody waits for anybody and nothing is predicted or lag-compensated.</li>
+            <li><b>Race sync:</b> the host starts the race and sends the milliseconds until the lights go green (each client subtracts half its ping). Each player counts their own laps and reports them; the host merges bots, itself and the reports and sends the ranking in every snapshot. Late joiners sit the race out. Going to the garage cancels the race for everyone.</li>
+            <li>The host chooses the map for the whole room. Room size is chosen by the host: 4, 6 or 8 players.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Adding a car or a map</h2>
+        <ul>
+            <li><b>Car:</b> drop a <code>.glb</code> in <code>models/</code> and add an entry in <code>cars.js</code> (real length in metres, wheel handling, forward axis). Add it to the offline heavy list by rebuilding the manifest.</li>
+            <li><b>Map:</b> add the <code>.glb</code> in <code>maps/</code>, a definition in <code>maps.js</code> (file, scale, spawn, road width, sky, fog), and a centre line in <code>tracks.js</code> if you want races. A map without a centre line is free roam only.</li>
+            <li>Run <code>python tools/build_offline_manifest.py</code> afterwards.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <ul>
+            <li>Same connection code as Low-Poly Strike, but a simpler, more forgiving model: each driver is the authority for their own car.</li>
+            <li>Heavy assets (3D maps and cars) loaded on demand, with collision derived from the render meshes at load; Strike keeps separate hand-built collision boxes.</li>
+            <li>Supports gamepad and has many URL options for quick testing.</li>
+        </ul>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>Smooth, forgiving multiplayer racing with real 3D tracks and a deliberately chunky PS1 look, in a static website.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>

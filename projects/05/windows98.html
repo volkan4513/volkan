@@ -1731,7 +1731,7 @@ Tips:
             { name: 'Just Jump It', icon: 'exe', url: '../02/index.html', note: 'Unity 3D platformer exported to WebGL.' },
             { name: 'Retro Image FX', icon: 'paint', url: '../03/index.html', note: 'Scanline, ASCII and pixel-art image effects.' },
             { name: 'PS Music Player', icon: 'cd', url: '../04/index.html', note: 'PlayStation-styled music player.' },
-            { name: 'Parking Puzzle', icon: 'car', top: '../../page2.html', note: 'Pixel-art sliding puzzle with 20 levels.' },
+            { name: 'Parking Puzzle', icon: 'car', top: '../06/index.html', note: 'Pixel-art sliding puzzle with 20 levels.' },
             { name: 'This PC', icon: 'computer', action: () => msgBox('This PC', "You're already here.\nWelcome back!") },
         ];
 
@@ -2397,7 +2397,7 @@ Tips:
                     }
                     function start(name) {
                         const n = (name || '').toLowerCase().replace(/\.exe$/, '');
-                        if (n === 'puzzle') return goTop('../../page2.html');
+                        if (n === 'puzzle') return goTop('../06/index.html');
                         const proj = PROJECTS.find(p => p.name.toLowerCase().replace(/\s+/g, '') === n.replace(/\s+/g, ''));
                         if (proj) return openItem(proj);
                         if (APPS_BY_CMD[n]) return openApp(APPS_BY_CMD[n]);
@@ -2516,7 +2516,7 @@ Tips:
                     if (!v) return;
                     const map = { notepad: 'notepad', mspaint: 'paint', winmine: 'minesweeper', iexplore: 'ie', mplayer: 'mplayer', command: 'dos', cmd: 'dos', control: 'display', explorer: 'computer' };
                     closeWin(w);
-                    if (v === 'puzzle') return goTop('../../page2.html');
+                    if (v === 'puzzle') return goTop('../06/index.html');
                     if (map[v]) return openApp(map[v]);
                     if (/^(https?:\/\/|www\.)/.test(v)) return openApp('ie', { url: v.startsWith('www.') ? 'https://' + v : v });
                     msgBox(v, `Cannot find the file '${v}' (or one of its components).`, { icon: 'error' });
@@ -2574,7 +2574,7 @@ Tips:
             { name: 'Minesweeper', icon: 'mine', app: 'minesweeper' },
             { name: 'README.txt', icon: 'txt', app: 'notepad' },
             { name: 'MS-DOS Prompt', icon: 'dos', app: 'dos' },
-            { name: 'Parking Puzzle', icon: 'car', top: '../../page2.html' },
+            { name: 'Parking Puzzle', icon: 'car', top: '../06/index.html' },
             { name: 'Back to Portfolio', icon: 'home', top: '../../index.html' },
             { name: 'Recycle Bin', icon: 'recycle', app: 'recycle' },
         ];
@@ -2618,7 +2618,7 @@ Tips:
                         { label: 'Media Player', icon: 'cd', app: 'mplayer' },
                         { label: 'Games', icon: 'folder', sub: [
                             { label: 'Minesweeper', icon: 'mine', app: 'minesweeper' },
-                            { label: 'Parking Puzzle', icon: 'car', top: '../../page2.html' },
+                            { label: 'Parking Puzzle', icon: 'car', top: '../06/index.html' },
                         ] },
                     ] },
                     { label: 'Internet Explorer', icon: 'ie', app: 'ie' },

@@ -1639,10 +1639,10 @@
     <canvas id="bg-sequence-left" class="bg-sequence"></canvas>
     <canvas id="bg-sequence-right" class="bg-sequence"></canvas>
 
-    <button id="page2-btn" aria-label="Try the puzzle game" onclick="PixelTransition.go('page2.html')"></button>
+    <button id="page2-btn" aria-label="Try the puzzle game" onclick="PixelTransition.go('projects/06/index.html')"></button>
 
     <!-- mobile-only call to action (the image button above is desktop-only) -->
-    <button id="puzzle-cta" onclick="PixelTransition.go('page2.html')">
+    <button id="puzzle-cta" onclick="PixelTransition.go('projects/06/index.html')">
         <span class="cta-car" aria-hidden="true"></span>
         TRY THE PUZZLE GAME <span aria-hidden="true">&#9654;</span>
     </button>
@@ -2596,12 +2596,12 @@
                 }
             }).catch(err => console.error('Failed to load site.json:', err));
 
-            // ---------- daily puzzle + overall progress (saved by page2.html) ----------
+            // ---------- daily puzzle + overall progress (saved by projects/06/index.html) ----------
             let puzzleConfig = null, sheet = null;
             const SHEET_CELL = 16;            // tiles_texture_pixel.png: 16px per board cell
             const $id = id => document.getElementById(id);
-            $id('pbDailyBtn').addEventListener('click', () => { window.Ambient?.blip(520); PixelTransition.go('page2.html?daily'); });
-            $id('pbPlay').addEventListener('click', () => { window.Ambient?.blip(520); PixelTransition.go('page2.html'); });
+            $id('pbDailyBtn').addEventListener('click', () => { window.Ambient?.blip(520); PixelTransition.go('projects/06/index.html?daily'); });
+            $id('pbPlay').addEventListener('click', () => { window.Ambient?.blip(520); PixelTransition.go('projects/06/index.html'); });
 
             // today's board, drawn from tiles.json with the pixel sprite sheet
             function drawBoard(level, sprites) {
@@ -2680,7 +2680,7 @@
 
             renderPuzzle();
             Promise.all([
-                fetch('tiles.json').then(r => r.json()),
+                fetch('projects/06/tiles.json').then(r => r.json()),
                 new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = 'images_to_use/tiles_texture_pixel.png'; }),
             ]).then(([cfg, img]) => { puzzleConfig = cfg; sheet = img; renderPuzzle(); }).catch(() => { });
             // refresh when coming back from the game via the back button

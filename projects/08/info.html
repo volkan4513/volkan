@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Low-Poly Strike - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="index.html">&#9664; Back to the game</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 08</span>
+    <h1>Low-Poly Strike</h1>
+    <p class="tagline">A 4v4 first-person shooter that runs in the browser. One player hosts, everyone else connects peer to peer.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>A low-poly shooter in the style of Counter-Strike 1.x. Play solo against bots (<b>Free Area</b>), or host a match for friends. Up to 4 humans per team, bots fill empty seats. Works with keyboard and mouse or on a phone in landscape.</p>
+        <p>Everything is plain JavaScript and Three.js. The whole game, including the multiplayer code, is shipped as static files, so it runs on GitHub Pages.</p>
+    </section>
+    <section class="panel">
+        <h2>Files</h2>
+        <table><tr><th>File</th><th>Role</th></tr><tr><td><code>index.html</code></td><td>All menus, lobby, HUD, buy menu and styles.</td></tr><tr><td><code>game.js</code></td><td>Renderer, input (keyboard, mouse, touch), HUD, menus, lobby, host and client glue, map loading, main loop.</td></tr><tr><td><code>sim.js</code></td><td>The rules, with no DOM and no 3D: physics, weapons, hitscan, lag compensation, bomb mode, battle royale, loot and zone. Runs on the host and in Free Area.</td></tr><tr><td><code>bots.js</code></td><td>Bot AI: waypoint graph, pathfinding, aiming, difficulty.</td></tr><tr><td><code>net.js</code></td><td>PeerJS transport, the link object, wire format, input queue and interpolation.</td></tr><tr><td><code>models.js</code>, <code>audio.js</code>, <code>radar.js</code></td><td>Player and weapon models, sound effects, minimap.</td></tr><tr><td><code>weapons.json</code></td><td>Weapon table: damage, headshot multiplier, spread, fire rate, magazine, price.</td></tr><tr><td><code>map.json</code>, <code>map2.json</code>, <code>map3.json</code></td><td>Maps Yard, Dust and Dust II: collision boxes, spawns, bomb sites, waypoints.</td></tr><tr><td><code>extra_map/</code></td><td>The Dust II 3D model (visual only) and its credits.</td></tr><tr><td><code>tools/</code></td><td>Node scripts that build the Dust II map data from the 3D model.</td></tr><tr><td><code>peerjs.min.js</code>, <code>three.module.min.js</code></td><td>Pinned local copies of the libraries.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>How it loads</h2>
+        <ul>
+            <li>Plain ES modules from local files, no bundler, no CDN. <code>game.js</code> is a module and fetches the three map files and <code>weapons.json</code> in parallel at start.</li>
+            <li>PeerJS is loaded on demand the first time you host or join.</li>
+            <li>The Dust II 3D model is fetched only when that map is used. A small hand-written GLB reader (<code>parseGlb</code> in <code>game.js</code>) draws it, while the invisible collision boxes from <code>map3.json</code> do the actual collision.</li>
+            <li><code>offline.js</code> registers the service worker, so a friend who opens a shared game link also gets the offline cache. Free Area works offline.</li>
+            <li>Settings are saved in <code>localStorage</code> under <code>lp-strike-settings</code>.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Controls</h2>
+        <table><tr><th>Input</th><th>Action</th></tr><tr><td><span class="k">W A S D</span></td><td>Move</td></tr><tr><td>Mouse</td><td>Look (click the game to capture the mouse; <span class="k">Esc</span> pauses)</td></tr><tr><td>Left / right mouse</td><td>Fire / hold to scope</td></tr><tr><td><span class="k">Space</span></td><td>Jump (or switch spectate target when dead)</td></tr><tr><td><span class="k">C</span> / <span class="k">Shift</span></td><td>Crouch / walk quietly</td></tr><tr><td><span class="k">R</span></td><td>Reload</td></tr><tr><td><span class="k">1</span>-<span class="k">4</span>, wheel, <span class="k">Q</span></td><td>Select weapon, cycle weapons, last weapon</td></tr><tr><td><span class="k">E</span></td><td>Use: plant, defuse, pick up loot</td></tr><tr><td><span class="k">B</span></td><td>Buy menu (bomb mode, buy phase). 1/2/3 buy rifle, shotgun, sniper</td></tr><tr><td><span class="k">Tab</span> (hold)</td><td>Scoreboard</td></tr></table>
+        <p><b>Phone:</b> controls appear on the first touch. Left half is a floating joystick, right half drags the view. Buttons for Fire, Jump, Crouch, Reload, Aim, Swap weapon, Scoreboard, Pause, Use and Buy. <b>Settings &rarr; Customize touch controls</b> lets you drag and resize them.</p>
+        <p><b>Menus:</b> Free Area (mode, bot counts, skill, map), Host game, Join game, Settings (mouse and touch sensitivity, button size, volume, low quality, FPS counter). In the lobby the host picks map, mode, rounds, kills, time limit, zone and bots; everybody can switch team.</p>
+        <p><b>URL:</b> <code>?join=CODE</code>, <code>?lag=ms</code>, <code>?loss=pct</code>. For tests the object <code>window.__lps</code> exposes the match state.</p>
+    </section>
+    <section class="panel">
+        <h2>Game modes</h2>
+        <table><tr><th>Mode</th><th>How it works</th></tr><tr><td>Team deathmatch</td><td>Two teams. Respawn after 3 seconds. Ends at the kill limit or time limit. Unlimited ammo.</td></tr><tr><td>Bomb</td><td>Buy phase 15 s (players frozen), live phase 105 s, end 5 s. Attackers hold E for 3 s to plant at site A or B, 40 s fuse. Defenders hold E for 5 s within 2.2 m to defuse. Money for wins, kills and plants. First to 4, 6 or 8 rounds, with a side swap at half time.</td></tr><tr><td>Battle royale</td><td>Last one standing. A shrinking zone damages players outside it. Loot on the ground (rifle, shotgun, sniper, medkit). Bots fill up to 10 players. Players who join mid-match watch until the next one.</td></tr><tr><td>Free Area</td><td>Solo against bots. No network. Team or Battle royale.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>How multiplayer works here</h2>
+        <p>Both games use <b>PeerJS</b> (a small helper around WebRTC) to connect players straight to each other. There is no game server of our own.</p>
+        <h3>Joining by room code</h3>
+        <ol>
+            <li>The host taps <b>Host</b>. The game makes a random 5-character code (letters and digits without I, L, O, 0 and 1, so it is easy to read out loud) and registers it with the free PeerJS cloud under an id such as <code>lpstrike-K7QM2</code> (08) or <code>pxracer-K7QM2</code> (09).</li>
+            <li>A friend types the code (or scans the QR code, see below). Their browser asks PeerJS for that id. PeerJS only passes the connection details (the "signalling" step) and then steps out of the way.</li>
+            <li>The two browsers now talk directly over WebRTC data channels. If a direct path is impossible (strict network), PeerJS cloud also offers a relay (TURN) as a fallback.</li>
+            <li>The friend sends <code>hello</code> with their name. The host must receive it within 5 seconds or the link is dropped.</li>
+        </ol>
+        <h3>Two channels per player</h3>
+        <table><tr><th>Channel</th><th>Type</th><th>Carries</th></tr><tr><td><code>rel</code></td><td>Ordered and reliable</td><td>hello, welcome, lobby, roster, start, map choice, buy, team, heartbeat, bye</td></tr><tr><td><code>fast</code></td><td>Unordered, no resends (<code>maxRetransmits: 0</code>)</td><td>Inputs and snapshots (08), car states (09). A late packet is useless, so it is never re-sent.</td></tr></table>
+        <p>The joiner opens <code>fast</code> once <code>rel</code> is up. If <code>fast</code> never opens, everything falls back to <code>rel</code>: slower, but it still works.</p>
+        <h3>Health checks</h3>
+        <ul>
+            <li>A heartbeat every 2 seconds. A link with no data for 6 seconds is closed. The round-trip time (ping) is smoothed and shown.</li>
+            <li>Joiner loses the host: "Lost connection to the host" and back to the menu. Host leaves: everybody is told "The host closed the game". There is no host migration.</li>
+            <li>The PeerJS library is loaded only when someone hosts or joins (a local copy, no CDN).</li>
+        </ul>
+        <h3>QR code and links</h3>
+        <ul>
+            <li>The host lobby shows a QR code that contains a link like <code>.../projects/08/index.html?join=K7QM2</code>.</li>
+            <li>Scanning it with any phone camera opens the game with the code filled in, and it joins automatically.</li>
+            <li>The join screen also has a <b>Scan QR code</b> button that reads the code with the camera. It only appears in browsers that support <code>BarcodeDetector</code> (Android Chrome, macOS). On iPhone and Windows Chrome use the camera app or type the code.</li>
+            <li>The QR link uses the address the page was opened from, so open the game from the real website (not <code>localhost</code>) when hosting for friends.</li>
+            <li>Files: <code>qrcode.js</code> draws the code, <code>joinqr.js</code> has <code>draw</code>, <code>scan</code> and <code>codeFrom</code>.</li>
+        </ul>
+        <h3>Test knobs (URL)</h3>
+        <ul>
+            <li><code>?lag=120</code> delays everything this tab sends by 120 ms. <code>?loss=5</code> drops 5% of the fast packets. Browser DevTools throttling does not touch WebRTC, so use these to test bad connections.</li>
+        </ul>
+        <h3>Who is in charge (host-authoritative)</h3>
+        <ul>
+            <li>The host's browser runs the real simulation (<code>stepWorld</code> in <code>sim.js</code>, 60 times a second): movement, shots, damage, rounds, the bomb and the bots. Clients only send what they pressed.</li>
+            <li><b>Client to host:</b> inputs about 30 times a second. The last 12 unconfirmed inputs ride in every packet, so a lost packet costs nothing.</li>
+            <li><b>Host to client:</b> a snapshot 20 times a second with every player's position, health and state, plus a private block for that player (confirmed input number, exact position, ammo, money).</li>
+        </ul>
+        <h3>Making it feel instant</h3>
+        <ul>
+            <li><b>Prediction:</b> your own player moves immediately on your screen. When a snapshot arrives, your state is overwritten with the host's, the inputs the host already used are dropped, and the rest are replayed on top. If you and the host agree nothing visibly changes.</li>
+            <li><b>Interpolation:</b> other players are drawn 100 ms in the past, smoothly between two snapshots. A jump of more than 6 metres (a respawn) snaps instead of sliding.</li>
+            <li><b>Lag compensation:</b> every shot carries the host tick the shooter was looking at. The host keeps 0.5 seconds of player positions, moves everyone back to that moment, fires the ray, and puts them back. A shot that looked like a hit on your screen counts as a hit. The side effect: a laggy shooter can hit someone who has already reached cover on the host.</li>
+            <li><b>Input queue:</b> the host plays one client input per tick like a jitter buffer. Bursts are played out, short gaps repeat the last input, a long gap stops movement and fire, and a held Use is remembered for up to 1 second so planting does not reset.</li>
+        </ul>
+        <h3>When someone drops</h3>
+        <ul>
+            <li>If <b>Fill with bots</b> is on, the missing player's seat becomes a bot. Otherwise they are removed.</li>
+            <li>A player who joins a running match takes a bot's seat when their team is full.</li>
+            <li>The screen is kept awake (Wake Lock) during an online match.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Game logic</h2>
+        <ul>
+            <li><b>Physics</b> (<code>sim.js</code>): fixed 1/60 s step, run 6.2 m/s, walk 3.0, crouch 2.4, jump 7.6, gravity 20, step-up 0.5 m. Collision is axis by axis against boxes using a grid for speed.</li>
+            <li><b>Shots:</b> hitscan rays against player boxes (a head box gives the headshot multiplier) and against map boxes, so walls block.</li>
+            <li><b>Weapons:</b> pistol, rifle (automatic), shotgun (9 pellets), sniper (90 damage, 4x scope). All numbers live in <code>weapons.json</code>.</li>
+            <li><b>Bots:</b> a waypoint graph is built from the map (explicit links on Dust II, automatic links within 24 m elsewhere). Bots use A* paths, line-of-sight checks, a reaction delay and aim error that depend on Easy, Normal or Hard. They produce the same input as a human, so the same simulation runs them. In bomb mode they plant, guard and defuse, and buy weapons.</li>
+            <li><b>Maps:</b> boxes drawn procedurally with textures, or a GLB model for visuals with the boxes kept invisible for collision.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Making or changing a map</h2>
+        <p><b>Simple maps</b> (Yard, Dust) are just JSON: boxes, spawn points, bomb sites and waypoints. Copy a <code>map*.json</code>, edit it and add the file name to the map list in <code>game.js</code>.</p>
+        <p><b>Dust II</b> is generated: <code>node projects/08/tools/build_dust2.mjs</code> reads the 3D model, scales it to metres, turns it into small voxels, merges them into collision boxes, and floods outward from the spawns to find walkable waypoints. <code>dust2_meta.mjs</code> holds the hand-placed data (spawns, bomb sites, credit). Credits for the model are in <code>extra_map/CREDITS.txt</code>.</p>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <ul>
+            <li>The only project with authoritative server logic (running inside the host's browser), client prediction and lag compensation.</li>
+            <li>Compared with Pixel Racer (09), which uses the same connection code: there every player drives their own car and the host just relays, with no prediction.</li>
+            <li>Has Node tooling for map generation; the racer's tracks are hand-built data.</li>
+        </ul>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>A complete multiplayer shooter with no backend of our own: host-authoritative rules, prediction and lag compensation, three modes, bots and touch controls, all in about a megabyte of code.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>

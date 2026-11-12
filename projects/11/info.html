@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cut-Out Studio - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="index.html">&#9664; Back to the tool</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 11</span>
+    <h1>Cut-Out Studio</h1>
+    <p class="tagline">AI background removal that runs on your own device.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>Pick a photo, press a button and the background disappears. Then swap in a colour, a gradient, a blur of the original or your own picture, compare before and after with a slider, and download a PNG. The photo never leaves your browser.</p>
+    </section>
+    <section class="panel">
+        <h2>Tools used</h2>
+        <ul>
+            <li><b>Transformers.js</b> 3.0.2, loaded from the jsDelivr CDN, runs the model in the page.</li>
+            <li><b>RMBG-1.4</b> (briaai), about 45 MB, a background-removal model. Its license is non-commercial.</li>
+            <li>WebGPU is used when the browser has it, with a WebAssembly fallback. A canvas does all compositing.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How it loads</h2>
+        <ul>
+            <li>Nothing heavy loads at first. The library and the model download only when you press <b>Load AI model</b>, with a progress bar. If WebGPU fails it retries on WebAssembly.</li>
+            <li>The CDN files are cross-origin, so the offline cache does not store them. This tool needs a connection the first time (the browser keeps its own model cache afterwards).</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Controls</h2>
+        <ul>
+            <li><b>Choose image</b>, drag a file anywhere on the window, or <b>Try a sample</b>.</li>
+            <li><b>Remove background</b> runs the model. <b>Download PNG</b> saves <code>cutout.png</code>.</li>
+            <li>Background swatches: transparent (checkerboard), white, black, red, cream, gradient, blurred original, a custom colour, or <b>Image&hellip;</b> to upload a backdrop.</li>
+            <li>Drag the divider to compare before and after (works once a cutout exists).</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How it works</h2>
+        <ol>
+            <li>Photos wider than 2000 px are shrunk first.</li>
+            <li>The picture is turned into model input: 1024&times;1024 pixels, normalised.</li>
+            <li>The model returns a mask (how likely each pixel is foreground), scaled to 0-255.</li>
+            <li>The mask is resized to the photo's size and written into the alpha channel of the original photo.</li>
+            <li>The chosen background is drawn first, then the cut-out on top.</li>
+        </ol>
+    </section>
+    <section class="panel">
+        <h2>Model and preprocessing details</h2>
+        <ul>
+            <li>Library: <code>import()</code> of <code>@huggingface/transformers@3.0.2</code> from jsDelivr, done only when you press the load button. <code>env.allowLocalModels</code> is false, so weights come from the Hugging Face hub (<code>briaai/RMBG-1.4</code>) and are kept in the browser's own cache.</li>
+            <li>Device: WebGPU if <code>'gpu' in navigator</code>, otherwise WASM. If the WebGPU load throws, it retries once on WASM. The status line says "Model ready (WebGPU)." or "Model ready (CPU, slower).". If WASM also fails, the error is shown in red and the button is re-enabled so you can retry.</li>
+            <li>Progress bar: sums <code>loaded</code> and <code>total</code> over all files reported by the progress callback and shows "Downloading model... X / Y MB".</li>
+            <li>Processor config (set in code): resize to 1024&times;1024, no padding, rescale by 1/255, mean 0.5 and std 1 on every channel, resample 2 (bilinear). That maps pixels to the range -0.5 to 0.5.</li>
+            <li>Inference: <code>RawImage.fromURL(before.src)</code>, <code>processor(image)</code>, <code>model({input})</code>. The first output is multiplied by 255, cast to uint8 and resized to the photo size.</li>
+            <li>Mask post-processing: there is none. The 0-255 value is written straight into each pixel's alpha, so soft edges come from the model's own confidence (no threshold, feathering or erosion).</li>
+            <li>Large photos: the longer side is limited to 2000 px (<code>MAX</code>) by redrawing on a canvas and re-encoding as PNG. Smaller photos are used as they are. The status line shows "Done in N s." after a run.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Compositing, compare slider and download</h2>
+        <ul>
+            <li>Background modes (<code>bg</code>): <code>none</code> (transparent, the checkerboard shows through), a CSS colour (white #ffffff, black #111111, red #ff5a47, cream #f1e8d6, or the colour picker, default #4a6fa5), <code>grad</code>, <code>blur</code>, <code>image</code>.</li>
+            <li>Gradient: a diagonal linear gradient #ff9966, #ff5e62 (middle), #6a5acd. Blur: the original drawn 20 px oversize on each side with <code>ctx.filter = blur(max(8, width/70) px)</code>, so the blur scales with the photo and edges do not fade. Custom image: scaled to cover and centred (cropped, not stretched).</li>
+            <li>Changing a swatch only redraws the canvas (<code>render()</code>); the model is not run again. The cutout canvas stays at the photo's resolution.</li>
+            <li>Compare slider: the original <code>&lt;img&gt;</code> sits over the result canvas and is clipped with <code>clip-path: inset(0 X% 0 0)</code>. Pointer events with pointer capture move the divider (0 to 1 across the view), so mouse, touch and pen all work. It is only active once a cutout exists (the view gets the <code>cut</code> class, which also shows the Before/After tags); before that the original fills the view. The view's touch action is <code>pan-y</code>, so vertical page scrolling still works on phones.</li>
+            <li>Download: <code>out.toBlob(image/png)</code> of the canvas as it looks (cutout plus chosen background), saved as <code>cutout.png</code>; the object URL is revoked after 2 s. The button is disabled until a cutout exists.</li>
+            <li>The view's width is <code>min(100%, 70vh &times; aspect ratio)</code>, so tall photos never exceed 70% of the screen height.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Inputs, state and failure modes</h2>
+        <table><tr><th>Input / state</th><th>Behaviour</th></tr><tr><td>Choose image</td><td><code>accept="image/*"</code>, first file only; the input is reset so the same file can be chosen again.</td></tr><tr><td>Drag and drop</td><td>Listens on the whole window; the drop card highlights while dragging; only files whose type starts with <code>image/</code> are accepted.</td></tr><tr><td>Try a sample</td><td>Loads <code>../03/images/f1_pitstop.jpg</code> (an image from project 03).</td></tr><tr><td>Run button</td><td>Disabled until both a model and a photo exist; reads "Load the model first" until the model is loaded. Loading a new photo clears the previous cutout and disables Download.</td></tr><tr><td>Storage</td><td>Nothing in <code>localStorage</code>, no URL options. Photos stay in memory as object URLs.</td></tr></table>
+        <ul>
+            <li>Unreadable image: status "Could not read that image." (red). Inference error: "Something went wrong: ..." with the message, and the buttons are restored.</li>
+            <li>No connection on first use: the library import or model download fails and the error is shown. The CDN is cross-origin, so the service worker does not store it.</li>
+            <li>Only one photo is held at a time, and inference runs on the main thread, so the page can freeze briefly on slow CPU (WASM) runs.</li>
+        </ul>
+        <div class="warn">RMBG-1.4 is licensed for non-commercial use only.</div>
+    </section>
+    <section class="panel">
+        <h2>Where to change what</h2>
+        <table><tr><th>To change</th><th>Edit in index.html</th></tr><tr><td>Library version or model</td><td>the <code>LIB</code> and <code>MODEL</code> constants (other models may need different processor settings)</td></tr><tr><td>Maximum photo size</td><td><code>MAX</code> in <code>showImage()</code></td></tr><tr><td>Add a background</td><td>a new <code>.sw</code> button with a <code>data-bg</code> value, plus a branch in <code>drawComposite()</code> if it is not a plain colour</td></tr><tr><td>Sample image</td><td>the path in the <code>sampleBtn</code> handler</td></tr><tr><td>Mask softness</td><td>the alpha loop in the run handler (for example apply a threshold or curve to <code>mask.data</code>)</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <p>The only project that runs a machine-learning model, and the only one that depends on an outside CDN at runtime.</p>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>Private, on-device AI cut-outs with a live before/after slider and many backgrounds.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>

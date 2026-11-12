@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Widget Desktop &amp; Glass Cursor - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="unblur_page.html">&#9664; Back to the desktop</a>
+        <a href="lots_of_square_cursor.html">GLASS CURSOR</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 07</span>
+    <h1>Widget Desktop &amp; Glass Cursor</h1>
+    <p class="tagline">A phone-and-desktop operating system simulation built around a blur/clear lens, plus a toy cursor trail.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>Two pages share this folder:</p>
+        <ul>
+            <li><b><code>unblur_page.html</code> (Widget Desktop):</b> a blurred wallpaper that a round "lens" under your pointer reveals in sharp focus. On top of it sit widgets, a Windows-style desktop (desktop screens) or a phone-style home screen (narrow screens).</li>
+            <li><b><code>lots_of_square_cursor.html</code> (Glass Cursor):</b> a trail of shapes that follows the pointer, with many styles and a paint mode.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Files</h2>
+        <table><tr><th>File</th><th>Role</th></tr><tr><td><code>wd/base.js</code></td><td>Helpers, wallpapers and the lens.</td></tr><tr><td><code>wd/widgets.js</code></td><td>About 30 widgets (clock, weather, calendar, music, to-do, timer, piano, snake, 2048, typing test and more).</td></tr><tr><td><code>wd/phone.js</code></td><td>The phone home screen.</td></tr><tr><td><code>wd/app.js</code></td><td>The framework and keyboard shortcuts.</td></tr><tr><td><code>wd/win/shell.js</code>, <code>vfs.js</code>, <code>apps/*</code></td><td>Windows-style desktop, a virtual file system and 9 apps: explorer, browser, notepad, paint, photos, calculator, clock, settings, solitaire.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>The lens effect</h2>
+        <ul>
+            <li>Two wallpaper copies are stacked: a blurred one and a sharp one. A clip-path on the sharp one follows the pointer, so only the area under the lens looks sharp. It uses no canvas, so it is cheap on the GPU.</li>
+            <li>Click pins the lens. The wheel changes its size (0.6 to 2.2). On touch devices the lens stays on.</li>
+            <li>The widget board fits the screen by searching for the best CSS <code>zoom</code> value. Widgets only update while visible, and a shared one-second tick sleeps when the tab is hidden.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Keyboard shortcuts (Widget Desktop)</h2>
+        <table><tr><th>Key</th><th>Action</th></tr><tr><td><span class="k">W</span></td><td>Show or hide the widget board</td></tr><tr><td><span class="k">B</span></td><td>Next wallpaper</td></tr><tr><td><span class="k">L</span></td><td>Change lens shape</td></tr><tr><td><span class="k">P</span></td><td>Pin the lens</td></tr><tr><td><span class="k">[</span> <span class="k">]</span></td><td>Lens smaller / bigger</td></tr><tr><td><span class="k">H</span></td><td>Zen mode (hide everything)</td></tr><tr><td><span class="k">?</span></td><td>Help</td></tr><tr><td><span class="k">Space</span></td><td>Music on / off</td></tr><tr><td><span class="k">Esc</span></td><td>Close panels and menus</td></tr></table>
+        <p>Widget presets: Default, Focus, Music, Planner, Play, Create, Tools, Outdoors. You can add your own wallpaper with "+ Photo". State is saved in <code>localStorage</code> keys starting with <code>wd.</code>.</p>
+    </section>
+    <section class="panel">
+        <h2>Desktop and phone modes</h2>
+        <ul>
+            <li><b>Desktop</b> (wider than 700px): taskbar, Start menu, draggable windows that snap to the screen edges, right-click new files, and a list of the portfolio projects.</li>
+            <li><b>Phone</b> (700px or narrower): home pages, an app drawer (swipe up), a notification shade with quick settings (swipe down) and long-press to rearrange.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Glass Cursor</h2>
+        <ul>
+            <li>A chain of shapes (square, circle, triangle, star, heart, diamond) follows the pointer in 6 palettes and 4 motions (chain, spring, orbit, wave). Sliders and 8 toggles (glow, gravity, paint mode, click bursts, magnet text, sound, autopilot, FPS) change it, with 4 backgrounds.</li>
+            <li>Keys: <span class="k">Space</span> randomise, <span class="k">P</span> paint, <span class="k">C</span> clear, <span class="k">G</span> gravity, <span class="k">H</span> hide panel, <span class="k">F</span> fullscreen.</li>
+            <li><b>Sharing:</b> your settings are encoded as base64 in the address hash, so copying the URL shares your exact look.</li>
+            <li>Autopilot animates after 2.5 seconds without input. Multi-touch gives one trail per finger.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Reaching this page, and the Help panel</h2>
+        <ul>
+            <li>The floating "How it works" button is intentionally off on <code>unblur_page.html</code> (<code>data-pos="none"</code> on <code>info-link.js</code>), so the way here is the <b>Help panel</b>, which ends with a link "How this desktop works (full page)".</li>
+            <li>Open Help with <span class="k">?</span> (also <span class="k">Shift</span>+<span class="k">/</span>), or on the desktop from <b>Start &rarr; Tips</b> or the Start button's right-click menu "Tips &amp; shortcuts". Help closes with <span class="k">Esc</span> or by pressing anywhere outside a panel.</li>
+            <li>The Help text has phone-only and desktop-only lines (CSS classes <code>phone-only</code> / <code>desk-only</code>); the KEYS list is desktop only. <code>lots_of_square_cursor.html</code> keeps the floating button (bottom-right, top-left on narrow screens). Both buttons are hidden with <code>?embed=1</code> or <code>?shot=1</code>.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Lens: exact behaviour</h2>
+        <table><tr><th>Shape</th><th>Width x height (px at scale 1)</th><th>Corner radius</th></tr><tr><td>Bar (default)</td><td>90 x 220</td><td>0</td></tr><tr><td>Square</td><td>170 x 170</td><td>4</td></tr><tr><td>Circle</td><td>190 x 190</td><td>999 (capped to half the width)</td></tr><tr><td>Wide</td><td>320 x 110</td><td>8</td></tr></table>
+        <ul>
+            <li>Size = shape x scale, scale 0.6 to 2.2 in steps of 0.1 (rounded). On phones the size is multiplied by a further 0.8.</li>
+            <li>Each frame (<code>requestAnimationFrame</code>, coalesced by <code>queueLens</code>) writes <code>clip-path: inset(top right bottom left round r)</code> on the sharp layer and moves a frame outline with <code>transform: translate</code>. Nothing is repainted on a canvas.</li>
+            <li>The lens does <b>not</b> follow the pointer over UI (selector list <code>UI_SEL</code>: widgets, panels, windows, taskbar, Start menu, context menus, dialogs, drawer, shade, icons). A mouse over UI hides the lens; leaving the window hides it too, unless pinned.</li>
+            <li>While a phone app is open (<code>body.app-open</code>) the lens is hidden (clip-path <code>inset(50%)</code>).</li>
+            <li>Pointer rules: the mouse follows on move. Touch: tapping the wallpaper moves the lens there. On phones touches go through the gesture layer (below): dragging the lens rectangle moves it, tapping bare wallpaper jumps it. A touch-only device wider than 700px (<code>hover: none</code>) starts with the lens on.</li>
+            <li>The mouse wheel over bare wallpaper (not over UI) changes the size by 0.1 per notch.</li>
+            <li>Lens shape, size, wallpaper, accent and grain are saved. Pinning is <b>not</b> saved (resets on reload).</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Wallpapers</h2>
+        <ul>
+            <li>Built in: Portrait, Street, Night. Each is a pair <code>page_images/w_bgN_blur.webp</code> (blurred, always shown) and <code>w_bgN.webp</code> (sharp, shown through the lens). <span class="k">B</span> cycles.</li>
+            <li>"+ Photo" (Settings panel, Settings app or the "Change wallpaper" Start entry) adds one of your pictures through <code>Shell.addWallpaper</code>. Custom wallpapers are saved in <code>wd.customBgs</code> and re-added to the list at load; the chosen index is restored from <code>wd.bg</code>.</li>
+            <li>On the desktop the built-in wallpapers also appear as read-only files in <code>/Pictures/Wallpapers</code>.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Boot order and the module contract</h2>
+        <ol>
+            <li>Scripts load in this order: <code>../04/playlist.js</code> (the track list used by Music), <code>wd/base.js</code>, <code>wd/widgets.js</code>, <code>wd/phone.js</code>, <code>wd/win/icons.js</code>, <code>vfs.js</code>, <code>shell.js</code>, and last <code>wd/app.js</code>. They are plain scripts sharing globals, so order matters.</li>
+            <li><code>app.js</code> builds one hidden <code>&lt;section class="widget"&gt;</code> per registry entry, calls <code>init(body)</code> and one <code>tick(now)</code>, then restores the board (<code>wd.board</code>) or applies the Default preset.</li>
+            <li>It then sets accent, grain, lens shape and wallpaper, calls <code>initPhone()</code>, and on a desktop runs <code>Shell.init()</code> and opens the board (<code>wd.deskWidgets</code>, default open). Last it starts the one-second tick.</li>
+        </ol>
+        <h3>What each module does</h3>
+        <table><tr><th>File</th><th>Details</th></tr>
+            <tr><td><code>wd/base.js</code></td><td><code>store</code> (localStorage wrapper: every key gets the prefix <code>wd.</code>, values are JSON, it never throws), <code>isPhone()</code> (<code>max-width: 700px</code>), <code>toast</code>, a shared <code>AudioContext</code> and <code>chime</code>, wallpapers, the Lens, <code>Geo</code> (location cache) and <code>sunTimes</code> (SunCalc style sunrise/sunset). The page title switches between "Widget Mobile" and "Widget Desktop" with the layout.</td></tr>
+            <tr><td><code>wd/widgets.js</code></td><td>The registry <code>WIDGETS</code> (31 widgets), the <code>PROJECTS</code> list (picture, name, link) used by the Photos widget, Start menu and file system, and the Music player (<code>Music</code>).</td></tr>
+            <tr><td><code>wd/app.js</code></td><td>Presets, board, panels (<code>launcher</code>, <code>settings</code>, <code>help</code>, <code>hwPicker</code>), keyboard, desktop/phone switch on resize, the tick, boot.</td></tr>
+            <tr><td><code>wd/phone.js</code></td><td>Gesture layer, history based layers, home grid and home widgets (<code>HW</code>), app drawer, notification shade, quick settings, notifications.</td></tr>
+            <tr><td><code>wd/win/shell.js</code></td><td>Window manager, taskbar, Start, flyouts (quick settings and notification centre), context menus, dialogs, desktop icons, sleep screen, alarm and timer service.</td></tr>
+            <tr><td><code>wd/win/vfs.js</code></td><td>Virtual file system <code>FS</code> (below).</td></tr>
+            <tr><td><code>wd/win/icons.js</code> + <code>icons.webp</code></td><td>The <code>wico()</code> icon helper (an icon sprite).</td></tr>
+            <tr><td><code>wd/wd.css</code>, <code>wd/win/win.css</code>, <code>apps.css</code></td><td>Styles for the widgets and phone, the shell, and the apps.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>Widgets: the full list</h2>
+        <p>31 widgets, in registry order: Clock, Calendar, Today, Moon, Weather, Sun, System, Music, Notes, To-do, Focus (timer), Stopwatch, Countdown, Habits, World Clock, Calculator, Converter, Pixel Pad, Ambience, Breathe, Photos, Dice, Typing Test, Snake, Quote, Piano, Metronome, Tic-Tac-Toe, 2048, Password, Palette.</p>
+        <h3>Presets (<code>PRESETS</code> in app.js)</h3>
+        <table><tr><th>Preset</th><th>Widget ids</th></tr>
+            <tr><td>Default</td><td>clock, weather, calendar, music, date, todo, sky, quote</td></tr>
+            <tr><td>Focus</td><td>clock, timer, todo, notes, breathe, ambient</td></tr>
+            <tr><td>Music</td><td>music, piano, metronome, ambient, photos</td></tr>
+            <tr><td>Planner</td><td>calendar, date, countdown, habits, todo, worldclock, weather</td></tr>
+            <tr><td>Play</td><td>snake, g2048, tictactoe, dice, typing</td></tr>
+            <tr><td>Create</td><td>palette, sketch, notes, quote, piano</td></tr>
+            <tr><td>Tools</td><td>calc, convert, password, stopwatch, worldclock</td></tr>
+            <tr><td>Outdoors</td><td>weather, sun, sky, worldclock, clock</td></tr></table>
+        <h3>The widgets board (desktop)</h3>
+        <ul>
+            <li>Open with <span class="k">W</span> or the taskbar Widgets button, close with its X (title "Hide widgets (W)"). The state is saved in <code>wd.deskWidgets</code>. "+ Add widgets" opens the picker: layout presets plus a tile per widget (on/off, with an "N of 31 on" counter). A widget's own X removes it from the board. Which widgets are on is saved in <code>wd.board</code> as <code>{id: {on: true}}</code>.</li>
+            <li>The board never scrolls. <code>fitBoard</code> first tries zoom 1; if the columns are taller than the free height it does a 9-step bisection between 0.4 and 1 for the largest CSS <code>zoom</code> that fits (the height jumps when a column is added, so a plain ratio would not work). A <code>ResizeObserver</code> and the window resize re-run it.</li>
+            <li>"Reset layout" (Settings panel) re-applies Default and the phone home layout after a confirm; notes, to-dos and other data are kept.</li>
+        </ul>
+        <h3>Widget lifecycle</h3>
+        <ul>
+            <li>Fields: <code>id, name, icon, color, w</code> (default width), <code>big</code> (a larger tile), <code>body()</code> returns the HTML, <code>init(body)</code> runs once at boot, <code>start()</code> / <code>stop()</code> run when it becomes active / inactive, <code>tick(now)</code> runs each second while active.</li>
+            <li>Active means: tab visible, and on desktop board open + widget on + not in zen mode; on a phone, its app is the open one. So a hidden widget does no work. An exception in <code>init</code> or <code>tick</code> is caught and logged, so one broken widget does not stop the rest.</li>
+        </ul>
+        <h3>How to add a widget</h3>
+        <ol>
+            <li>In <code>wd/widgets.js</code> add <code>def({ id: 'mything', name: 'My thing', icon: '&#9733;', color: '#abcdef', w: 260, body: () =&gt; '...', init(b) { ... }, tick(now) { ... } })</code>.</li>
+            <li>Optionally add its id to a preset in <code>PRESETS</code> (app.js), to <code>WIDGET_CAT</code> in shell.js (Start menu category; otherwise "Widgets"), or give it a phone home tile through <code>HW</code> in phone.js. It appears in the picker, Start menu and phone drawer automatically.</li>
+            <li>Save per-widget data with <code>store.get</code> / <code>store.set</code> (keys become <code>wd.&lt;key&gt;</code>).</li>
+        </ol>
+        <h3>Notable widget behaviour</h3>
+        <ul>
+            <li><b>Weather</b> and <b>Sun</b> share <code>Geo</code>: location comes from the browser geolocation (10 s timeout, cached up to 1 h) or a city search through the open-meteo geocoding API; it is cached in <code>wd.geo</code> and the weather in <code>wd.wx</code>. Sunrise/sunset, noon and golden hour are computed locally by <code>sunTimes</code> (sun altitude -0.833 deg for sunrise/sunset, +6 deg for golden hour; <code>null</code> in polar day/night).</li>
+            <li><b>Music</b> is one shared <code>&lt;audio&gt;</code> used by the widget, the phone media notification, the quick tile and Explorer's Music folder. <span class="k">Space</span> toggles it. Saved: <code>wd.track</code>, <code>wd.vol</code>.</li>
+            <li><b>Ambience</b> offers Rain, Wind, Waves, Fire and Caf&eacute;. <b>Piano</b> and <b>Metronome</b> save <code>pianoWave</code>, <code>bpm</code> and <code>beats</code>.</li>
+            <li>Games save best scores (<code>snakeHi</code>, <code>wpmBest</code>, <code>ttt</code>, <code>tttHard</code>).</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Persistence: localStorage keys</h2>
+        <p>All keys start with <code>wd.</code> (values are JSON). Found in the code:</p>
+        <table><tr><th>Area</th><th>Keys</th></tr>
+            <tr><td>Look and lens</td><td>bg, customBgs, shape, lensSize, accent, grain, dim</td></tr>
+            <tr><td>Board</td><td>board, deskWidgets</td></tr>
+            <tr><td>Widgets</td><td>h24, notes, todos, timers, countdown, habits, zones, geo, wx, track, vol, ambient, bpm, beats, pianoWave, calcMode, calcDeg, calcHist, sketch, palette, pwOpts, snakeHi, wpmBest, ttt, tttHard</td></tr>
+            <tr><td>Phone</td><td>homeItems, notifs, nfRandom, dnd</td></tr>
+            <tr><td>Desktop shell</td><td>tbPins, tbAlign, startPins, startView, recent, winBounds, shellHint, fsSeeded, alarms, sessions</td></tr>
+            <tr><td>Apps</td><td>npWrap, npZoom, npStatus (Notepad), exView (Explorer), clockTab (Clock), ptSize (Paint), solGame, solDraw, solBack, solStats (Solitaire)</td></tr></table>
+        <p>Your files (Notepad, Paint, uploads, Recycle Bin) are not in localStorage but in the IndexedDB database <code>wd-files</code>, store <code>files</code>. If IndexedDB is blocked the files live in memory only. Clearing site data resets everything.</p>
+    </section>
+    <section class="panel">
+        <h2>Phone mode in detail</h2>
+        <ul>
+            <li><b>Gesture layer</b> (<code>onDrag</code>): the home screen, drawer and shade use <code>touch-action: none</code>; a swipe locks to an axis after 9 px of movement and tracks velocity (reset if the finger rests more than 90 ms). A click right after a gesture is swallowed for 120 ms.</li>
+            <li><b>Home</b>: items are packed into a 4-column grid, cell 88 px, gap 8 px; rows = 3 to 7 depending on the free height. A page break item <code>|</code> separates pages. The default home has three pages (clock, music, weather, calendar, photos and to-do; then weather, calendar, to-do, countdown and moon tiles; then search, photos and quote). The dock holds Music, Notes, Timer and Apps. Saved in <code>wd.homeItems</code>; invalid ids are dropped on load.</li>
+            <li><b>Page swipe</b>: moves to the next/previous page if you drag more than 22% of the screen width or flick faster than 0.35 px/ms.</li>
+            <li><b>Pull down</b> (from the status bar or a downward swipe) opens the notification shade; it commits if dragged past 35% of the sheet or flicked down faster than 0.4. <b>Swipe up</b> opens the app drawer (commits past 30% of 0.55 screen heights or a flick faster than 0.4); from the open drawer a drag down of more than 60 px or a quick flick closes it.</li>
+            <li><b>Long-press</b> an item on a home page for 480 ms (with a short vibration if supported) to enter edit mode and drag it (holding near a page edge flips the page after 700 ms). The minus button removes, "+ Widgets" opens the picker, Done or tapping empty space exits. Long-press an app in the drawer for 520 ms to add it to Home.</li>
+            <li><b>Layers</b>: app, drawer and shade each push a browser history entry, so the system Back gesture or <span class="k">Esc</span> closes the top one. Widgets have a back arrow that calls <code>history.back()</code>.</li>
+            <li><b>Quick settings tiles</b>: Lens, Pin lens, Shape, Wallpaper, Music, Film grain, Do not disturb, Location. A brightness slider (0.35 to 1) dims the wallpaper (<code>wd.dim</code>).</li>
+            <li><b>Notifications</b>: three seeded ones (Welcome, a project promo, a message), plus a random one every 30 to 75 s on a phone (60 to 150 s on desktop), only while the tab is visible and not turned off in Settings (<code>nfRandom</code>); Do not disturb switches pop-ups off. Cards swipe away left or right (past 35% of their width or a flick faster than 0.5); heads-up banners hide after 5 s or a swipe up. Playing music adds a media notification.</li>
+            <li>Special apps: Settings and Wallpaper open the settings panel, Portfolio leaves to the main page, Apps opens the drawer.</li>
+            <li>Resizing across the 700 px line rebuilds the mode live (phone layers dropped; <code>Shell.init()</code> when going to desktop).</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Desktop shell in detail</h2>
+        <h3>Windows</h3>
+        <ul>
+            <li>Apps load on demand: <code>Shell.launch(id)</code> injects <code>wd/win/apps/&lt;id&gt;.js</code> the first time, which must register <code>WinApps.&lt;id&gt; = { mount(win, args) ... }</code>. A failed load shows a toast "Couldn't open ...". Some apps are <code>single</code> (one window: Calculator, Clock, Settings, Solitaire) and some <code>reuse</code> an existing window (Browser, Photos).</li>
+            <li>Default sizes (w x h): Explorer 880x560, Browser 1040x660, Notepad 740x500, Paint 1000x660, Photos 860x580, Calculator 340x560, Clock 700x520, Settings 940x640, Solitaire 940x680. The minimum size is 320 x 220 unless an app sets <code>minW</code> / <code>minH</code>. Windows resize from edges and corners and stay above the 48 px taskbar; positions persist in <code>wd.winBounds</code>.</li>
+            <li>Snap: dragging a title bar until the pointer is within 3 px of the top edge maximises; within 3 px of the left or 4 px of the right edge fills that half (a preview shows first). Pulling a maximised or snapped window away restores it under the cursor. <span class="k">Alt</span>+<span class="k">F4</span> closes the focused window.</li>
+            <li>Alarms and timers (<code>Shell.clock</code>) keep running when the Clock app is closed and ring with a chime. The default alarm is 07:30 "Wake up", weekdays, off.</li>
+        </ul>
+        <h3>Taskbar, Start, desktop</h3>
+        <ul>
+            <li>Start has pinned items (default pins: Browser, Explorer, Notepad, Paint, Photos, Calculator, Clock, Settings, Solitaire, Widgets, Wallpaper, a few projects, Music, Weather and Tips), an all-items list with search over names and keywords, recent files and a power menu: Sleep (full-screen sleep screen, any key or click wakes), Restart (reloads), Shut down (back to the portfolio page). Right-click items to pin/unpin; taskbar alignment and pins are saved.</li>
+            <li>The launcher can start apps, "Widgets", "Change wallpaper", "Tips" (Help), every portfolio project (opens its URL) and every widget (<code>w:&lt;id&gt;</code>, opened as a window).</li>
+            <li>Right-click the empty desktop for new files and folders; files from your computer can be dropped on it. Desktop icons open with <span class="k">Enter</span>. <span class="k">Esc</span> closes, in order: context menu, Start, flyouts, the widget picker.</li>
+            <li>Inside apps: Browser <span class="k">Ctrl</span>+<span class="k">L</span> or <span class="k">F6</span> address bar, <span class="k">Alt</span>+<span class="k">Left</span> / <span class="k">Right</span> back / forward, <span class="k">F5</span> reload. Notepad <span class="k">Ctrl</span>+<span class="k">O</span> / <span class="k">S</span> / <span class="k">F</span> / <span class="k">A</span>, <span class="k">Ctrl</span>+<span class="k">Shift</span>+<span class="k">S</span> save as, zoom <span class="k">Ctrl</span>+<span class="k">=</span> / <span class="k">-</span> / <span class="k">0</span>. Paint <span class="k">Ctrl</span>+<span class="k">Z</span> / <span class="k">Y</span>. Explorer <span class="k">Ctrl</span>+<span class="k">A</span> and Ctrl-click multi-select.</li>
+        </ul>
+        <h3>Virtual file system (<code>wd/win/vfs.js</code>)</h3>
+        <ul>
+            <li>Roots: Desktop, Documents, Downloads, Music, Pictures, Recycle Bin. <code>/Pictures/Wallpapers</code>, <code>/Pictures/Projects</code> and the root are read-only and built from code: wallpapers, project screenshots (with a link to the project) and the music library (<code>/Music/Title - Artist.mp3</code>).</li>
+            <li>Your files are records <code>{path, name, type, mime, size, ...}</code> saved in IndexedDB. Text types: txt md log csv json html css js xml ini; image types: png jpg jpeg webp gif bmp svg. Illegal characters <code>\ / : * ? " &lt; &gt; |</code> are stripped from names. Changes fire an <code>fs</code> event on <code>document</code> so open Explorer windows refresh.</li>
+            <li>A welcome file <code>/Documents/Welcome.txt</code> is offered in the Start "recent" list on first run; the seed flag is <code>fsSeeded</code>.</li>
+        </ul>
+        <h3>How to add a desktop app</h3>
+        <ol>
+            <li>Create <code>wd/win/apps/myapp.js</code> with <code>WinApps.myapp = { mount(w, args) { w.body.innerHTML = ...; } }</code> (see <code>notepad.js</code> for a full example).</li>
+            <li>Add an entry to <code>APPS</code> in <code>shell.js</code>: <code>{ id, name, icon, cat, w, h, minW, minH, single, reuse, kw }</code>; optionally add it to <code>DEFAULT_PINS</code>.</li>
+            <li>If the site is used offline, regenerate the offline file list (<code>tools/build_offline_manifest.py</code>) so the new file is cached.</li>
+        </ol>
+    </section>
+    <section class="panel">
+        <h2>Glass Cursor: all settings and internals</h2>
+        <table><tr><th>Setting</th><th>Options / range</th><th>Default</th></tr>
+            <tr><td>shape</td><td>square, circle, triangle, star, heart, diamond</td><td>square</td></tr>
+            <tr><td>palette</td><td>glass, rainbow, neon, fire, ocean, mono</td><td>glass</td></tr>
+            <tr><td>motion</td><td>chain, spring, orbit, wave</td><td>chain</td></tr>
+            <tr><td>bg</td><td>night, sunset, grid, paper (paper switches the page to the light theme)</td><td>night</td></tr>
+            <tr><td>Length</td><td>6 to 60 pieces</td><td>22</td></tr>
+            <tr><td>Size</td><td>16 to 140 px</td><td>86</td></tr>
+            <tr><td>Follow</td><td>0.05 to 0.60 (easing per frame, higher = tighter)</td><td>0.18</td></tr>
+            <tr><td>Mirror</td><td>1 to 8 (1 = off): every point is repeated N times, rotated around the screen centre</td><td>1</td></tr>
+            <tr><td>Toggles</td><td>glow, gravity, paint, bursts, magnet, sound, autopilot, stats</td><td>bursts, magnet, autopilot on; the rest off</td></tr></table>
+        <ul>
+            <li><b>Panel buttons:</b> Randomize, Copy link, Clear paint, Save PNG, Fullscreen, Reset. The panel collapses with the arrow and starts collapsed at 640 px or narrower.</li>
+            <li><b>Persistence order:</b> defaults, then <code>localStorage["glass-cursor"]</code>, then the URL hash (the hash wins). "Copy link" writes <code>#</code> + <code>btoa(encodeURIComponent(JSON))</code> of all settings to the address bar and the clipboard (if the clipboard is blocked the link stays in the address bar). A bad hash is ignored.</li>
+            <li><b>Trail model:</b> each pointer has 60 segments (only Length are used) and a position history of up to 120 points. Chain: segment i aims at the history point 1.6 x i steps back. Spring: each segment follows the one in front. Orbit: segments circle the pointer on radius 18 + 3.2 x i. Wave: like chain, but the pieces rotate. Size shrinks along the trail to 45% (orbit also halves it).</li>
+            <li><b>Gravity:</b> segments gain downward velocity (capped at 12) in proportion to their position along the trail, and burst bits fall faster (0.35 vs 0.12 per frame).</li>
+            <li><b>Click bursts:</b> 26 bits (8 with reduced motion), speed 2 to 8, fading at 0.018 per frame, at most 400 live bits.</li>
+            <li><b>Paint mode:</b> the head of each live trail stamps a piece (35% of Size, 60% alpha) on a second canvas that never clears by itself; Clear paint, Reset and the <span class="k">C</span> key wipe it. The paint canvas is kept on resize. Save PNG merges the background colour, paint and trail at device resolution into <code>glass-cursor.png</code>.</li>
+            <li><b>Magnet text:</b> the title letters move away from the pointer within 160 px (up to 40 px shift); letter positions are re-measured after fonts load.</li>
+            <li><b>Sound</b> (off by default) plays soft Web Audio blips whose pitch follows pointer speed; click bursts add a blip.</li>
+            <li><b>Autopilot:</b> after 2500 ms without input (and no live trail) a Lissajous path around the screen centre (about 32% of the width) is drawn as a trail named "auto". Any input removes it.</li>
+            <li><b>Pointers:</b> one trail per pointer id. Mouse trails are permanent; touch trails exist only while the finger is down and fade after release. Fast strokes use coalesced events. The OS cursor is hidden over the canvas but returns over the panel, and presses on the panel do not draw.</li>
+            <li><b>Performance:</b> canvas scale is capped at 2x device pixels; the loop sleeps after about 20 still frames and input wakes it, so an idle page costs nothing (autopilot keeps it awake). <code>prefers-reduced-motion</code> makes follow tight (0.6) and bursts smaller. The FPS toggle shows fps, trail count and bit count.</li>
+            <li><b>Keys</b> are ignored while a slider or select has focus. <span class="k">H</span> hides the whole panel (press again to restore).</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <p>A whole interface family (phone and desktop) driven by one small lens trick. It is modular: each widget or app is a separate file, so adding one is easy.</p>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>The signature blur-to-clear lens, with an unusually large set of widgets and apps behind it.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>

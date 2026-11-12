@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Escape Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="preload" href="../../images_to_use/tiles_texture_pixel.png" as="image">
+    <style>
+        :root {
+            --ink: #0d0d0d;
+            --panel: #1b1d22;
+            --panel-hi: #2a2d35;
+            --line: #000;
+            --text: #f4f1e8;
+            --muted: #8d93a0;
+            --go: #4caf50;
+            --hi: #ffd23f;
+            --red: #ff4d4d;
+            --px: 3px;               /* chunky border / shadow unit */
+            --cell: 80px;            /* set from JS to fit the screen */
+            --font: 'Press Start 2P', ui-monospace, monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background:
+                radial-gradient(circle at 50% 35%, #1c2b22 0%, var(--ink) 65%),
+                var(--ink);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 12px;
+            line-height: 1.5;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* CRT scanlines over everything, as in the effect studio */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9000;
+            background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 4px);
+        }
+
+        .app {
+            height: 100vh;
+            height: 100dvh;
+            display: grid;
+            grid-template-rows: auto auto 1fr auto;
+            padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+            gap: 10px;
+        }
+
+        /* ---------- pixel UI primitives ---------- */
+        .px-btn {
+            font: inherit;
+            font-size: 11px;
+            color: var(--text);
+            background: var(--panel-hi);
+            border: var(--px) solid var(--line);
+            box-shadow:
+                inset calc(var(--px) * -1) calc(var(--px) * -1) 0 rgba(0, 0, 0, 0.45),
+                inset var(--px) var(--px) 0 rgba(255, 255, 255, 0.18),
+                var(--px) var(--px) 0 var(--line);
+            padding: 10px 12px;
+            min-height: 40px;
+            cursor: pointer;
+            touch-action: manipulation;
+            white-space: nowrap;
+        }
+
+        .px-btn:hover {
+            background: #3a3f4a;
+        }
+
+        .px-btn:active,
+        .px-btn.pressed {
+            transform: translate(var(--px), var(--px));
+            box-shadow:
+                inset var(--px) var(--px) 0 rgba(0, 0, 0, 0.45);
+        }
+
+        .px-btn:disabled {
+            opacity: 0.35;
+            cursor: default;
+            transform: none;
+        }
+
+        .px-btn:focus-visible {
+            outline: var(--px) solid var(--hi);
+            outline-offset: 2px;
+        }
+
+        .px-btn.go {
+            background: var(--go);
+            color: var(--ink);
+        }
+
+        .px-btn.warn {
+            background: var(--hi);
+            color: var(--ink);
+        }
+
+        .px-panel {
+            background: var(--panel);
+            border: var(--px) solid var(--line);
+            box-shadow:
+                inset var(--px) var(--px) 0 rgba(255, 255, 255, 0.08),
+                var(--px) var(--px) 0 var(--line);
+        }
+
+        /* ---------- header ---------- */
+        .hud {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .level-title {
+            font-size: clamp(12px, 3.2vw, 18px);
+            color: var(--go);
+            text-shadow: var(--px) var(--px) 0 var(--line);
+            letter-spacing: 1px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .stat {
+            padding: 6px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 84px;
+        }
+
+        .stat-label {
+            font-size: 8px;
+            color: var(--muted);
+        }
+
+        .stat-value {
+            font-size: 14px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-value.warning {
+            color: var(--red);
+            animation: blink 0.5s steps(2) infinite;
+        }
+
+        /* ---------- board ---------- */
+        .stage {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+        }
+
+        .board-frame {
+            position: relative;
+            border: calc(var(--px) + 1px) solid var(--line);
+            box-shadow: 0 0 0 var(--px) #4a4f5a, calc(var(--px) * 3) calc(var(--px) * 3) 0 var(--line);
+            /* reserve room for the exit sign on the right */
+            margin-right: calc(var(--cell) * 0.7);
+        }
+
+        .board {
+            position: relative;
+            overflow: hidden;
+            background-color: #3b3e44;
+            image-rendering: pixelated;
+            background-size: var(--cell) var(--cell);
+            touch-action: none;
+        }
+
+        .board.enter {
+            animation: board-in 0.35s steps(5) both;
+        }
+
+        @keyframes board-in {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+        }
+
+        .gate {
+            position: absolute;
+            right: calc((var(--px) + 1px) * -1);
+            width: calc(var(--px) + 1px);
+            background: #3b3e44;
+        }
+
+        .exit-sign {
+            position: absolute;
+            left: calc(100% + var(--px) + 4px);
+            width: calc(var(--cell) * 0.62);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--hi);
+            font-size: calc(var(--cell) * 0.26);
+            text-shadow: 2px 2px 0 var(--line);
+            animation: nudge 0.8s steps(2) infinite;
+        }
+
+        @keyframes nudge {
+            50% {
+                transform: translateX(4px);
+            }
+        }
+
+        .tile {
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: grab;
+            touch-action: none;
+            will-change: transform;
+        }
+
+        .tile.dragging {
+            cursor: grabbing;
+            z-index: 10;
+        }
+
+        .tile.snap {
+            transition: transform 0.12s steps(3);
+        }
+
+        .tile-sprite {
+            position: absolute;
+            inset: 0;
+            background-image: url('../../images_to_use/tiles_texture_pixel.png');
+            background-repeat: no-repeat;
+            image-rendering: pixelated;
+            pointer-events: none;
+        }
+
+        .tile-sprite.rotated {
+            inset: auto;
+            transform: rotate(90deg);
+        }
+
+        .tile-flat {
+            position: absolute;
+            inset: 8%;
+            border: var(--px) solid var(--line);
+            box-shadow: inset calc(var(--px) * -1) calc(var(--px) * -1) 0 rgba(0, 0, 0, 0.35);
+        }
+
+        /* blinking pixel brackets — on the hero car always, on the selected car */
+        .tile::after {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            pointer-events: none;
+            opacity: 0;
+            --c: var(--hi);
+            --s: max(6px, calc(var(--cell) * 0.12));
+            background:
+                linear-gradient(var(--c), var(--c)) top left / var(--s) var(--px),
+                linear-gradient(var(--c), var(--c)) top left / var(--px) var(--s),
+                linear-gradient(var(--c), var(--c)) top right / var(--s) var(--px),
+                linear-gradient(var(--c), var(--c)) top right / var(--px) var(--s),
+                linear-gradient(var(--c), var(--c)) bottom left / var(--s) var(--px),
+                linear-gradient(var(--c), var(--c)) bottom left / var(--px) var(--s),
+                linear-gradient(var(--c), var(--c)) bottom right / var(--s) var(--px),
+                linear-gradient(var(--c), var(--c)) bottom right / var(--px) var(--s);
+            background-repeat: no-repeat;
+        }
+
+        .tile.win-tile::after {
+            --c: var(--red);
+            opacity: 1;
+            animation: blink 0.8s steps(2) infinite;
+        }
+
+        .tile.selected::after {
+            --c: var(--hi);
+            opacity: 1;
+            animation: none;
+        }
+
+        @keyframes blink {
+            50% {
+                opacity: 0.25;
+            }
+        }
+
+        /* ---------- toast (struggling quotes) ---------- */
+        .toast {
+            position: absolute;
+            left: 50%;
+            bottom: 4px;
+            transform: translate(-50%, 8px);
+            max-width: min(520px, 92%);
+            padding: 10px 12px;
+            font-size: 10px;
+            color: var(--hi);
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.2s steps(3), transform 0.2s steps(3);
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        /* ---------- controls ---------- */
+        .controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 48px);
+            grid-template-rows: repeat(2, 44px);
+            gap: 4px;
+        }
+
+        .dpad .px-btn {
+            padding: 0;
+            font-size: 14px;
+            min-height: 0;
+        }
+
+        .dpad [data-dir="up"] {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .dpad [data-dir="left"] {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .dpad [data-dir="down"] {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .dpad [data-dir="right"] {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .hint {
+            font-size: 8px;
+            color: var(--muted);
+            text-align: center;
+            max-width: 200px;
+        }
+
+        #skipBtn {
+            display: none;
+        }
+
+        #skipBtn.show {
+            display: inline-block;
+        }
+
+        /* ---------- session scores (wide screens only) ---------- */
+        .score-panel {
+            position: fixed;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            width: 210px;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 12px;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 9px;
+        }
+
+        .score-panel-title {
+            color: var(--go);
+            margin-bottom: 4px;
+        }
+
+        .score-entry {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .score-entry .stars {
+            color: var(--hi);
+            font-size: 12px;
+        }
+
+        @media (min-width: 1100px) {
+            .score-panel.has-scores {
+                display: flex;
+            }
+        }
+
+        /* ---------- modals ---------- */
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 16px;
+        }
+
+        .modal.open {
+            display: flex;
+        }
+
+        .modal-card {
+            width: min(520px, 100%);
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 18px;
+            animation: pop 0.25s steps(4) both;
+        }
+
+        @keyframes pop {
+            from {
+                transform: scale(0.6);
+                opacity: 0;
+            }
+        }
+
+        .modal-title {
+            font-size: 16px;
+            color: var(--go);
+            text-shadow: var(--px) var(--px) 0 var(--line);
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+            gap: 10px;
+        }
+
+        .level-grid .px-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 4px;
+            font-size: 13px;
+        }
+
+        .level-grid .px-btn.current {
+            outline: var(--px) solid var(--hi);
+        }
+
+        /* the pixel font has no star glyph — use a system font at a size
+           where the fallback glyph reads clearly */
+        .stars {
+            font-family: system-ui, sans-serif;
+            line-height: 1;
+        }
+
+        .level-grid .stars {
+            font-size: 15px;
+            color: var(--hi);
+            letter-spacing: 1px;
+            text-shadow: 1px 1px 0 var(--line);
+        }
+
+        .level-grid .px-btn.go .stars {
+            color: var(--ink);
+            text-shadow: none;
+        }
+
+        .level-grid .stars.none {
+            color: var(--muted);
+        }
+
+        .clear-card {
+            text-align: center;
+        }
+
+        .clear-stars {
+            font-family: system-ui, sans-serif;
+            font-size: 34px;
+            color: var(--hi);
+            letter-spacing: 6px;
+            margin: 6px 0 14px;
+            text-shadow: var(--px) var(--px) 0 var(--line);
+        }
+
+        .clear-stars .off {
+            color: #444;
+        }
+
+        .clear-lines {
+            font-size: 10px;
+            line-height: 2.2;
+            margin-bottom: 16px;
+        }
+
+        .clear-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 520px) {
+            body {
+                font-size: 10px;
+            }
+
+            .px-btn {
+                font-size: 9px;
+                padding: 8px 9px;
+            }
+
+            .stat {
+                min-width: 70px;
+                padding: 5px 6px;
+            }
+
+            .stat-value {
+                font-size: 12px;
+            }
+
+            .hint {
+                display: none;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <script src="../../pixel-transition.js"></script>
+    <script src="../../offline.js"></script>
+    <script src="../../daily.js"></script>
+    <script>PixelTransition.reveal();</script>
+
+    <div class="app">
+        <header class="hud">
+            <button class="px-btn" id="backBtn" aria-label="Back to portfolio">&#9664; HOME</button>
+            <div class="level-title" id="levelBar">LEVEL 1</div>
+            <button class="px-btn" id="levelsBtn">LEVELS</button>
+        </header>
+
+        <div class="stats">
+            <div class="stat px-panel"><span class="stat-label">TIME</span><span class="stat-value" id="timer">1:30</span></div>
+            <div class="stat px-panel"><span class="stat-label">MOVES</span><span class="stat-value" id="moves">0</span></div>
+            <div class="stat px-panel"><span class="stat-label">PAR</span><span class="stat-value" id="par">-</span></div>
+        </div>
+
+        <main class="stage" id="stage">
+            <div class="board-frame" id="boardFrame">
+                <div class="board" id="board"></div>
+            </div>
+            <div class="toast px-panel" id="strugglingMessage" role="status"></div>
+        </main>
+
+        <footer class="controls">
+            <div class="control-group">
+                <button class="px-btn" id="undoBtn" title="Undo (Z)">UNDO</button>
+                <button class="px-btn" id="resetBtn" title="Restart (R)">RESET</button>
+                <button class="px-btn warn" id="skipBtn">SKIP &#9654;</button>
+            </div>
+            <div class="dpad" id="dpad" aria-label="Move selected vehicle">
+                <button class="px-btn" data-dir="up" aria-label="Move up">&#9650;</button>
+                <button class="px-btn" data-dir="left" aria-label="Move left">&#9664;</button>
+                <button class="px-btn" data-dir="down" aria-label="Move down">&#9660;</button>
+                <button class="px-btn" data-dir="right" aria-label="Move right">&#9654;</button>
+            </div>
+            <div class="hint">Drag a car, or tap it and use the arrows. Get the red car to the EXIT.</div>
+        </footer>
+    </div>
+
+    <aside class="score-panel px-panel" id="scorePanel">
+        <div class="score-panel-title">SCORES</div>
+    </aside>
+
+    <div class="modal" id="levelModal" role="dialog" aria-modal="true" aria-labelledby="levelModalTitle">
+        <div class="modal-card px-panel">
+            <div class="modal-title" id="levelModalTitle">SELECT LEVEL</div>
+            <div class="level-grid" id="levelGrid"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="clearModal" role="dialog" aria-modal="true" aria-labelledby="clearTitle">
+        <div class="modal-card px-panel clear-card">
+            <div class="modal-title" id="clearTitle">LEVEL CLEAR!</div>
+            <div class="clear-stars" id="clearStars"></div>
+            <div class="clear-lines" id="clearLines"></div>
+            <div class="clear-actions">
+                <button class="px-btn" id="replayBtn">REPLAY</button>
+                <button class="px-btn go" id="nextBtn">NEXT &#9654;</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const LEVEL_TIME_MS = 90 * 1000;
+        const QUOTES_START_DELAY_MS = 20 * 1000;
+        const QUOTE_INTERVAL_MS = 8 * 1000;
+        const MAX_CELL = 104;
+        const SHEET_COLS = 6, SHEET_ROWS = 12;   // tiles_texture is a 6x12 grid of cells
+        const ART_PX_PER_CELL = 16;              // pixel-art sheet resolution per cell
+        const STORE_KEY = 'parking-puzzle-progress';
+        const STRUGGLING_QUOTES = [
+            'Wow. Still stuck. Riveting.',
+            'The timer isn\'t just decoration, you know.',
+            'Have you tried using your brain? Worth a shot.',
+            'A toddler would\'ve solved this by now.',
+            'The exit is RIGHT THERE. It\'s not subtle.',
+            'Maybe puzzles just aren\'t your thing. At all. Ever.',
+            'This is genuinely embarrassing to watch.',
+            'Keep going, failure builds character. You must be very strong by now.',
+            'At this rate the tiles will retire before you finish.',
+            'Not to be rude, but... too late.',
+            'Skip it. Save yourself the humiliation.',
+            'I\'ve seen rocks solve puzzles faster.'
+        ];
+
+        const $ = id => document.getElementById(id);
+        const board = $('board'), boardFrame = $('boardFrame'), stage = $('stage');
+        const timerEl = $('timer'), movesEl = $('moves'), parEl = $('par');
+        const levelBar = $('levelBar'), skipBtn = $('skipBtn'), toast = $('strugglingMessage');
+        const scorePanel = $('scorePanel');
+        const dpadButtons = [...document.querySelectorAll('#dpad [data-dir]')];
+
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+        const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function shuffledQuotes() {
+            const arr = STRUGGLING_QUOTES.slice();
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function formatTime(ms) {
+            const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+            return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+        }
+
+        // ---------- saved progress (per-browser convenience only) ----------
+        function loadProgress() {
+            try { return JSON.parse(localStorage.getItem(STORE_KEY)) || { best: {}, last: 0 }; }
+            catch { return { best: {}, last: 0 }; }
+        }
+        function saveProgress() {
+            try { localStorage.setItem(STORE_KEY, JSON.stringify(progress)); } catch { }
+        }
+        const progress = loadProgress();
+
+        function starsFor(moves, par) {
+            if (!par) return 3;
+            if (moves <= par) return 3;
+            if (moves <= par + Math.ceil(par * 0.5)) return 2;
+            return 1;
+        }
+        const starText = n => '★'.repeat(n) + '☆'.repeat(3 - n);
+
+        // ---------- asphalt texture: one 16x16 pixel-art cell ----------
+        function makeAsphalt() {
+            const c = document.createElement('canvas');
+            c.width = c.height = ART_PX_PER_CELL;
+            const g = c.getContext('2d');
+            let seed = 7;
+            const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+            for (let y = 0; y < 16; y++)
+                for (let x = 0; x < 16; x++) {
+                    const v = 54 + Math.floor(rnd() * 3) * 5;
+                    g.fillStyle = `rgb(${v},${v + 2},${v + 6})`;
+                    g.fillRect(x, y, 1, 1);
+                }
+            // parking-bay lines on the cell edges
+            g.fillStyle = '#2b2d32';
+            g.fillRect(0, 0, 16, 1);
+            g.fillRect(0, 0, 1, 16);
+            g.fillStyle = 'rgba(255,255,255,0.10)';
+            for (let i = 2; i < 16; i += 4) g.fillRect(i, 1, 2, 1);
+            return c.toDataURL();
+        }
+        board.style.backgroundImage = `url(${makeAsphalt()})`;
+
+        // ---------- game state ----------
+        let config, levels, sprites;
+        let level = null, COLS = 6, ROWS = 6, CELL = 80;
+        let tiles = [], history = [], selected = null;
+        let currentLevelIndex = 0;
+        let busy = false;
+        let timerInterval = null, levelStartTime = 0, timerStarted = false;
+        let quotesStartTimeout = null, quoteInterval = null, quoteDeck = [];
+        let clearAdvanceTimeout = null;
+        const sessionScores = [];
+
+        // ---------- sizing ----------
+        function computeCell() {
+            const availW = stage.clientWidth - 24;
+            const availH = stage.clientHeight - 24;
+            let cell = Math.min(MAX_CELL, availW / (COLS + 0.85), availH / ROWS);
+            // prefer a size where each art pixel maps to whole device pixels
+            const dpr = window.devicePixelRatio || 1;
+            const snapped = Math.floor(cell * dpr / ART_PX_PER_CELL) * ART_PX_PER_CELL / dpr;
+            cell = snapped >= cell * 0.8 ? snapped : Math.floor(cell);
+            return Math.max(28, cell);
+        }
+
+        function applySize() {
+            CELL = computeCell();
+            document.documentElement.style.setProperty('--cell', CELL + 'px');
+            board.style.width = (COLS * CELL) + 'px';
+            board.style.height = (ROWS * CELL) + 'px';
+            const win = tiles.find(t => t.isWinTile);
+            const gate = boardFrame.querySelector('.gate');
+            const sign = boardFrame.querySelector('.exit-sign');
+            if (win && gate) {
+                gate.style.top = (win.row * CELL) + 'px';
+                gate.style.height = (win.height * CELL) + 'px';
+                sign.style.top = (win.row * CELL) + 'px';
+                sign.style.height = (win.height * CELL) + 'px';
+            }
+            tiles.forEach(t => {
+                t.el.style.width = (t.width * CELL) + 'px';
+                t.el.style.height = (t.height * CELL) + 'px';
+                render(t);
+            });
+        }
+
+        let resizeRaf = 0;
+        window.addEventListener('resize', () => {
+            cancelAnimationFrame(resizeRaf);
+            resizeRaf = requestAnimationFrame(applySize);
+        });
+
+        // ---------- sprites ----------
+        // Sprite rects are expressed as percentages of the sheet so they stay
+        // correct at any cell size without recomputing pixel offsets.
+        function spriteStyle(el, s) {
+            const sizeX = SHEET_COLS / s.cellsWide * 100;
+            const sizeY = SHEET_ROWS / s.cellsTall * 100;
+            const posX = SHEET_COLS === s.cellsWide ? 0 : s.sheetCol / (SHEET_COLS - s.cellsWide) * 100;
+            const posY = SHEET_ROWS === s.cellsTall ? 0 : s.sheetRow / (SHEET_ROWS - s.cellsTall) * 100;
+            el.style.backgroundSize = `${sizeX}% ${sizeY}%`;
+            el.style.backgroundPosition = `${posX}% ${posY}%`;
+        }
+
+        function buildTileEl(cfg) {
+            const el = document.createElement('div');
+            el.className = 'tile' + (cfg.isWinTile ? ' win-tile' : '');
+            const s = typeof cfg.spriteIndex === 'number' ? sprites[cfg.spriteIndex] : null;
+            if (s) {
+                const inner = document.createElement('div');
+                inner.className = 'tile-sprite';
+                spriteStyle(inner, s);
+                if (cfg.direction !== s.direction) {
+                    // sprite drawn for the other orientation — rotate it into place
+                    const w = cfg.width, h = cfg.height;
+                    inner.classList.add('rotated');
+                    inner.style.width = (h / w * 100) + '%';
+                    inner.style.height = (w / h * 100) + '%';
+                    inner.style.left = ((1 - h / w) / 2 * 100) + '%';
+                    inner.style.top = ((1 - w / h) / 2 * 100) + '%';
+                }
+                el.appendChild(inner);
+            } else {
+                const flat = document.createElement('div');
+                flat.className = 'tile-flat';
+                flat.style.background = cfg.color || '#888';
+                el.appendChild(flat);
+            }
+            return el;
+        }
+
+        // ---------- geometry ----------
+        const isH = t => t.direction === 'horizontal';
+        const posOf = t => isH(t) ? t.col : t.row;
+        const xy = (t, pos = posOf(t)) => isH(t) ? [pos * CELL, t.row * CELL] : [t.col * CELL, pos * CELL];
+
+        function render(t, pos) {
+            const [x, y] = xy(t, pos);
+            t.el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        }
+
+        function overlaps(a0, aLen, b0, bLen) {
+            return a0 < b0 + bLen && b0 < a0 + aLen;
+        }
+
+        // how far a tile can slide along its axis (others don't move meanwhile)
+        function bounds(t) {
+            const others = tiles.filter(o => o !== t);
+            const h = isH(t);
+            const hardMax = h ? COLS - t.width : ROWS - t.height;
+            const fits = p => !others.some(o =>
+                overlaps(h ? t.row : p, t.height, o.row, o.height) &&
+                overlaps(h ? p : t.col, t.width, o.col, o.width));
+            let min = posOf(t), max = posOf(t);
+            while (min - 1 >= 0 && fits(min - 1)) min--;
+            while (max + 1 <= hardMax && fits(max + 1)) max++;
+            return { min, max };
+        }
+
+        // ---------- moves / history ----------
+        // Consecutive moves of the same vehicle count as one move — the same
+        // rule the par was computed with (tools/gen_levels.py).
+        function moveCount() {
+            let n = 0, prev = -1;
+            for (const h of history) {
+                if (h.i !== prev) n++;
+                prev = h.i;
+            }
+            return n;
+        }
+
+        function updateHud() {
+            movesEl.textContent = moveCount();
+            parEl.textContent = level.par ?? '-';
+            $('undoBtn').disabled = !history.length || busy;
+            updateDpad();
+        }
+
+        function setPos(t, pos) {
+            if (isH(t)) t.col = pos; else t.row = pos;
+        }
+
+        function commitMove(t, from, to) {
+            if (from === to) return;
+            history.push({ i: tiles.indexOf(t), from, to });
+            setPos(t, to);
+            render(t);
+            updateHud();
+            checkWin();
+        }
+
+        function undo() {
+            if (busy || !history.length) return;
+            const h = history.pop();
+            const t = tiles[h.i];
+            setPos(t, h.from);
+            t.el.classList.add('snap');
+            render(t);
+            select(t);
+            updateHud();
+        }
+
+        // ---------- selection + d-pad ----------
+        function select(t) {
+            if (selected) selected.el.classList.remove('selected');
+            selected = t;
+            if (t) t.el.classList.add('selected');
+            updateDpad();
+        }
+
+        function updateDpad() {
+            const t = selected;
+            const b = t && !busy ? bounds(t) : null;
+            dpadButtons.forEach(btn => {
+                const dir = btn.dataset.dir;
+                let ok = false;
+                if (b) {
+                    const p = posOf(t);
+                    if (isH(t)) ok = (dir === 'left' && b.min < p) || (dir === 'right' && b.max > p);
+                    else ok = (dir === 'up' && b.min < p) || (dir === 'down' && b.max > p);
+                }
+                btn.disabled = !ok;
+            });
+        }
+
+        function nudge(dir) {
+            if (busy) return;
+            if (!selected) select(tiles.find(t => t.isWinTile));
+            const t = selected;
+            const step = { left: -1, up: -1, right: 1, down: 1 }[dir];
+            if (isH(t) !== (dir === 'left' || dir === 'right')) return;
+            const b = bounds(t);
+            const from = posOf(t);
+            const to = clamp(from + step, b.min, b.max);
+            if (to === from) return;
+            startTimer();
+            t.el.classList.add('snap');
+            commitMove(t, from, to);
+        }
+
+        dpadButtons.forEach(btn => btn.addEventListener('click', () => nudge(btn.dataset.dir)));
+
+        // ---------- dragging (mouse + touch via pointer events) ----------
+        let drag = null, dragRaf = 0;
+
+        function onPointerDown(e, t) {
+            if (busy || (e.pointerType === 'mouse' && e.button !== 0)) return;
+            e.preventDefault();
+            const h = isH(t);
+            drag = {
+                t, id: e.pointerId,
+                start: h ? e.clientX : e.clientY,
+                startX: e.clientX, startY: e.clientY,
+                from: posOf(t), raw: posOf(t),
+                b: bounds(t), moved: false,
+            };
+            t.el.classList.remove('snap');
+            t.el.classList.add('dragging');
+            t.el.setPointerCapture(e.pointerId);
+            select(t);
+        }
+
+        function onPointerMove(e) {
+            if (!drag || e.pointerId !== drag.id) return;
+            const { t, b } = drag;
+            const cur = isH(t) ? e.clientX : e.clientY;
+            if (!drag.moved && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > 6) {
+                drag.moved = true;
+                startTimer();
+            }
+            drag.raw = clamp(drag.from + (cur - drag.start) / CELL, b.min, b.max);
+            if (!dragRaf) dragRaf = requestAnimationFrame(() => {
+                dragRaf = 0;
+                if (drag) render(drag.t, drag.raw);
+            });
+        }
+
+        function onPointerUp(e) {
+            if (!drag || e.pointerId !== drag.id) return;
+            const { t, from, raw, b } = drag;
+            drag = null;
+            cancelAnimationFrame(dragRaf);
+            dragRaf = 0;
+            t.el.classList.remove('dragging');
+            t.el.classList.add('snap');
+            const to = clamp(Math.round(raw), b.min, b.max);
+            if (to !== from) commitMove(t, from, to);
+            else render(t);
+        }
+
+        // ---------- keyboard ----------
+        window.addEventListener('keydown', e => {
+            if ($('levelModal').classList.contains('open')) {
+                if (e.key === 'Escape') closeLevelSelect();
+                return;
+            }
+            if ($('clearModal').classList.contains('open')) {
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('nextBtn').click(); }
+                return;
+            }
+            const dirs = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', a: 'left', d: 'right', w: 'up', s: 'down' };
+            if (dirs[e.key]) {
+                e.preventDefault();
+                nudge(dirs[e.key]);
+            } else if (e.key === 'Tab' && !e.shiftKey && document.activeElement === document.body) {
+                // cycle the selected vehicle
+                e.preventDefault();
+                const i = selected ? tiles.indexOf(selected) : -1;
+                select(tiles[(i + 1) % tiles.length]);
+            } else if (e.key === 'z' || e.key === 'Backspace') {
+                undo();
+            } else if (e.key === 'r') {
+                restartLevel();
+            }
+        });
+
+        // ---------- timer + quotes ----------
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+
+        function stopQuotes() {
+            clearTimeout(quotesStartTimeout);
+            clearInterval(quoteInterval);
+            quotesStartTimeout = quoteInterval = null;
+            toast.classList.remove('show');
+        }
+
+        function nextQuote() {
+            if (!quoteDeck.length) quoteDeck = shuffledQuotes();
+            return quoteDeck.pop();
+        }
+
+        function showQuote() {
+            toast.textContent = nextQuote();
+            toast.classList.add('show');
+        }
+
+        function startQuotes() {
+            stopQuotes();
+            quoteDeck = shuffledQuotes();
+            quotesStartTimeout = setTimeout(() => {
+                showQuote();
+                quoteInterval = setInterval(showQuote, QUOTE_INTERVAL_MS);
+            }, QUOTES_START_DELAY_MS);
+        }
+
+        function resetTimerState() {
+            stopTimer();
+            stopQuotes();
+            timerStarted = false;
+            timerEl.classList.remove('warning');
+            skipBtn.classList.remove('show');
+            timerEl.textContent = formatTime(LEVEL_TIME_MS);
+        }
+
+        function startTimer() {
+            if (timerStarted || busy) return;
+            timerStarted = true;
+            levelStartTime = Date.now();
+            updateTimerDisplay();
+            timerInterval = setInterval(updateTimerDisplay, 250);
+            startQuotes();
+        }
+
+        function updateTimerDisplay() {
+            const remaining = LEVEL_TIME_MS - (Date.now() - levelStartTime);
+            timerEl.textContent = formatTime(remaining);
+            if (remaining <= 0) {
+                timerEl.textContent = '0:00';
+                timerEl.classList.add('warning');
+                skipBtn.classList.add('show');
+                showQuote();
+                stopTimer();
+            }
+        }
+
+        // ---------- level lifecycle ----------
+        function buildLevel(idx) {
+            currentLevelIndex = idx;
+            level = levels[idx];
+            progress.last = idx;
+            saveProgress();
+            levelBar.textContent = idx === dailyIndex ? `DAILY - LEVEL ${idx + 1}` : `LEVEL ${idx + 1}/${levels.length}`;
+            COLS = level.gridCols || level.gridSize || config.gridSize || 6;
+            ROWS = level.gridRows || level.gridSize || config.gridSize || 6;
+
+            board.innerHTML = '';
+            boardFrame.querySelectorAll('.gate, .exit-sign').forEach(el => el.remove());
+            history = [];
+            selected = null;
+            tiles = level.tiles.map(cfg => {
+                const t = { ...cfg, el: buildTileEl(cfg) };
+                t.el.addEventListener('pointerdown', e => onPointerDown(e, t));
+                t.el.addEventListener('pointermove', onPointerMove);
+                t.el.addEventListener('pointerup', onPointerUp);
+                t.el.addEventListener('pointercancel', onPointerUp);
+                board.appendChild(t.el);
+                return t;
+            });
+
+            if (tiles.some(t => t.isWinTile)) {
+                const gate = document.createElement('div');
+                gate.className = 'gate';
+                const sign = document.createElement('div');
+                sign.className = 'exit-sign';
+                sign.innerHTML = '&#9654;&#9654;';
+                sign.setAttribute('aria-label', 'Exit');
+                boardFrame.append(gate, sign);
+            }
+
+            applySize();
+            resetTimerState();
+            updateHud();
+        }
+
+        // Entry: the board pops in, then every vehicle drives onto the lot
+        // from the nearest edge along its own axis.
+        async function enterLevel(idx) {
+            busy = true;
+            buildLevel(idx);
+            updateHud();
+            board.classList.remove('enter');
+            void board.offsetWidth;
+            board.classList.add('enter');
+            if (!reducedMotion) {
+                const anims = tiles.map((t, i) => {
+                    const h = isH(t);
+                    const len = h ? t.width : t.height;
+                    const span = h ? COLS : ROWS;
+                    const p = posOf(t);
+                    const fromStart = p + len / 2 < span / 2;
+                    const off = fromStart ? -(p + len + 1) : span - p + 1;
+                    const [x, y] = xy(t);
+                    const [ox, oy] = h ? [x + off * CELL, y] : [x, y + off * CELL];
+                    return t.el.animate([
+                        { transform: `translate3d(${ox}px, ${oy}px, 0)` },
+                        { transform: `translate3d(${x}px, ${y}px, 0)` },
+                    ], { duration: 420, delay: 120 + i * 45, easing: 'cubic-bezier(.2,.9,.25,1)', fill: 'backwards' }).finished;
+                });
+                await Promise.all(anims).catch(() => { });
+            }
+            busy = false;
+            updateHud();
+        }
+
+        // Exit: the hero car (if it escaped) speeds out through the gate,
+        // then the rest of the lot clears out to the nearest edge.
+        async function exitLevel(escaped) {
+            busy = true;
+            updateHud();
+            select(null);
+            if (reducedMotion) return;
+            const win = tiles.find(t => t.isWinTile);
+            if (escaped && win) {
+                const [x, y] = xy(win);
+                await win.el.animate([
+                    { transform: `translate3d(${x}px, ${y}px, 0)` },
+                    { transform: `translate3d(${x - CELL * 0.15}px, ${y}px, 0)`, offset: 0.2 },
+                    { transform: `translate3d(${(COLS + 1) * CELL}px, ${y}px, 0)` },
+                ], { duration: 520, easing: 'cubic-bezier(.5,0,.9,.4)', fill: 'forwards' }).finished.catch(() => { });
+            }
+            const rest = tiles.filter(t => !(escaped && t.isWinTile));
+            await Promise.all(rest.map((t, i) => {
+                const h = isH(t);
+                const len = h ? t.width : t.height;
+                const span = h ? COLS : ROWS;
+                const p = posOf(t);
+                const toEnd = p + len / 2 >= span / 2;
+                const off = toEnd ? span - p + 1 : -(p + len + 1);
+                const [x, y] = xy(t);
+                const [tx, ty] = h ? [x + off * CELL, y] : [x, y + off * CELL];
+                return t.el.animate([
+                    { transform: `translate3d(${x}px, ${y}px, 0)` },
+                    { transform: `translate3d(${tx}px, ${ty}px, 0)` },
+                ], { duration: 360, delay: i * 30, easing: 'cubic-bezier(.6,0,.9,.5)', fill: 'forwards' }).finished;
+            })).catch(() => { });
+        }
+
+        async function goToLevel(idx, { escaped = false } = {}) {
+            clearTimeout(clearAdvanceTimeout);
+            closeClear();
+            stopTimer();
+            stopQuotes();
+            await exitLevel(escaped);
+            await enterLevel(idx);
+        }
+
+        function nextIndex() {
+            return currentLevelIndex < levels.length - 1 ? currentLevelIndex + 1 : 0;
+        }
+
+        function restartLevel() {
+            if (busy) return;
+            goToLevel(currentLevelIndex);
+        }
+
+        function checkWin() {
+            const win = tiles.find(t => t.isWinTile);
+            if (win && isH(win) && win.col + win.width >= COLS) onWin();
+        }
+
+        async function onWin() {
+            const elapsed = timerStarted ? Math.min(LEVEL_TIME_MS, Date.now() - levelStartTime) : 0;
+            stopTimer();
+            stopQuotes();
+            skipBtn.classList.remove('show');
+            const moves = moveCount();
+            const stars = starsFor(moves, level.par);
+
+            const prev = progress.best[level.name];
+            if (!prev || stars > prev.stars || (stars === prev.stars && moves < prev.moves)) {
+                progress.best[level.name] = { stars, moves, time: formatTime(elapsed) };
+                saveProgress();
+            }
+            sessionScores.push({ name: `LVL ${currentLevelIndex + 1}`, time: formatTime(elapsed), stars });
+            renderScorePanel();
+            if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
+
+            const daily = isDailyLevel() && window.Daily ? Daily.record(moves, stars) : null;
+
+            // drive the hero car out before showing the result card
+            await exitLevel(true);
+            showClear(stars, moves, elapsed, daily);
+        }
+
+        // ---------- result card ----------
+        function showClear(stars, moves, elapsed, daily) {
+            $('clearTitle').textContent = daily ? 'DAILY CLEAR!' : 'LEVEL CLEAR!';
+            $('clearStars').innerHTML = '★'.repeat(stars) + `<span class="off">${'★'.repeat(3 - stars)}</span>`;
+            $('clearLines').innerHTML =
+                `MOVES ${moves}${level.par ? ` / PAR ${level.par}` : ''}<br>TIME ${formatTime(elapsed)}` +
+                (daily ? `<br>STREAK ${daily.streak} DAY${daily.streak === 1 ? '' : 'S'}` : '');
+            $('clearModal').classList.add('open');
+            $('nextBtn').focus({ preventScroll: true });
+            clearAdvanceTimeout = setTimeout(() => $('nextBtn').click(), 4500);
+        }
+
+        function closeClear() {
+            clearTimeout(clearAdvanceTimeout);
+            $('clearModal').classList.remove('open');
+        }
+
+        $('nextBtn').addEventListener('click', () => {
+            closeClear();
+            enterLevel(nextIndex());
+        });
+        $('replayBtn').addEventListener('click', () => {
+            closeClear();
+            enterLevel(currentLevelIndex);
+        });
+
+        function renderScorePanel() {
+            scorePanel.querySelectorAll('.score-entry').forEach(el => el.remove());
+            sessionScores.forEach(s => {
+                const row = document.createElement('div');
+                row.className = 'score-entry';
+                row.innerHTML = `<span>${s.name}</span><span class="stars">${starText(s.stars)}</span><span>${s.time}</span>`;
+                scorePanel.appendChild(row);
+            });
+            scorePanel.classList.toggle('has-scores', sessionScores.length > 0);
+        }
+
+        // ---------- level select ----------
+        function openLevelSelect() {
+            const grid = $('levelGrid');
+            grid.innerHTML = '';
+            levels.forEach((lv, i) => {
+                const best = progress.best[lv.name];
+                const btn = document.createElement('button');
+                btn.className = 'px-btn' + (i === currentLevelIndex ? ' current' : '') + (best ? ' go' : '');
+                btn.innerHTML = `<span>${String(i + 1).padStart(2, '0')}</span>` +
+                    `<span class="stars${best ? '' : ' none'}">${best ? starText(best.stars) : '☆☆☆'}</span>`;
+                btn.setAttribute('aria-label', `Level ${i + 1}${best ? `, ${best.stars} stars` : ''}`);
+                btn.addEventListener('click', () => {
+                    closeLevelSelect();
+                    if (!busy) goToLevel(i);
+                });
+                grid.appendChild(btn);
+            });
+            $('levelModal').classList.add('open');
+            grid.querySelector('.current')?.focus({ preventScroll: true });
+        }
+
+        function closeLevelSelect() {
+            $('levelModal').classList.remove('open');
+        }
+
+        $('levelsBtn').addEventListener('click', openLevelSelect);
+        $('levelModal').addEventListener('click', e => { if (e.target.id === 'levelModal') closeLevelSelect(); });
+        $('undoBtn').addEventListener('click', undo);
+        $('resetBtn').addEventListener('click', restartLevel);
+        skipBtn.addEventListener('click', () => { if (!busy) goToLevel(nextIndex()); });
+        $('backBtn').addEventListener('click', () => PixelTransition.go('../../index.html'));
+
+        // tapping empty asphalt clears the selection
+        board.addEventListener('pointerdown', e => { if (e.target === board) select(null); });
+
+        // pause the clock while the tab is hidden
+        let hiddenAt = 0;
+        document.addEventListener('visibilitychange', () => {
+            if (!timerInterval) return;
+            if (document.hidden) hiddenAt = Date.now();
+            else if (hiddenAt) { levelStartTime += Date.now() - hiddenAt; hiddenAt = 0; }
+        });
+
+        // ---------- boot ----------
+        // page2.html?daily opens today's challenge, page2.html?level=N a level
+        let dailyIndex = -1;
+        const isDailyLevel = () => dailyIndex >= 0 && currentLevelIndex === dailyIndex;
+
+        async function init() {
+            config = await fetch('tiles.json').then(r => r.json());
+            levels = config.levels || [];
+            sprites = config.sprites || [];
+            if (!levels.length) return;
+            const params = new URLSearchParams(location.search);
+            let start = clamp(progress.last | 0, 0, levels.length - 1);
+            if (params.has('daily') && window.Daily) {
+                dailyIndex = Daily.index(levels.length);
+                start = dailyIndex;
+            } else if (params.has('level')) {
+                start = clamp((parseInt(params.get('level'), 10) || 1) - 1, 0, levels.length - 1);
+            }
+            await enterLevel(start);
+        }
+
+        init().catch(err => console.error('Failed to load puzzle:', err));
+    </script>
+    <script src="../../info-link.js" data-info="info.html" data-slot="header.hud"></script>
+</body>
+
+</html>

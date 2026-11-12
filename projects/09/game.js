@@ -591,6 +591,7 @@ async function leaveGame() {
     if (state === 'play' || state === 'pause') spawnBots();
 }
 
+let qrDrawn = '';
 function inviteLink() {
     const u = new URL(location.href);
     u.search = `?join=${session.code}`;
@@ -603,6 +604,8 @@ function updateMpUI() {
     $('mpLeave').hidden = $('mpCopy').hidden = !inRoom;
     $('mpCode').textContent = inRoom ? session.code : '';
     $('mpCodeBox').hidden = !inRoom;
+    $('mpQrBox').hidden = role !== 'host' || !window.JoinQR;
+    if (role === 'host' && window.JoinQR && qrDrawn !== session.code) { qrDrawn = session.code; JoinQR.draw($('mpQr'), inviteLink()); }
     $('mpMax').disabled = inRoom;
     $('mpMax').textContent = `${inRoom ? session.max : settings.maxPlayers} players`;
     const list = $('mpRoster');
@@ -896,6 +899,10 @@ $('mpName').addEventListener('input', () => { settings.name = $('mpName').value;
 $('mpHost').addEventListener('click', hostGame);
 $('mpJoin').addEventListener('click', () => joinGame($('mpJoinCode').value));
 $('mpJoinCode').addEventListener('input', () => { $('mpJoinCode').value = cleanCode($('mpJoinCode').value); });
+if (window.JoinQR && JoinQR.canScan) {
+    $('mpScan').hidden = false;
+    $('mpScan').addEventListener('click', () => JoinQR.scan((code) => { $('mpJoinCode').value = code; joinGame(code); }));
+}
 $('mpLeave').addEventListener('click', leaveGame);
 $('mpCopy').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(inviteLink()); toast('Invite link copied'); } catch { prompt('Invite link:', inviteLink()); }
@@ -1068,6 +1075,7 @@ selectCar(carIndex).then(() => { if (params.get('state') === 'play') start(); })
 if (params.has('join')) {
     $('mpJoinCode').value = cleanCode(params.get('join'));
     openScreen('mp');
+    if ($('mpJoinCode').value.length === 5) joinGame($('mpJoinCode').value);   // opened from a scanned QR / invite link
 }
 requestAnimationFrame(frame);
 window.__game = {

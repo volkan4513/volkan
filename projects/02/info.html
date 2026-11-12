@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Just Jump It - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="index.html">&#9664; Back to the game</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 02</span>
+    <h1>Just Jump It</h1>
+    <p class="tagline">A Unity 3D platformer exported to WebGL.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>A 3D jump platformer made in Unity and exported to WebGL. The page around it only loads the game and makes it behave on phones.</p>
+    </section>
+    <section class="panel">
+        <h2>Files and loading</h2>
+        <table><tr><th>File</th><th>Role</th></tr><tr><td><code>index.html</code></td><td>Loads the Unity loader, shows a progress bar, handles fullscreen and mobile layout.</td></tr><tr><td><code>Build/justjumpit_build.loader.js</code></td><td>Unity's loader script.</td></tr><tr><td><code>Build/*.unityweb</code></td><td>Compressed game data, framework and WebAssembly.</td></tr><tr><td><code>TemplateData/style.css</code></td><td>Unity's standard template style.</td></tr></table>
+        <ul>
+            <li>The page injects the loader and calls <code>createUnityInstance</code>, updating a progress bar while it downloads.</li>
+            <li>All build files are in the offline "heavy" list.</li>
+            <li>The Unity instance is kept in <code>window.unityInstance</code>, which a CLOSE GAME button inside the game uses.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Controls and page behaviour</h2>
+        <ul>
+            <li>A fullscreen button calls <code>unityInstance.SetFullscreen(1)</code>. The game's own controls are defined inside the Unity project.</li>
+            <li><b>Desktop:</b> the canvas is a fixed 960&times;600.</li>
+            <li><b>Phone:</b> the page detects mobile and adds a class that stops scrolling, overscroll and pinch, sets the pixel ratio to 1 for speed, and fills the screen. The first tap requests fullscreen and tries to lock landscape. In portrait an overlay says "Rotate your phone to landscape to play".</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Loader configuration</h2>
+        <table><tr><th>Config key</th><th>Value</th></tr>
+        <tr><td><code>dataUrl</code></td><td><code>Build/justjumpit_build.data.unityweb</code> (game assets)</td></tr>
+        <tr><td><code>frameworkUrl</code></td><td><code>Build/justjumpit_build.framework.js.unityweb</code> (Unity runtime JS)</td></tr>
+        <tr><td><code>codeUrl</code></td><td><code>Build/justjumpit_build.wasm.unityweb</code> (compiled game code)</td></tr>
+        <tr><td><code>streamingAssetsUrl</code></td><td><code>StreamingAssets</code>, which only holds <code>UnityServicesProjectConfiguration.json</code> (Unity Services core 1.6.0, environment "production")</td></tr>
+        <tr><td><code>companyName / productName / productVersion</code></td><td>DefaultCompany / Just Jump It / 0.1</td></tr>
+        <tr><td><code>showBanner</code></td><td><code>unityShowBanner</code></td></tr></table>
+        <ul>
+            <li>The <code>.unityweb</code> files are pre-compressed by Unity, so the server must serve them with the right <code>Content-Encoding</code>, or the page cannot decode them.</li>
+            <li><code>unityShowBanner(msg, type)</code>: an <code>error</code> banner is red and stays; a <code>warning</code> banner is yellow and, like other messages, is removed after 5 seconds (5000 ms).</li>
+            <li>If <code>createUnityInstance</code> fails, the error is shown with <code>alert()</code>.</li>
+            <li>The loading bar element is shown before the loader script is added, and hidden once the instance exists. The bar width is <code>100 * progress</code> percent.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Mobile handling in detail</h2>
+        <ol>
+            <li>A phone is detected with the user-agent test <code>/iPhone|iPad|iPod|Android/i</code>.</li>
+            <li>A second viewport meta is added: <code>width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes</code>.</li>
+            <li>The container and canvas get the class <code>unity-mobile</code> (Unity's full-window style), the canvas gets <code>touch-action: none</code>, and <code>html</code> gets <code>jji-mobile</code>, which removes margins, hides overflow, sets <code>overscroll-behavior: none</code> and a black background.</li>
+            <li><code>config.devicePixelRatio = 1</code>: the game renders at CSS resolution instead of 2x to 3x on high-density screens, which is much cheaper on the GPU at the cost of some sharpness.</li>
+            <li>A one-time <code>touchend</code> listener requests fullscreen (<code>requestFullscreen</code> or the webkit version) on the whole document, then tries <code>screen.orientation.lock('landscape')</code>. Failures are swallowed. It works on Android Chrome; iPhone ignores the lock. The listener removes itself after the first tap.</li>
+            <li>The rotate overlay <code>#jji-rotate</code> (dark teal, 22px bold text) is shown only when the <code>(orientation: portrait)</code> media query matches and the page is in mobile mode, so in landscape it is hidden.</li>
+        </ol>
+        <p>On desktop the canvas is set to 960px by 600px, with the HTML attributes <code>width=960 height=600</code> as well. The footer holds the WebGL logo, the fullscreen icon and the title "Just Jump It".</p>
+    </section>
+    <section class="panel">
+        <h2>Limits and changing it</h2>
+        <ul>
+            <li>No <code>localStorage</code>, URL options or keyboard shortcuts exist in the page; the fullscreen icon is the only page-level control. Game input and saves live inside the Unity build.</li>
+            <li>The Unity source is not in this repository. To change the game, rebuild in Unity for WebGL with the product name that produces <code>justjumpit_build.*</code>, copy the <code>Build/</code> files over, and keep the file names or update the four URLs above.</li>
+            <li>To tune mobile speed, change <code>config.devicePixelRatio</code> (1 now); to change the desktop size edit the 960 by 600 values.</li>
+            <li><code>window.unityInstance</code> is set only after loading finishes, so anything that calls it earlier (such as a CLOSE GAME button) should check that it exists.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <p>A second full engine (Unity), compiled to WebAssembly. Unlike the Three.js projects the game logic is not in this repository as readable code, only the exported build is.</p>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>A complete Unity game running in the browser, with mobile fullscreen and landscape handling and a reduced pixel ratio to keep it smooth.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>

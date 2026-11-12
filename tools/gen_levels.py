@@ -1,11 +1,11 @@
-"""Solves / generates levels for the parking puzzle (page2.html, tiles.json).
+"""Solves / generates levels for the parking puzzle (projects/06/index.html, tiles.json).
 
     python tools/gen_levels.py            # verify every level, (re)write its "par"
     python tools/gen_levels.py --add 10   # also append 10 new generated levels
 
 A level is solved when the win tile (horizontal, exits right) reaches the right
 edge. "par" is the minimum number of moves, where sliding one vehicle any
-distance counts as one move - the same way page2.html counts moves.
+distance counts as one move - the same way projects/06/index.html counts moves.
 Generated levels are hill-climbed until their par hits a target, so each new
 level is a little harder than the previous one.
 """
@@ -17,7 +17,7 @@ import time
 from collections import deque
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TILES = os.path.join(ROOT, 'tiles.json')
+TILES = os.path.join(ROOT, 'projects', '06', 'tiles.json')
 
 # sprite indices in tiles.json "sprites", grouped by (length, direction)
 SPRITES = {

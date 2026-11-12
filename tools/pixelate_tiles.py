@@ -63,7 +63,7 @@ def kmeans(points, k, iters=12, seed=1):
 
 def main():
     img = Image.open(SRC).convert('RGBA')
-    sprites = json.load(open(os.path.join(ROOT, 'tiles.json')))['sprites']
+    sprites = json.load(open(os.path.join(ROOT, 'projects', '06', 'tiles.json')))['sprites']
     blocks = block_average(img)
     h, w = len(blocks), len(blocks[0])
 

@@ -20,7 +20,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'sw-manifest.js')
 
 CORE = [
-    'index.html', 'page2.html', 'project.html', 'offline.html', 'site.json', 'functions_to_work.json', 'tiles.json',
+    'info.css', 'info-link.js', 'projects/*/info.html',
+    'index.html', 'projects/06/index.html', 'projects/06/tiles.json', 'project.html', 'offline.html', 'site.json', 'functions_to_work.json',
     'pixel-transition.js', 'site-nav.js', 'offline.js', 'ambient.js', 'daily.js', 'miniplayer.js', 'collage-fun.js',
     'images_to_use/optimized/*',
     'images_to_use/bg_sequence_*/*_used.webp',

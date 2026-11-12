@@ -53,6 +53,8 @@
             touch-action: manipulation;
         }
         #ui button.on { background: var(--ink); color: var(--cream); }
+        /* plain label, not a control: the cavity filter is always on */
+        #ui .tag { font: 600 14px/1 system-ui, sans-serif; letter-spacing: .02em; padding: 7px 12px; border-radius: 999px; border: 2px solid var(--ink); background: var(--ink); color: var(--cream); pointer-events: none; user-select: none; }
         #ui button.sq { width: 34px; padding: 7px 0; }
         #ui button:hover { background: var(--red); border-color: var(--red); color: #fff; }
 
@@ -66,7 +68,7 @@
         #hint.gone { opacity: 0; }
             /* embedded in the main page: paper-coloured letterbox instead of dark bars */
         .embed body { background: var(--cream); }
-        html.shot #hint, html.shot #ui { display: none; }   /* ?shot=1: clean poster for the main-page thumbnail */
+        html.shot #hint, html.shot #ui, html.embed #ui { display: none; }   /* buttons only on the full page, never in the main-page panel */   /* ?shot=1: clean poster for the main-page thumbnail */
         /* embedded: let swipes that start on the page chain up to the main page, and vertical swipes on the model scroll it too
            (spinning is horizontal only; pinch still reaches our handler because pan-y does not allow browser zoom) */
         .embed html, html.embed, html.embed body { overscroll-behavior: auto; }
@@ -115,8 +117,8 @@
         <div id="hit"></div>
         <div id="ui">
             <div class="row">
-                <button id="bCav" tabindex="-1" class="on">Cavity: on</button>
-                <button id="bLab" tabindex="-1">Key labels: off</button>
+                <span id="bCav" class="tag on">Cavity: on</span>
+                <button id="bNum" tabindex="-1" title="switch the keys between letters and numbers/symbols (same as the Alt key)">Numbers: off</button>
             </div>
             <div class="row">
                 <button id="bOut" tabindex="-1" class="sq" title="zoom out">&minus;</button>
@@ -125,7 +127,7 @@
             </div>
         </div>
     </div>
-    <div id="hint">drag to spin &middot; scroll or pinch to zoom &middot; tap the screen to power on &middot; tap the keys to type</div>
+    <div id="hint">drag to spin &middot; scroll or pinch to zoom &middot; tap the screen to power on &middot; tap the keys to type &middot; Alt key (or the Numbers button) switches letters / numbers</div>
     <script>if (document.documentElement.classList.contains('embed')) document.getElementById('hint').innerHTML = 'drag to spin &middot; open the page to use the terminal';</script>
 
     <script type="module">
@@ -401,7 +403,7 @@
             }
             function boot() {
                 busy = true; lines = []; input = '';
-                const seq = ['A-83 PERSONAL COMPUTER', 'BASIC V1.0   (C) 1983', '', '48K BYTES FREE', '', 'TYPE HELP', ''];
+                const seq = ['A-83 PERSONAL COMPUTER', 'BASIC V1.0   (C) 1983', '', '48K BYTES FREE', '', 'TYPE HELP', 'ALT KEY = NUMBERS / LETTERS', ''];
                 let i = 0;
                 (function next() {
                     if (i < seq.length) { print(seq[i++]); paint(); setTimeout(next, 140); }
@@ -676,12 +678,9 @@
         function setLabels(on) {
             labelsOn = on;
             labelMeshes.forEach(m => { m.visible = on; });
-            $('bLab').textContent = 'Key labels: ' + (on ? 'on' : 'off');
-            $('bLab').classList.toggle('on', on);
             dirty = true;
         }
-        $('bCav').onclick = e => { setCavity(!cavityOn); e.target.blur(); };
-        $('bLab').onclick = e => { setLabels(!labelsOn); e.target.blur(); };
+        $('bNum').onclick = e => { term.start(); setLabels(true); term.key('ALT'); e.target.blur(); };   // same as the Alt key; works on phones
         $('bIn').onclick = e => { setZoom(zoomT * 1.35); e.target.blur(); };
         $('bOut').onclick = e => { setZoom(zoomT / 1.35); e.target.blur(); };
         $('bReset').onclick = e => { setZoom(1); lastInput = 0; velX = 0; q.copy(qBase); dirty = true; e.target.blur(); };
@@ -749,7 +748,7 @@
             if (!dragging) return;
             dragging = false;
             stage.classList.remove('dragging');
-            if (moved < TAP_PX && down && e.type === 'pointerup' && down.type === 'screen') term.start();
+            if (moved < TAP_PX && down && e.type === 'pointerup' && down.type === 'screen') { term.start(); if (!document.documentElement.classList.contains('embed')) setLabels(true); }   // powering on also shows the key labels
             if (moved < TAP_PX && down && e.type === 'pointerup' && down.type === 'key') {
                 lastInput = performance.now();
                 press(down.key, 160);
@@ -777,7 +776,11 @@
             if (e.key === 'Shift' || e.key === 'Control') return;
             term.key(label, e.key.length === 1 ? e.key : undefined);
         });
-        term.onNum = on => { keys.forEach(k => k.userData.drawLabel && k.userData.drawLabel(on)); dirty = true; };
+        term.onNum = on => {
+            keys.forEach(k => k.userData.drawLabel && k.userData.drawLabel(on));
+            $('bNum').textContent = 'Numbers: ' + (on ? 'on' : 'off'); $('bNum').classList.toggle('on', on);
+            dirty = true;
+        };
         addEventListener('resize', fit);
 
         // pause: no frames at all while the tab is hidden or the panel is off screen; wake() restarts the loop
@@ -829,6 +832,7 @@
         else setTimeout(() => hint.classList.add('gone'), 8000);
     })();
     </script>
+    <script src="../../info-link.js" data-info="info.html"></script>
 </body>
 
 </html>

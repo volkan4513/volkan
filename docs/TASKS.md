@@ -1,6 +1,16 @@
 # Task list: new main-page panels, project 10 and project 12
 
-Last updated: 2026-11-09. Read this first in the next session.
+Last updated: 2026-11-12. Read this first in the next session.
+
+## RULES (read before doing anything)
+- **Never run git commands in this project** (no commit, add, status, diff, mv, push...). The user handles version control. Use plain file moves and edits instead.
+- After adding or moving files, run `python tools/build_offline_manifest.py` (never hand-edit `sw-manifest.js`).
+
+## PENDING (the only open items, 2026-11-12)
+1. **User reads the info pages** for wording; text was written from code reading, so spot-check claims. Keep them updated when a project changes.
+2. **Real-phone testing**, none done yet: info pages and button placement, QR join on 08/09 (scanning needs `BarcodeDetector`: Android Chrome or macOS, not iPhone), page 12 touch/mouse feel, cold offline load with the `projects/06/` paths, saving a level in the builder.
+3. (closed 2026-11-12: page 12 digits and the .glb re-export are not needed)
+Everything else below that is still unticked is stale: it was done, see the "Update" sections.
 
 ## Goal
 Under the **BMW M3 GTR** banner on `index.html`, add 3 vertical panels side by side:
@@ -30,11 +40,11 @@ Pages should run **directly inside the main page**. Panel size is fixed and deri
 
 ## Done: page 12 round 3 (2026-11-09)
 - [x] Zoom: mouse wheel, two-finger pinch, and +/- buttons (0.7x to 4.5x, zooms about the model centre); reset button
-- [x] "Free rotate" toggle (top right, off by default): off = spin around the vertical axis only; on = drag any direction (arrow up/down also tilt). Orientation is a quaternion, eases back to the poster angle after 6 s
+- [x] (later removed, the code no longer has it) "Free rotate" toggle: it was `?free=1` and drag-any-direction. Current code spins around the vertical axis only and eases back to the poster angle after 6 s
 - [x] Cavity filter (Blender-style): post-process on view-space normals, ridges lighter / creases darker. Toggle button, on by default. URL tuning: `?cav=0&cavr=1.5&ridge=0.55&valley=0.9`
 - [x] English "COMPUTER" reading down on the right of the katakana
 - [x] Key labels on the keycaps (decals), toggle button, off by default. URL: `?labels=1`
-- URL extras: `?free=1`, `?zoom=2.4`
+- URL extras: `?zoom=2.4` (`?free=1` no longer exists)
 - Not tested with a real mouse/touch yet (headless screenshots only)
 
 ## To do: page 12
@@ -105,3 +115,48 @@ The user confirmed page 10 is fully done. No further adjustments or model change
 - [x] Offline manifest: added `projects/10/shot.webp`, `projects/12/` (index, lib, old_computer.glb, shot.webp) to CORE; regenerated `sw-manifest.js`
 - [x] `site.json`: added "Computer A-83" card (slug `computer`) and its detail entry
 - Not tested in a real browser yet (no run done this session)
+
+## Update 2026-11-12
+- [x] QR join for projects 08 and 09: `qrcode.js` + `joinqr.js` (host lobby shows a QR of `?join=CODE`, join screen has a Scan QR button where `BarcodeDetector` exists, `?join=` auto-joins). Not tested in a browser or on a phone yet
+- [x] Removed the "Computer A-83" card from the "more stuff" list in `site.json` (page 12 stays as the main-page panel; its `details` entry is kept, like Fuji)
+- [x] Parking Puzzle moved into `projects/06/`: `page2.html` -> `projects/06/index.html`, `builder.html` -> `projects/06/builder.html`, `tiles.json` -> `projects/06/tiles.json`. Shared files stay at the root (`daily.js`, `images_to_use/`). Old `page2.html` is now a redirect stub. Links updated in `index.html`, `site.json`, `offline.html`, projects 05 and 07, the Python tools and the offline manifest. Verified in headless Chrome 2026-11-12: puzzle (plain, `?daily`, `?level=5`), builder, the `page2.html?daily` redirect and the main page's daily-board canvas all load with no failed requests or script errors
+- Doc drift fixed 2026-11-12: `docs/shooter-plan.md` deleted (outdated, replaced by `projects/08/info.html`); the "Free rotate" mismatch in this file was corrected.
+
+## Update 2026-11-12 (later)
+- [x] Info button no longer overlaps anything. `info-link.js` options on its script tag: `data-slot="css selector"` (inline in the page's own header: used on 04 `.search-row`, 06 `header.hud`, 11 `header span`), `data-pos` / `data-pos-narrow` (fixed corner: 07 Glass Cursor is `br` on desktop, `tl` on phones), `data-pos="none"` (07 Widget Desktop: no button, its Help panel links to `info.html` instead). Default stays top right (01, 02, 03, 05, 10, 12). Checked with an overlap script in headless Chrome at 1280 and 390 wide: no overlaps
+- [x] Info pages expanded with more detail (about 93 KB to 184 KB total): startup config, controls, saved state, constants from the code, file roles, failure modes, where to change things. Corrections found while reading: 04 has 7 songs (not 8), 03 ASCII ramp starts with a space, 12 idle zoom-out only happens in the embedded panel, 10 `scene.json` has unused `depth`/`car.poster`/85 car frames. 03 edge case noted: after an upload the image may not redraw until a slider moves
+- [x] Offline manifest verified: `projects/10/shot.webp`, `projects/12/*` and `projects/*/info.html` are in CORE; regenerated (version 5cfd0c8466)
+
+## Task: "How it works" info pages for every project
+STATUS 2026-11-12: first version of all 12 pages is written and loads cleanly in headless Chrome (no failed requests or script errors, no sideways scrolling at 764px). Still to do: read them once yourself for wording, check them on a real phone, and update them whenever a project changes. Page text was written from code reading and research notes, so spot-check claims you rely on.
+Done (all the boxes below in this section are complete even where unticked): `projects/NN/info.html` for 01-12 (07 covers both Widget Desktop and Glass Cursor), shared `info.css`, `info-link.js` (a blue 'HOW IT WORKS' button, placement per page as described above, hidden for `?embed=1` and `?shot=1`) on 01-07, 10, 11, 12, a 'How it works' link in the 08 and 09 menus, and the pages added to `tools/build_offline_manifest.py` (manifest regenerated).
+
+Goal: each project gets its own info page (NOT in `site.json`), written as author notes so new ideas can be built later, plus a short visitor intro.
+
+Layout
+- [ ] `projects/NN/info.html` for 01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11, 12 (06 now exists)
+- [ ] Shared `info.css` at the root; plain static HTML, no framework
+- [ ] A small "How it works" button on each project page linking to its info page; hidden when `embed=1` (pages 10 and 12)
+- [ ] Add the info pages and `info.css` to `tools/build_offline_manifest.py`, then regenerate `sw-manifest.js`
+
+Sections on every page
+1. What it is  2. Tools and files  3. How it loads (modules, lazy load, heavy files, offline)  4. Every control, trigger and URL option  5. How it works (logic, diagrams)  6. How it differs from the other projects  7. Main quality
+
+Project 06 (Parking Puzzle) must cover
+- [ ] Rules, controls, par and stars, timer, daily puzzle, localStorage keys (`parking-puzzle-progress`, `parking-daily`)
+- [ ] Builder walkthrough: add level, grid size, place cars, win tile, copy/paste, Save downloads `tiles.json`, replace `projects/06/tiles.json`
+- [ ] Making a new level end to end: builder, Save, `python tools/gen_levels.py` (par + solvability, `--add N` to generate), then `projects/06/index.html?level=N`
+- [ ] Sprite editor: open it, select cells (Shift/Ctrl-click for a rectangle), set native direction, Save Sprite, 6x12 sheet at 80px cells, `python tools/pixelate_tiles.py` to rebuild the 16px sheet the game reads
+- [ ] Warnings: the builder does not compute par or check solvability or exactly one horizontal win car; deleting a sprite shifts later `spriteIndex` values; progress is keyed by level name, which renumbering changes
+
+Project 08 / 09 must cover
+- [ ] PeerJS room-code flow (ids `lpstrike-` / `pxracer-`), `rel` + `fast` channels, heartbeat, QR join, `?lag` / `?loss`
+- [ ] 08: host-authoritative, prediction, lag compensation, three modes, bots, maps, Node map tools. 09: each player drives their own car, host does bots and ranking, tracks and checkpoints
+- [x] `docs/shooter-plan.md` deleted 2026-11-12
+
+Other pages: use the per-project notes gathered on 2026-11-12 (controls, key logic, standout quality). Page 11's AI library is cross-origin and not available offline on a first load. Pages 01, 02, 12 do not load `offline.js` themselves.
+
+## Update 2026-11-12 (page 12 controls)
+- [x] Page 12: "Key labels" button removed; labels now switch on when the screen is tapped to power on (and stay on). New "Numbers" button toggles the number layer like the Alt key, so it works on phones. Boot text shows "ALT KEY = NUMBERS / LETTERS" and the bottom hint mentions Alt / the Numbers button
+- [x] Page 12: all buttons (Cavity, Numbers, zoom, reset) are hidden in the main-page panel (`embed=1`) and only show on the full page. Info page 12 updated. Headless Chrome: no script errors, button hidden in embed, Numbers toggles. Not tried on a real phone
+- Decision: the `old_computer.glb` re-export is NOT needed; the Alt-key number layer is the final answer for digits (both optional items closed)

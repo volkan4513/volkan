@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Parking Puzzle - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="index.html">&#9664; Back to the puzzle</a>
+        <a href="builder.html">LEVEL BUILDER</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 06</span>
+    <h1>Parking Puzzle</h1>
+    <p class="tagline">Pixel-art sliding-block puzzle, with its own level builder and sprite editor.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>A Rush-Hour style puzzle. Every car slides only along its own axis (horizontal cars left and right, vertical cars up and down). Free the red car by driving it out of the right edge. There are 20 levels, a par (best possible move count) for each, stars, a timer and a daily puzzle shared by everyone.</p>
+        <p>Three tools make up the project: the game (<code>index.html</code>), the level builder (<code>builder.html</code>, which also holds the sprite editor), and two Python tools in <code>tools/</code> that solve levels and rebuild the sprite sheet.</p>
+    </section>
+    <section class="panel">
+        <h2>Files</h2>
+        <table><tr><th>File</th><th>What it does</th></tr><tr><td><code>projects/06/index.html</code></td><td>The game: rendering, drag and keyboard controls, undo, timer, stars, level select, clear card.</td></tr><tr><td><code>projects/06/builder.html</code></td><td>The level builder and sprite editor. A developer tool, not linked from the portfolio.</td></tr><tr><td><code>projects/06/tiles.json</code></td><td>All level data and the sprite list. The game and the builder both read it.</td></tr><tr><td><code>daily.js</code> (root)</td><td>Daily puzzle logic and streak, shared with the main-page card.</td></tr><tr><td><code>images_to_use/tiles_texture.webp</code></td><td>High-resolution source sprite sheet (80px per cell). The builder shows this one.</td></tr><tr><td><code>images_to_use/tiles_texture_pixel.png</code></td><td>Pixelated 16px-per-cell sheet. The game and the main-page card draw this one.</td></tr><tr><td><code>tools/gen_levels.py</code></td><td>Solves every level, writes the par, and can generate new levels.</td></tr><tr><td><code>tools/pixelate_tiles.py</code></td><td>Turns the 80px source sheet into the 16px pixel sheet.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>How it loads</h2>
+        <ul>
+            <li>The game fetches <code>tiles.json</code> on start. Levels play in array order, so adding a level to the file is all the game needs.</li>
+            <li>Start level is the last one you played (saved in the browser). <code>?daily</code> jumps to today's level. <code>?level=N</code> opens level N (1-based).</li>
+            <li>Cell size is worked out from the screen (maximum 104px, snapped to whole device pixels so the pixel art stays sharp).</li>
+            <li>The main page draws today's board on a small canvas from the same <code>tiles.json</code> and the same pixel sheet.</li>
+            <li>Everything is cached by the service worker, so the puzzle works offline after the first visit.</li>
+            <li>The old address <code>page2.html</code> still works: it is a small redirect to <code>projects/06/index.html</code> and keeps <code>?daily</code> and <code>?level=</code>.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Playing: every control</h2>
+        <table><tr><th>Action</th><th>How</th></tr><tr><td>Move a car</td><td>Drag it with mouse or finger. It is limited to free space and snaps to the nearest cell when released. Only the left mouse button works.</td></tr><tr><td>Select a car</td><td>Tap or click it (yellow corner brackets). Tap empty road to deselect.</td></tr><tr><td>Nudge a car one cell</td><td>The on-screen arrows, or the <span class="k">Arrow</span> keys / <span class="k">W A S D</span>. With nothing selected the red car is picked for you.</td></tr><tr><td>Change selected car</td><td><span class="k">Tab</span> (when the page has focus).</td></tr><tr><td>Undo</td><td><span class="k">Z</span> or <span class="k">Backspace</span>, or the UNDO button.</td></tr><tr><td>Restart level</td><td><span class="k">R</span> or RESET (replays the enter animation).</td></tr><tr><td>Level list</td><td>LEVELS button: grid with stars for each level. <span class="k">Esc</span> or a click outside closes it.</td></tr><tr><td>Next level</td><td>When the clear card shows: <span class="k">Enter</span> / <span class="k">Space</span> / NEXT. It also moves on by itself after 4.5 seconds.</td></tr><tr><td>Skip</td><td>SKIP appears once the 90-second timer reaches 0:00. It never fails the level, you can keep playing.</td></tr><tr><td>Home</td><td>HOME button (top left).</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>Rules, par and stars</h2>
+        <ul>
+            <li><b>Win:</b> the red car's right edge reaches the right edge of the board (it must be a horizontal car).</li>
+            <li><b>Moves:</b> several moves in a row with the same car count as one move. The solver uses exactly the same rule, so par is the true minimum.</li>
+            <li><b>Stars:</b> 3 stars if moves &le; par. 2 stars if moves &le; par + half of par (rounded up). Otherwise 1 star. A level with no par always gives 3 stars.</li>
+            <li><b>Best result</b> per level (most stars, then fewest moves) is stored in the browser.</li>
+            <li><b>Timer:</b> 90 seconds, started by your first move. After 20 seconds of struggling a funny toast appears, then another every 8 seconds.</li>
+            <li>Switching tabs pauses the timer.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Daily puzzle</h2>
+        <p><code>Daily.index(total)</code> returns <code>(dayNumber * 7 + 3) % total</code>. Everybody gets the same level on the same day, and because 7 shares no factor with 20, every level comes up exactly once per cycle.</p>
+        <p>Finishing today's level (opened with <code>?daily</code>) calls <code>Daily.record(moves, stars)</code>: the streak goes up by 1 if you also played yesterday, otherwise it restarts at 1. Only your lowest-move result for the day is kept, and the last 40 days are remembered.</p>
+        <p>Saved in this browser only: <code>localStorage</code> keys <code>parking-puzzle-progress</code> (best results and last level) and <code>parking-daily</code> (streak and daily results).</p>
+    </section>
+    <section class="panel">
+        <h2>Making a new level (the whole workflow)</h2>
+        <p>This is the part to use when you have a new idea for a level.</p>
+        <ol>
+            <li>Start a local server in the project folder, for example <code>python -m http.server 8765</code>, and open <code>http://127.0.0.1:8765/projects/06/builder.html</code>. The builder needs a server because it fetches <code>tiles.json</code>.</li>
+            <li>Click <b>+ Add Level</b>. A new empty level is created with the current grid size. Set <b>Columns</b> and <b>Rows</b> (2 to 20) if you want a different board.</li>
+            <li>Click an empty cell to open <b>Add Tile</b>. Choose width and height (a normal car is 1&times;2 or 1&times;3 cells), direction, colour and, optionally, a vehicle sprite. Picking a sprite fills in the size and direction for you.</li>
+            <li>Place the red car: tick <b>Win tile (exits right)</b> on exactly one horizontal car, and put it on the row that reaches the right edge.</li>
+            <li>Click an existing car to edit or delete it. <b>Copy</b> then click an empty cell to paste a copy. <b>Copy Level</b> lets you paste a level over another or as a new level.</li>
+            <li>Drag the level tabs to reorder levels. The ✕ on a tab deletes a level.</li>
+            <li>Click <b>Save (download tiles.json)</b>. Replace <code>projects/06/tiles.json</code> in the repo with the downloaded file.</li>
+            <li>Run <code>python tools/gen_levels.py</code>. It solves every level, writes each level's <code>par</code>, and prints <code>UNSOLVABLE</code> for any level that cannot be won. Fix those in the builder and repeat.</li>
+            <li>Open <code>projects/06/index.html?level=N</code> (N is the level number) and play it. Rebuild the offline manifest (<code>python tools/build_offline_manifest.py</code>) before deploying so the new data is cached.</li>
+        </ol>
+        <div class="warn"><b>The builder does not check your level.</b> It only stops overlapping cars and cars outside the grid. It does not check that there is exactly one red car, that the red car is horizontal, that the level can be solved, or what the par is. Always run <code>gen_levels.py</code> after saving.</div>
+        <div class="warn"><b>Progress is stored by level name.</b> Levels are renamed <code>level1 &hellip; levelN</code> in order, so reordering or deleting levels moves saved stars and best results to different levels.</div>
+        <div class="tip">Hard levels come from many blocking cars and a long chain of moves, not from a big board. <code>gen_levels.py --add 10</code> can invent new ones for you; open them in the builder to tweak.</div>
+    </section>
+    <section class="panel">
+        <h2>The level builder: every control</h2>
+        <table><tr><th>Control</th><th>What it does</th></tr><tr><td>Columns / Rows</td><td>Board size for the current level. You get a warning if a car would fall outside.</td></tr><tr><td>Level tabs</td><td>Click to switch. Drag to reorder. ✕ deletes (with a confirmation).</td></tr><tr><td>+ Add Level</td><td>New empty level, same grid size as the one you are on.</td></tr><tr><td>Copy Level</td><td>Copies grid size and cars. Then "Paste Level Here (overwrite)" or "Paste As New Level" appear. The par is not copied.</td></tr><tr><td>Board cell click</td><td>Empty cell: Add Tile popup. Car: Edit popup (Save, Copy, Delete, Cancel).</td></tr><tr><td>Tile popup</td><td>Width, Height (1 to 6), Color, Vehicle Texture, Direction, and the Win tile checkbox.</td></tr><tr><td>Copy (tile)</td><td>Puts a car on the tile clipboard. The next empty-cell click offers a prefilled Paste Tile if it fits.</td></tr><tr><td>Manage Sprites</td><td>Opens the sprite editor (next section).</td></tr><tr><td>Save (download tiles.json)</td><td>Downloads the whole file. Nothing is saved to the server, so changes live only in the open page until you do this.</td></tr><tr><td>Open Page 2</td><td>Opens the game.</td></tr></table>
+        <p>Save format of <code>tiles.json</code>:</p>
+        <pre>{ "levels": [ { "name": "level1", "gridCols": 6, "gridRows": 6, "par": 9,
+    "tiles": [ { "id": "...", "color": "#ff0000", "row": 2, "col": 0,
+                 "width": 2, "height": 1, "direction": "horizontal",
+                 "isWinTile": true, "winDirection": "right", "spriteIndex": 0 } ] } ],
+  "sprites": [ { "sheetCol": 0, "sheetRow": 0, "cellsWide": 2, "cellsTall": 1, "direction": "horizontal" } ] }</pre>
+    </section>
+    <section class="panel">
+        <h2>The sprite editor</h2>
+        <p>A sprite is a rectangle of cells cut from the big car picture. Each car in a level can point at one sprite by number (<code>spriteIndex</code>). Cars without a sprite are drawn as a flat colour block.</p>
+        <h3>Using it</h3>
+        <ol>
+            <li>In the builder, click <b>Manage Sprites</b>. A full-screen panel shows <code>tiles_texture.webp</code> with a grid of 80px cells over it.</li>
+            <li>Click one cell to start a selection. <span class="k">Shift</span>, <span class="k">Ctrl</span> or <span class="k">Cmd</span> + click another cell to stretch it into a rectangle. Selected cells turn green. Cells with a cyan border are already part of a saved sprite.</li>
+            <li>The label shows the size, for example <i>2 x 1 cells</i>.</li>
+            <li>Set <b>Native direction of selected art</b>: Horizontal if the car is drawn lying sideways, Vertical if it is drawn standing up.</li>
+            <li>Click <b>Save Sprite</b>. It is added to the list with a thumbnail and a number (<i>#idx: WxH (direction)</i>). <b>Clear Selection</b> cancels.</li>
+            <li>The ✕ beside a sprite deletes it. Close the panel, then pick the new sprite in the Add Tile or Edit popup.</li>
+            <li>Save <code>tiles.json</code> as usual.</li>
+        </ol>
+        <h3>Making the new sprite show up in the game</h3>
+        <p>The game does <b>not</b> read the big <code>.webp</code>. It reads the 16px pixel sheet. After you change the artwork or add sprites, run:</p>
+        <pre>python tools/pixelate_tiles.py</pre>
+        <ul>
+            <li>It needs the Pillow library. It averages each 5&times;5 block (80px becomes 16px) and reduces the picture to 28 colours.</li>
+            <li>It keeps only the largest shape inside each sprite rectangle (this removes stray specks) and adds a 1px dark outline.</li>
+            <li><b>Cells that are not inside any sprite rectangle become transparent</b> in the output, so a new sprite must be saved in the editor before you run the tool.</li>
+            <li>The sheet must stay 6 cells wide and 12 cells tall (<code>SHEET_COLS</code> and <code>SHEET_ROWS</code> in the game). Putting art outside that grid will not show.</li>
+        </ul>
+        <h3>How a sprite is matched to a car</h3>
+        <ul>
+            <li>A car's width and height should equal the sprite's footprint. If the car's direction differs from the sprite's native direction, the picture is rotated 90 degrees automatically.</li>
+            <li>Convention used by the level generator: sprite 0 is the red car, 1-8 are 2-cell horizontal cars, 9-12 are 3-cell horizontal, 16-19 are 2-cell vertical, 20-22 are 3-cell vertical. New sprites added at the end of the list keep these numbers safe.</li>
+        </ul>
+        <div class="warn"><b>Deleting a sprite renumbers every sprite after it.</b> Cars that used the later sprites are not updated, so existing levels will show the wrong cars. Prefer adding sprites at the end and leaving old ones in place.</div>
+    </section>
+    <section class="panel">
+        <h2>How the solver and generator work</h2>
+        <p><code>tools/gen_levels.py</code> treats each level as a state of car positions along their own lines.</p>
+        <ul>
+            <li><b>Solve:</b> breadth-first search. One step slides one car any distance, which matches the game's "same car in a row is one move" rule. The fewest steps to get the red car out is the par. If no way out exists, the level is reported as unsolvable.</li>
+            <li><b>Generate:</b> hill-climbing. Start from an existing level (or a lone red car), then repeatedly add, remove or replace a car. Keep a change when the par goes up (or sometimes when it stays equal). Restart after 600 steps without progress. It stops at the target par or after about 75 seconds.</li>
+            <li>Generated levels cycle through board sizes 6&times;6, 6&times;7, 6&times;6 and 7&times;7. New cars get random colours and matching sprites.</li>
+        </ul>
+        <pre>python tools/gen_levels.py                 # check all levels, rewrite par
+python tools/gen_levels.py --add 10           # also append 10 generated levels
+python tools/gen_levels.py --add 10 --seed 7  # repeatable</pre>
+        <div class="warn">The tool rewrites <code>projects/06/tiles.json</code> in place and needs every level to have a red car. Commit or copy the file first.</div>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <ul>
+            <li>The only project driven entirely by a data file (<code>tiles.json</code>) plus its own authoring tools.</li>
+            <li>Uses a real solver (Python) to guarantee levels are winnable and to set par; the games in 08 and 09 have no such tooling.</li>
+            <li>Pure DOM and CSS pixel art with pointer events, no canvas and no 3D library. The main page borrows its data and sprite sheet for the daily card.</li>
+        </ul>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>Small, handmade and endlessly extendable: a new level is a few clicks in the builder plus one command, and the solver tells you how hard it really is.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>

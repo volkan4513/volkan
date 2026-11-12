@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fuji Poster - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="index.html">&#9664; Back to the poster</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 10</span>
+    <h1>Fuji Poster</h1>
+    <p class="tagline">A layered poster where only the layer under your finger moves, with a real 3D car composited in.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>A Japanese-style dusk poster made of flat picture layers (sky, land, houses, pole with wires, bushes, ground, text) with a 3D car in front. Touch or hover a layer and it leans toward you. Drag the car to spin it.</p>
+    </section>
+    <section class="panel">
+        <h2>Files</h2>
+        <table><tr><th>File</th><th>Role</th></tr><tr><td><code>index.html</code></td><td>The page and all its logic (an ES module).</td></tr><tr><td><code>scene.json</code></td><td>Lists the layers: image, position, depth and behaviour of each one. The poster is 1684&times;2528 poster units and scales to fit its container.</td></tr><tr><td><code>models/car.glb</code></td><td>The car (body, rear wheels, two front wheels, textures inside the file).</td></tr><tr><td><code>lib/</code></td><td>Three.js and loaders. Three.js is used only for the car; the scenery is plain page layers.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>How it loads</h2>
+        <ul>
+            <li>The page fetches <code>scene.json</code>, loads every layer picture and the car at the same time, then reveals the stage and removes the LOADING label.</li>
+            <li>Everything is part of the offline cache.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Controls</h2>
+        <ul>
+            <li><b>Hover (mouse) or touch:</b> only the layer under the pointer reacts. It follows the pointer by 22% of its motion, limited to a small range, and settles back when you leave. Which layer is under the pointer is decided by the picture's transparency, using a small hit map.</li>
+            <li><b>Drag on the car:</b> spins it at 0.45&deg; per pixel. Dragging anywhere else on a touch screen acts like hover.</li>
+            <li><b>Left / Right arrows:</b> turn the car 15&deg;.</li>
+            <li>After 6 seconds idle the car eases back to the nearest hero angle (a multiple of 360&deg;). Returning to a hidden tab snaps it home.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How it works</h2>
+        <ul>
+            <li><b>Matched camera:</b> the car uses a perspective camera whose distance is chosen so one unit at the wheels equals one poster unit at any field of view, and the view is offset so the wheels sit on the ground line. The hero view is fixed in code: field of view 8, yaw 126, elevation 4.5.</li>
+            <li><b>Loading the car:</b> lights, cameras and a road plane inside the file are removed, metalness is lowered (there is no environment map), the model is centred and scaled to a set length, and rotated a quarter turn if needed.</li>
+            <li><b>Light:</b> dusk look from a hemisphere light, an orange sun, a fill and a blue rim light.</li>
+            <li><b>Wires:</b> power lines are SVG curves strung from the pole and move with it. A grain overlay is generated on a canvas.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Embedding and performance</h2>
+        <h3>Inside the main page</h3>
+        <ul>
+            <li>The main page shows this poster in a panel under the BMW card using <code>?embed=1</code>. That hides the HOME and How it works buttons and keeps vertical swipes free so the main page can still scroll.</li>
+            <li>On phones the panel first shows a screenshot with a pulsing TAP TO PLAY. The real page loads only after a tap, and its files are prefetched when the phone is idle (skipped on data saver or 2G).</li>
+            <li><code>?shot=1</code> hides hints and buttons, for taking clean thumbnails.</li>
+            <li>The page stops its render loop when the tab is hidden or the panel is scrolled out of view.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Changing the car</h2>
+        <ul>
+            <li>Replace <code>models/car.glb</code>. It needs nodes for the body, rear wheels and the two front wheels. Adjust the length and hero view in the <code>TUNE</code> and car constants at the top of the script.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>The layers of scene.json</h2>
+        <p>The poster is 1684 x 2528 poster units. Layers are stacked in this order (back to front); each is an <code>&lt;img&gt;</code> placed at <code>x, y, w, h</code> inside the scene.</p>
+        <table><tr><th>#</th><th>id</th><th>Box (x, y, w x h)</th><th>depth</th><th>Notes</th></tr>
+            <tr><td>1</td><td>sky</td><td>0, 0, 1684 x 2528</td><td>0.08</td><td>Also used (blurred) as the page backdrop behind the letterbox.</td></tr>
+            <tr><td>2</td><td>land</td><td>0, 925, 1684 x 1603</td><td>0.22</td><td></td></tr>
+            <tr><td>3</td><td>houses</td><td>0, 1407, 1657 x 637</td><td>0.4</td><td></td></tr>
+            <tr><td>4</td><td>pole</td><td>104, 784, 840 x 1123</td><td>0.5</td><td>Has 4 <code>wires</code>.</td></tr>
+            <tr><td>5</td><td>bushesL</td><td>0, 1672, 805 x 445</td><td>0.62</td><td></td></tr>
+            <tr><td>6</td><td>bushesR</td><td>1339, 1294, 345 x 840</td><td>0.62</td><td></td></tr>
+            <tr><td>7</td><td>ground</td><td>0, 1880, 1684 x 648</td><td>0.85</td><td></td></tr>
+            <tr><td>-</td><td>text</td><td>0, 0, 1684 x 2528</td><td>0</td><td><code>fixed: true</code>: the title art, drawn above the scene and below the car, never moves and is not hoverable.</td></tr></table>
+        <ul>
+            <li><b>Wires:</b> each entry is <code>[x1, y1, x2, y2, sag]</code>. It becomes an SVG quadratic curve <code>M x1 y1 Q mid-x, mid-y + 2 x sag, x2 y2</code>, stroke 3 units wide, colour <code>rgba(24,20,26,.85)</code>, inserted behind the pole picture and moved together with it. The pole has 4 lines; two run off the right edge (x = 1760) and one off the left (x = -80).</li>
+            <li><b><code>car</code> block:</b> <code>cx</code> 960 (centre x), <code>bottom</code> 2150 (bottom of the car canvas), <code>ground</code> 2098 (the y where the wheels touch the road; this is where the camera and the road shadow are aligned), <code>poster</code> 79.</li>
+            <li><b>Unused data:</b> the <code>depth</code> values, <code>car.poster</code> and the 85 pre-rendered frames in <code>car.frames</code> (<code>images/car/00.webp</code> to <code>84.webp</code>, 1460 x 476 each) are in the file but the current <code>index.html</code> does not read them: the car is rendered live from <code>models/car.glb</code> and a hovered layer moves by the pointer, not by depth. Layer order in the array is the stacking order.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Constants you can tune</h2>
+        <table><tr><th>Constant</th><th>Value</th><th>Meaning</th></tr>
+            <tr><td><code>OVERSCAN</code></td><td>1.05</td><td>Scene and car are scaled 5% larger than the poster (around the centre) so leaning never reveals an edge.</td></tr>
+            <tr><td><code>LEAN_X</code> / <code>LEAN_Y</code></td><td>18 / 10</td><td>Maximum shift of a hovered layer in poster units.</td></tr>
+            <tr><td><code>FOLLOW</code></td><td>0.22</td><td>Share of the pointer's movement that is added to the layer's target each move event.</td></tr>
+            <tr><td><code>HIT_SCALE</code></td><td>0.25</td><td>Hit maps are drawn at quarter size; a pixel counts as "covered" if its alpha is above 90 (of 255).</td></tr>
+            <tr><td><code>DEG_PER_PX</code></td><td>0.45</td><td>Car rotation per pixel dragged.</td></tr>
+            <tr><td><code>RETURN_AFTER</code></td><td>6000 ms</td><td>Idle time before the car swings home.</td></tr>
+            <tr><td><code>STEP</code></td><td>15</td><td>Degrees per arrow key press.</td></tr>
+            <tr><td><code>CAR_W</code> x <code>CAR_H</code></td><td>1900 x 680</td><td>Car canvas in poster units, bottom-centred on <code>scene.car</code>.</td></tr>
+            <tr><td><code>CAR_LEN</code></td><td>1650</td><td>Length of the model on the poster.</td></tr>
+            <tr><td><code>TUNE</code></td><td>fov 8, yaw 126, elev 4.5</td><td>Camera lens, the car's resting turn, camera height angle.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>Interaction details</h2>
+        <ul>
+            <li><b>Hit test order:</b> the pointer position is converted from screen to scene units (undoing the stage scale and the 1.05 overscan). If it is on the car, no layer reacts; otherwise the <em>front-most</em> layer (last in the list) whose hit map is opaque there is chosen. If a hit map cannot be read (for example when opened from <code>file://</code>), the layer's whole box is used.</li>
+            <li><b>Car hit area:</b> within 46% of <code>CAR_W</code> either side of the centre, from the car's bottom up 92% of <code>CAR_H</code>. The cursor becomes a grab hand over it (<code>.oncar</code>) and a grabbing hand while dragging. The car is not hoverable until its model has loaded.</li>
+            <li><b>Easing:</b> every frame the hovered layer eases to its target with factor <code>1 - 0.01^dt</code> (dt capped at 50 ms), and all other layers ease back to 0. Movement stops when within 0.05 units. Only moving layers get a style update (<code>translate3d</code>).</li>
+            <li><b>Drag:</b> pressing on the car captures the pointer, stops hover, and spins the car by -dx x 0.45 degrees (the near side follows the finger). There is no coasting after release. Pressing elsewhere with a finger starts touch-hover; a mouse only hovers on move.</li>
+            <li><b>Return home:</b> after 6 s without input the angle eases to the nearest multiple of 360 at rate 2.2 per second, snapping when within 0.5 degrees. Coming back to a hidden tab after a long idle jumps there at once.</li>
+            <li><b>Hint:</b> "drag the car to turn it" is hidden on the first car drag or arrow key, or after 7 s; when embedded it stays (pulsing in the empty sky) until the first pointer press on the panel.</li>
+            <li><b>Pinch zoom</b> is blocked on this page (<code>user-scalable=no</code>, <code>touch-action: none</code>); embedded it uses <code>touch-action: pan-y</code>.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Rendering details</h2>
+        <ul>
+            <li><b>Layout:</b> the stage is a fixed 1684 x 2528 box scaled with <code>min(viewport width / 1684, viewport height / 2528)</code> and centred; the blurred sky behind it (blur 40px, brightness .38) fills the letterbox. Resizing re-runs the fit and resizes the car canvas.</li>
+            <li><b>Car canvas resolution:</b> <code>CAR_W x CAR_H</code> times the stage scale times the device pixel ratio, with the ratio capped at 2. The WebGL renderer has a transparent background and antialiasing. A frame is rendered only when the angle changed (<code>drawn</code> check), not every frame.</li>
+            <li><b>Camera:</b> perspective, <code>distance = CAR_H / (2 x tan(fov/2))</code>, placed at elevation <code>elev</code>, with a view offset that moves the wheel line (<code>car.ground</code>) to the right place in the canvas.</li>
+            <li><b>Model prep:</b> lights and cameras in the file are hidden, any mesh named like "road" is removed (it would skew the size fit), metalness above 0.2 becomes 0.12 and roughness above 0.6 becomes 0.55, the model is centred with its wheels at y = 0, scaled so its longer horizontal side is <code>CAR_LEN</code>, and turned a quarter if it is longer in z.</li>
+            <li><b>Lights:</b> hemisphere (sky 0x8f95bd, ground 0x6a5444, 1.15), orange sun 0xff9a58 at 3.3 from the left, fill 0xffb98a at 0.5, blue rim 0x7f95e0 at 0.9 from the right.</li>
+            <li><b>Shadow:</b> a soft radial-gradient ellipse (95% of <code>CAR_LEN</code> wide, at least 60 high) under the car on the ground line.</li>
+            <li><b>Grain:</b> a 256 px noise tile (average of three random values) at 32% opacity, blend mode overlay, positioned over the visible poster only and jumped to a random offset every 80 ms (static with reduced motion). A vignette gradient darkens the edges.</li>
+            <li><b>Pause:</b> the loop stops when the tab is hidden or the stage is off screen (IntersectionObserver) and restarts on wake. If scene.json or the car fails to load, the label changes to "COULD NOT LOAD THE SCENE" and the error goes to the console.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How to customise</h2>
+        <ul>
+            <li><b>Add, remove or reorder a layer:</b> edit <code>layers</code> in <code>scene.json</code> (put the picture in <code>images/</code>). Order is stacking order; <code>x, y, w, h</code> place it in poster units. Use <code>"fixed": true</code> for art that must not move (only one such image is used: the last fixed layer sets the text picture). Add <code>wires</code> to attach power lines.</li>
+            <li><b>Change feel:</b> <code>LEAN_X</code>, <code>LEAN_Y</code>, <code>FOLLOW</code> for the layer lean; <code>DEG_PER_PX</code>, <code>STEP</code>, <code>RETURN_AFTER</code> for the car.</li>
+            <li><b>Change the car view:</b> <code>TUNE.yaw</code> (resting angle), <code>TUNE.fov</code> (flatter at lower values), <code>TUNE.elev</code>, <code>CAR_LEN</code>, and <code>car.cx</code>, <code>car.bottom</code>, <code>car.ground</code> in scene.json to move it on the road.</li>
+            <li><b>Change the lighting:</b> the four lights in the script; the sun position and colour have the most effect.</li>
+            <li>When you add pictures, rerun <code>tools/build_offline_manifest.py</code> so they join the offline cache.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <p>A hybrid: ordinary page layers for the art and a single 3D object blended in with a matched lens. Compare Computer A-83 (12), which is a 3D model on a flat poster.</p>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>Parallax by layer, where only the touched layer moves, with a convincing 3D car dropped into 2D artwork.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>

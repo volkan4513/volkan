@@ -449,6 +449,8 @@
         .msg { min-height: 1.2em; margin-top: 10px; font-size: 14px; letter-spacing: 0.5px; color: #555; }
         .msg.err { color: #c0301e; }
         .roomcode { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        .qrbox { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 8px 0; }
+        .qrbox canvas { width: 160px; height: 160px; image-rendering: pixelated; border: 3px solid var(--ink); }
         .roomcode b { font-size: 40px; letter-spacing: 6px; padding: 2px 10px; background: var(--y); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); user-select: text; -webkit-user-select: text; }
         .slots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
         .slots h3 { font-size: 18px; padding-bottom: 3px; border-bottom: 3px solid var(--ink); text-transform: uppercase; }
@@ -596,6 +598,7 @@
             <button id="hostBtn" class="btn" type="button">Host game <small>room code</small></button>
             <button class="btn" type="button" data-open="joinScreen">Join game <small>room code</small></button>
             <button class="btn alt" type="button" data-open="settings">Settings</button>
+            <a class="btn alt" href="info.html">How it works <small>controls, modes, multiplayer</small></a>
         </div>
     </section>
 
@@ -673,6 +676,7 @@
             <label class="row">Room code <input id="jCode" class="txt code" maxlength="5" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
             <p id="jStatus" class="msg"></p>
             <button id="jGo" class="btn" type="button">Join</button>
+            <button id="jScan" class="btn alt" type="button" hidden>Scan QR code</button>
             <button class="btn alt" type="button" data-back>Back</button>
         </div>
     </section>
@@ -681,6 +685,7 @@
         <div class="card wide">
             <h2>Lobby</h2>
             <div class="roomcode">Room code <b id="lCode">·····</b></div>
+            <div id="lQrBox" class="qrbox" hidden><canvas id="lQr" width="100" height="100"></canvas><small>Scan with a phone camera to join</small></div>
             <p id="lStatus" class="msg"></p>
             <div class="slots">
                 <div><h3 class="t">Red</h3><div id="lRed"></div></div>
@@ -759,6 +764,8 @@
     <script src="../../pixel-transition.js"></script>
     <script src="../../offline.js"></script>
     <script src="../../site-nav.js" data-home="../../index.html"></script>
+    <script src="qrcode.js"></script>
+    <script src="joinqr.js"></script>
     <script type="module" src="game.js"></script>
 </body>
 </html>

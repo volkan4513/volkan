@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Windows 98 - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="index.html">&#9664; Back to the desktop</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 05</span>
+    <h1>Windows 98</h1>
+    <p class="tagline">A working Windows 98 desktop inside a CRT monitor.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>A Windows 98 desktop with a boot sequence, Start menu, draggable windows and a set of working apps (Paint, Minesweeper, Notepad, Media Player, Internet Explorer, MS-DOS prompt). It sits inside a photo of a CRT monitor.</p>
+    </section>
+    <section class="panel">
+        <h2>Files</h2>
+        <table><tr><th>File</th><th>Role</th></tr><tr><td><code>index.html</code></td><td>Wrapper: the monitor image with the desktop in an iframe. On phones the monitor is hidden and the desktop fills the screen.</td></tr><tr><td><code>windows98.html</code></td><td>The whole desktop: window manager, Start menu, apps, boot, screensaver (about 2850 lines).</td></tr><tr><td><code>paint.html</code></td><td>The Paint app, loaded as an iframe inside a window.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>How the desktop works</h2>
+        <ul>
+            <li><b>Windows:</b> <code>createWindow</code> makes a window with title bar, drag, resize, minimise, maximise and a taskbar button. Dialogs use <code>msgBox</code>.</li>
+            <li><b>Icons:</b> open on double-click, tap or Enter. Right-click (or long press) opens a menu with New Text Document and Properties.</li>
+            <li><b>Start menu</b> and quick-launch bar, clock updated every 15 seconds, <span class="k">Esc</span> closes menus.</li>
+            <li><b>Boot</b> sequence at start, shut down and restart.</li>
+            <li><b>Screensaver:</b> a starfield after 120 seconds idle (set in the Display control panel).</li>
+            <li><b>Saving:</b> settings are stored in <code>localStorage</code> under keys starting with <code>w98.</code>.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>The apps</h2>
+        <table><tr><th>App</th><th>What you can do</th></tr><tr><td>Notepad</td><td><span class="k">F5</span> inserts the time. New and Save (downloads a file).</td></tr><tr><td>Paint</td><td>Pencil, eraser, flood fill, rectangle, circle, line, spray, brush sizes, palette (right-click picks the second colour), custom colour, undo, clear, save.</td></tr><tr><td>Minesweeper</td><td><span class="k">F2</span> resets, right-click flags a mine, best time is kept.</td></tr><tr><td>Media Player</td><td>Playlist and visualizer.</td></tr><tr><td>Internet Explorer</td><td>Address bar, back, forward, a guestbook page. Sites that refuse to be framed show a notice with an open-in-new-tab link.</td></tr><tr><td>MS-DOS Prompt</td><td>help, cls, ver, date, time, echo, whoami, dir, cd, type, projects, color, exit, shutdown, start, plus jokes for sudo, format and del. <code>START puzzle</code> opens the Parking Puzzle.</td></tr><tr><td>My Computer, My Projects, Display</td><td>Browse, launch the portfolio projects, change the wallpaper and screensaver.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>How index.html wraps windows98.html</h2>
+        <ul>
+            <li><code>index.html</code> shows <code>page_images/monitor_03.webp</code> (1536x1024, ratio 1.5) with a <code>.screen</code> div positioned at top 11%, left 24.7%, width 51.25%, height 53.25% of the image. An <code>iframe</code> (<code>allow="autoplay; fullscreen"</code>) loads <code>windows98.html</code> inside it. The frame is sized <code>min(100vw, 100vh * 1.5)</code>, so it always fits the viewport.</li>
+            <li>A CSS vignette (<code>--vignette-opacity: 0.3</code>) is an <code>::after</code> overlay with <code>pointer-events:none</code>, so the desktop stays clickable.</li>
+            <li><b>Phone mode</b> (media query: width up to 760px, or portrait up to 1100px, or height up to 480px): the monitor image is hidden, the frame becomes fixed full screen with a thin bezel (6px padding, safe-area aware, rounded 14px) and the site home button is hidden because the desktop has its own Back to Portfolio icon.</li>
+            <li>Because the desktop lives in an iframe, navigation out of it (Back to Portfolio, Parking Puzzle) goes through <code>goTop(url)</code>, which uses <code>window.top.PixelTransition.go</code> when available, else sets <code>window.top.location</code>, falling back to the iframe own location if the top window is not reachable.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Window manager details</h2>
+        <ul>
+            <li><code>createWindow(opts)</code> options seen in the code: <code>title</code>, <code>icon</code>, <code>width</code>, <code>height</code>, <code>menu</code>, <code>status</code>, <code>body</code>, <code>noMin</code>, <code>fixedSize</code> (no maximise button and no resize grip), <code>autoHeight</code>, <code>onClose</code>, <code>onResize</code>, <code>appId</code>. Windows live in a <code>windows</code> Set; <code>zTop</code> starts at 10 and increases on focus.</li>
+            <li><b>Drag:</b> pointer events on the title bar with pointer capture. At least 60px of the window stays reachable horizontally and the title bar cannot go above the top or below (height - 24px). Dragging is disabled when maximised or on a small screen.</li>
+            <li><b>Resize:</b> the bottom-right grip, minimum 200 x 120 px; calls <code>onResize</code> if the app defines one.</li>
+            <li><b>Small screens:</b> <code>isSmall()</code> is true when the desktop is narrower than 640px or shorter than 420px; the <code>small</code> class is toggled on <code>body</code> on every resize (and dragging is off).</li>
+            <li>Clicking inside an iframe (Paint, Internet Explorer) does not fire a pointerdown on the desktop, so a <code>blur</code> listener on <code>window</code> checks whether the active element is an iframe and raises that window.</li>
+            <li><b>Single-instance apps</b> (<code>single: true</code>: Paint, Minesweeper, Media Player, Display Properties) are tracked in the <code>SINGLE</code> map; opening them again focuses the existing window.</li>
+            <li><b>Opening items:</b> <code>bindOpen</code> opens on touch with one tap, on double-click with a mouse (ignored for 700ms after a touch open), and on <span class="k">Enter</span> for keyboard focus.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Desktop, Start menu and shortcuts</h2>
+        <table><tr><th>Item</th><th>Behaviour</th></tr>
+        <tr><td>Desktop icons</td><td>My Computer, My Projects, Internet Explorer, Media Player, Paint, Minesweeper, README.txt, MS-DOS Prompt, Parking Puzzle (leaves to project 06), Back to Portfolio, Recycle Bin. Defined in <code>DESKTOP_ITEMS</code>.</td></tr>
+        <tr><td>Quick launch</td><td>Internet Explorer, Media Player, MS-DOS Prompt.</td></tr>
+        <tr><td>Start menu</td><td>Programs (Accessories: Notepad, Paint, Media Player, Games: Minesweeper and Parking Puzzle; Internet Explorer; MS-DOS Prompt; Windows Explorer), Documents, Settings (Display, Control Panel), Help, Run..., Back to Portfolio, Shut Down... Defined in <code>START_ITEMS</code>.</td></tr>
+        <tr><td>Desktop right-click menu</td><td>Arrange Icons, Refresh (re-renders icons and re-applies the saved wallpaper), New Text Document (opens an empty Notepad), Properties (Display). On touch devices a 550ms press without moving more than 10px opens it.</td></tr>
+        <tr><td><span class="k">Esc</span></td><td>Closes the Start menu, window menus and the context menu.</td></tr>
+        <tr><td><span class="k">F2</span> / <span class="k">F5</span></td><td>F2 = new Minesweeper game (only when that window is active); F5 = insert time/date in Notepad.</td></tr>
+        <tr><td>MS-DOS prompt keys</td><td><span class="k">Enter</span> runs; <span class="k">Up</span> / <span class="k">Down</span> walk the command history.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>Boot, shut down and screensaver</h2>
+        <ul>
+            <li><b>Boot:</b> BIOS-style text lines (Award Modular BIOS, memory test, IDE detect) printed every 120ms, then the logo for 1300ms. Click the boot screen to skip. If the <code>sessionStorage</code> key <code>w98.booted</code> is already set (same tab session) the boot is the fast version (40ms per line, 500ms logo).</li>
+            <li><b>Shut Down...</b> dialog offers Shut down, Restart, Cancel. Both close all windows; shutting down shows the shutdown screen with Restart and Leave buttons (Leave goes to the portfolio); Restart runs a fast boot.</li>
+            <li><b>First visit:</b> if <code>seenReadme</code> is not stored, README.txt opens in Notepad 2.6 seconds after load.</li>
+            <li><b>Screensaver:</b> a canvas starfield of 220 stars (depth step 0.008 per frame, size up to 3px). The idle timer is 120000ms, reset by pointerdown, pointermove, keydown and wheel; input within 800ms after it starts is ignored so the click that started a preview does not close it. Choose <code>(None)</code> in Display Properties to disable it.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Apps in detail</h2>
+        <h3>Notepad</h3>
+        <p>Menus File (New, Save, Exit), Edit (Select All, Time/Date F5), Format (Word Wrap toggle), Help. Window 460 x 340. Save downloads a text file through a Blob URL, named after the document if it ends in .txt, otherwise <code>untitled.txt</code>. It also opens README.txt and <code>unfinished_game_ideas.txt</code> (found in My Documents and the Recycle Bin).</p>
+        <h3>Paint (paint.html in an iframe, window 600 x 430)</h3>
+        <ul>
+            <li>Tools: pencil, eraser, line, fill, rectangle, circle, airbrush. Brush sizes 1, 3, 6 and 10 px. Eraser width is <code>max(8, size*2)</code>.</li>
+            <li>Left button draws with the foreground colour, right button with the background colour; the fill tool respects the same buttons. Palette swatches plus a custom colour input (<code>type=color</code>) and an Edit Colors menu item.</li>
+            <li>Airbrush: every 30ms it drops 18 single pixels at a random angle inside radius <code>max(6, size*3)</code>.</li>
+            <li>Undo: history of PNG data URLs, maximum 50 steps (<span class="k">Ctrl</span>+<span class="k">Z</span> or Cmd+Z, or the Undo menu item); Clear Canvas fills with the background colour (and is undoable); Save downloads <code>mspaint-drawing.png</code>.</li>
+            <li>The canvas starts at 200 x 150 and a <code>ResizeObserver</code> grows it (never shrinks) to the window size, copying the existing drawing and filling new area with the background colour. Uses pointer events, so touch and pen work.</li>
+        </ul>
+        <h3>Minesweeper (window 260 x 300, fixed size)</h3>
+        <ul>
+            <li>Levels: Beginner 9x9 with 10 mines, Intermediate 16x16 with 40 mines (<code>MINE_LEVELS</code>). The chosen level is stored as <code>w98.mines.level</code>.</li>
+            <li>Mines are placed on the first click (<code>placeMines</code>, partial Fisher-Yates shuffle) and never in the clicked cell or its neighbours, so the first click is always safe and opens an area. Reveal uses an iterative stack flood fill for zero cells.</li>
+            <li>Right-click toggles a flag; on touch a 420ms long press flags (with a short vibration where supported) and a flag-mode button switches taps between open and flag. Face button or <span class="k">F2</span> restarts; the face changes while a cell is pressed, on loss and on win. LCD counters are clamped to -99..999.</li>
+            <li>Best times per level are saved in <code>w98.mines.best</code>; Game, Best Times... shows them (default text "999 seconds Anonymous").</li>
+        </ul>
+        <h3>Media Player</h3>
+        <p>Window 340 x 400. It loads <code>../04/playlist.js</code> lazily (once) and plays the files from project 04 through an <code>Audio</code> element (<code>preload="none"</code>), so it depends on that folder. Buttons: previous, play, pause, stop, next; seek slider (0-1000), volume slider saved as <code>w98.amp.vol</code> (default 0.8). Tracks advance automatically at the end and wrap around. A 76x16 canvas shows a 19-bar analyser (Web Audio) coloured green, yellow above level 8 and red above level 12. Closing the window stops the audio and closes the audio context.</p>
+        <h3>Internet Explorer (window 640 x 440)</h3>
+        <ul>
+            <li>The home page is generated HTML (<code>srcdoc</code>) with links to the projects, a visitor counter (<code>w98.visits</code>) and a guestbook: the form posts a message to the desktop, which stores the last 30 entries in <code>w98.guestbook</code> (name cut to 20 characters, message to 80) and reloads the home page. The message handler accepts only same-origin or sandboxed (<code>null</code> origin) senders.</li>
+            <li>Address bar: <span class="k">Enter</span> navigates; text without a scheme and not starting with <code>.</code> or <code>/</code> gets <code>https://</code> prepended. Back and forward use two stacks. Cross-origin addresses show a notice bar with an "Open it in a new tab" link, and the full-screen action opens same-origin pages in the top window or other pages in a new tab. Project entries (<code>PROJECTS</code>) open inside this browser; Parking Puzzle leaves the desktop.</li>
+        </ul>
+        <h3>MS-DOS Prompt (window 560 x 340)</h3>
+        <p>Commands are case-insensitive. The working directory starts at <code>C:\WINDOWS</code>; <code>cd</code> accepts <code>\</code>, <code>..</code>, <code>WINDOWS</code> and <code>PROJECTS</code>. <code>COLOR xy</code> takes two hex digits (background, text) from the 16 DOS colours; <code>COLOR</code> alone resets. <code>START</code> accepts app names (notepad, mspaint/paint, winmine/minesweeper, iexplore, explorer, mplayer/winamp, ...), a project name, or <code>puzzle</code>. Typing an app name alone also starts it; anything unknown prints "Bad command or file name". <code>shutdown</code> runs the shutdown.</p>
+        <h3>Folders and Display Properties</h3>
+        <ul>
+            <li>My Computer shows A: (not ready error), C: (My Documents, Program Files = list of apps, Windows = hidden warning), PORTFOLIO (D:) = My Projects, Control Panel = Display. The Recycle Bin holds joke files and has Empty Recycle Bin with confirmation (the list is not persisted).</li>
+            <li>Display Properties (fixed size, single instance): wallpaper list (Teal default, Clouds, Black Thatch, Pixel Parking, Purple Haze, Bricks) with live preview, screen saver select (None / Starfield) and Preview. OK/Apply saves <code>w98.wallpaper</code> and <code>w98.saver</code>.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Persistence summary</h2>
+        <table><tr><th>Key (localStorage, prefix w98.)</th><th>Holds</th></tr>
+        <tr><td><code>wallpaper</code>, <code>saver</code></td><td>Display Properties choices</td></tr>
+        <tr><td><code>mines.level</code>, <code>mines.best</code></td><td>Minesweeper level and best times</td></tr>
+        <tr><td><code>amp.vol</code></td><td>Media Player volume</td></tr>
+        <tr><td><code>visits</code>, <code>guestbook</code></td><td>IE home page counter and last 30 guestbook entries</td></tr>
+        <tr><td><code>seenReadme</code></td><td>README already shown on first visit</td></tr>
+        <tr><td><code>w98.booted</code> (sessionStorage)</td><td>Fast boot on later loads in the same tab</td></tr></table>
+        <p>All access goes through the small <code>store.get/set</code> wrapper (values are JSON, errors are swallowed so private mode still works). Paint drawings and Notepad text are not stored.</p>
+    </section>
+    <section class="panel">
+        <h2>Customising and extending</h2>
+        <ul>
+            <li><b>New app:</b> add an entry to <code>APPS</code> with <code>title</code>, <code>icon</code>, optional <code>single</code> and an <code>open()</code> that calls <code>createWindow</code>; then add it to <code>DESKTOP_ITEMS</code> and <code>START_ITEMS</code> (and <code>APPS_BY_CMD</code> for the DOS prompt).</li>
+            <li><b>Projects list</b> (My Projects, IE home, <code>PROJECTS</code> DOS command): the <code>PROJECTS</code> array; use <code>url</code> to open in IE or <code>top</code> to leave the desktop.</li>
+            <li><b>Wallpapers:</b> add a CSS background value to <code>WALLPAPERS</code>.</li>
+            <li><b>Text content:</b> <code>README</code> and <code>GAME_IDEAS</code> constants; <b>idle time:</b> the <code>120000</code> in <code>resetIdle</code>; <b>screen position inside the CRT:</b> the percentages on <code>.screen</code> in <code>index.html</code>.</li>
+        </ul>
+        <div class="warn">Media Player and the Pixel Parking wallpaper read files from <code>../04/</code> and <code>../../images_to_use/</code>; moving those folders breaks them silently.</div>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <p>Pure DOM and JavaScript with no canvas engine: it is a small operating system imitation, with its own window manager. It uses iframes for Paint and for the desktop itself.</p>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>A convincing Windows 98 experience, from the boot screen to a working DOS prompt, framed like a real CRT.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Computer A-83 - How it works</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../info.css">
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <a href="index.html">&#9664; Back to the poster</a>
+        <a class="alt" href="../../index.html">PORTFOLIO</a>
+    </div>
+    <span class="chip">How it works &middot; Project 12</span>
+    <h1>Computer A-83</h1>
+    <p class="tagline">A 3D 1980s computer on a poster, with a working terminal and clickable keys.</p>
+    <section class="panel hl">
+        <h2>What it is</h2>
+        <p>A poster with a red circle, black half-ring, red square, "A-83", katakana and the word COMPUTER, and a 3D retro computer in front. Spin and zoom it, tap the screen to power it on, then tap its 3D keys or use your own keyboard to type into a green terminal.</p>
+    </section>
+    <section class="panel">
+        <h2>Files</h2>
+        <table><tr><th>File</th><th>Role</th></tr><tr><td><code>index.html</code></td><td>The page, the poster art (SVG), the terminal and all logic (an ES module).</td></tr><tr><td><code>old_computer.glb</code></td><td>The 3D model. Only the <code>HEAD</code> node is used; the rest of the file is leftover props. Mesh <code>SCREEN</code> is the screen, nodes <code>KEYBOARD.000-039</code> are the 40 keys.</td></tr><tr><td><code>lib/</code></td><td>Three.js and loaders, including <code>toCreasedNormals</code>.</td></tr><tr><td><code>shot.webp</code></td><td>Thumbnail used on phones before the page is started.</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>Controls</h2>
+        <ul>
+            <li><b>Drag sideways</b> to spin (0.45&deg; per pixel, with a flick). After 6 seconds idle it eases back to the poster angle by the shortest way. A touch moving less than 6 px counts as a tap, not a drag.</li>
+            <li><b>Zoom:</b> mouse wheel over the model, two-finger pinch, or the + and &minus; buttons (0.7&times; to 4.5&times;). In the embedded main-page panel an idle zoom eases back to 1&times; after 6 seconds; on the standalone page it stays. &#8635; resets.</li>
+            <li><b>Controls (full page only, hidden inside the main-page panel):</b> a "Cavity: on" label (not a button: the filter is always on, only <code>?cav=0</code> turns it off), the Numbers button, zoom &minus; / + and reset. The keycap labels have no button: they switch on by themselves when you tap the screen to power on, and stay on.</li>
+            <li><b>Power:</b> tap the screen to start the terminal. Keys do nothing until then (and in the main-page panel the terminal stays off).</li>
+            <li><b>Keys:</b> tap any of the 40 3D keys. It travels down about 3.5 mm, glows orange and types. Real keyboard letters, Enter, Backspace, Esc, Space and Shift also move the matching 3D key.</li>
+            <li><b>Number layer:</b> tap the 3D <b>CTRL</b> key, press <span class="k">Alt</span>, or tap the <b>Numbers</b> button (for phones). The screen boot text and the bottom hint also remind you that the Alt key switches numbers and letters. The top row becomes 1-0, other keys become symbols, key labels turn orange and the screen shows NUM.</li>
+            <li><span class="k">Up</span> / <span class="k">Down</span> walk through terminal history. <span class="k">Left</span> / <span class="k">Right</span> spin the model 15&deg;.</li>
+        </ul>
+        <p><b>URL options for tuning:</b> <code>yaw</code>, <code>elev</code>, <code>fov</code>, <code>cx</code>, <code>cy</code>, <code>h</code> place the computer on the poster. <code>zoom</code>, <code>cav=0</code> (cavity filter off), <code>cavr</code>, <code>ridge</code>, <code>valley</code>, <code>labels=1</code>, <code>debug=1</code>, <code>embed=1</code>, <code>shot=1</code>.</p>
+    </section>
+    <section class="panel">
+        <h2>Terminal commands</h2>
+        <table><tr><th>Group</th><th>Commands</th></tr><tr><td>Help and info</td><td>help (pages 1-3), about, projects, ver, mem, whoami, history</td></tr><tr><td>Time</td><td>date, time, uptime</td></tr><tr><td>Display</td><td>color (white, cyan, green, amber), clear / cls, banner, reboot</td></tr><tr><td>Tools</td><td>echo, calc / math, rand, roll, flip, ls / dir, cat / type (README.TXT, NUMBERS.TXT), numbers</td></tr><tr><td>Fun</td><td>joke, fortune, guess (a number game), xyzzy, hello</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>How it works</h2>
+        <ul>
+            <li><b>Screen:</b> an emissive canvas texture drawn by the terminal code. A click is ray-cast against the model; for the screen the hit coordinate is mapped back to canvas pixels.</li>
+            <li><b>Keys:</b> each key is its own mesh. Keys are labelled QWERTY by their row position (rows are found from the model's depth coordinate). A real key press is mirrored on the 3D key.</li>
+            <li><b>Shading:</b> normals are rebuilt on load with a 35&deg; crease angle so box edges stay sharp while curves stay smooth.</li>
+            <li><b>Cavity filter:</b> the scene is drawn to one buffer in colour and to a second buffer as surface directions. A shader compares neighbouring directions to find ridges (lightened) and creases (darkened), like a Blender cavity pass.</li>
+            <li><b>Placement:</b> the camera distance is solved iteratively so the computer's silhouette lands on a target rectangle of the poster.</li>
+            <li><b>Efficiency:</b> it renders only when something changes, pauses when hidden or off-screen, and the terminal cursor stops blinking after 20 seconds without a touch.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Embedding</h2>
+        <h3>Inside the main page</h3>
+        <ul>
+            <li>The main page shows this poster in a panel under the BMW card using <code>?embed=1</code>. That hides the HOME and How it works buttons and keeps vertical swipes free so the main page can still scroll.</li>
+            <li>On phones the panel first shows a screenshot with a pulsing TAP TO PLAY. The real page loads only after a tap, and its files are prefetched when the phone is idle (skipped on data saver or 2G).</li>
+            <li><code>?shot=1</code> hides hints and buttons, for taking clean thumbnails.</li>
+            <li>The page stops its render loop when the tab is hidden or the panel is scrolled out of view.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Changing it</h2>
+        <ul>
+            <li><b>New terminal command:</b> add a case in the command function (<code>run</code>) in <code>index.html</code> and add it to the help text.</li>
+            <li><b>New model:</b> replace <code>old_computer.glb</code>; the screen and key node names above are what the code looks for.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>URL options in detail</h2>
+        <p>All are read once at load from the query string (numbers use <code>parseFloat</code>). They exist for tuning the placement on the poster.</p>
+        <table><tr><th>Option</th><th>Default</th><th>Effect</th></tr>
+            <tr><td><code>yaw</code></td><td>-26</td><td>Resting turn of the computer in degrees (the front is turned to the left so you see its right side). Also the angle the model returns to.</td></tr>
+            <tr><td><code>elev</code></td><td>21</td><td>Camera looks down at this angle.</td></tr>
+            <tr><td><code>fov</code></td><td>18</td><td>Lens in degrees; lower is flatter, more "product shot".</td></tr>
+            <tr><td><code>cx</code>, <code>cy</code>, <code>h</code></td><td>343, 590, 565</td><td>Target centre and height of the computer's silhouette on the 800 x 1200 poster.</td></tr>
+            <tr><td><code>zoom</code></td><td>1</td><td>Start zoom (limits 0.7 to 4.5 apply to later changes).</td></tr>
+            <tr><td><code>cav=0</code></td><td>on</td><td>Start with the cavity filter off.</td></tr>
+            <tr><td><code>cavr</code>, <code>ridge</code>, <code>valley</code></td><td>1.5, 0.55, 0.9</td><td>Cavity sample radius (in pixels), ridge lightening strength, crease darkening strength.</td></tr>
+            <tr><td><code>labels=1</code></td><td>off</td><td>Show key labels before the screen is powered on (normally they appear when you power on).</td></tr>
+            <tr><td><code>debug</code></td><td>-</td><td>Any value: removes the fade-in transition and logs the silhouette size to the console.</td></tr>
+            <tr><td><code>embed=1</code>, <code>shot=1</code></td><td>-</td><td>Main-page panel mode and clean-thumbnail mode (see Embedding).</td></tr></table>
+    </section>
+    <section class="panel">
+        <h2>Gestures and rules in detail</h2>
+        <ul>
+            <li><b>Spin speed:</b> a drag turns the model by <code>0.45 / poster scale / sqrt(zoom)</code> degrees per pixel, so it feels the same on any screen size and slows down when zoomed in. Release with speed and it coasts (speed x 0.92 per frame, stopping below 0.01). Turning is always about the vertical axis.</li>
+            <li><b>Tap versus drag:</b> a press moves less than 6 px in total (x plus y) is a tap. A tap on a key types it (the key is pressed for 160 ms); a tap on the screen powers it on (<code>term.start()</code>). A press on a key also pushes it down for 120 ms at once, before you know whether it is a tap.</li>
+            <li><b>Where a drag can start:</b> only on the computer's area (a box 600 wide by 1.12 x the target height around the target centre). When zoomed in beyond 1.15x the whole poster is the touch area. Outside it a touch scrolls the page as normal; the mouse wheel only zooms when the pointer is over the model itself.</li>
+            <li><b>Pinch:</b> a second finger cancels the drag and scales the zoom by the finger distance ratio. + and - buttons multiply or divide the zoom by 1.35; the reset button restores zoom 1, the resting angle and stops any coasting. Zoom animates (25% of the gap per frame).</li>
+            <li><b>Return home:</b> after 6 s without input the model slerps back to the resting angle (5% of the remaining rotation per frame, by the shortest way).</li>
+            <li><b>Zoom auto-return only applies in the embedded panel</b> (<code>?embed=1</code>): there an idle zoom eases back to 1x after 6 s. On the standalone page a zoom stays until you change it.</li>
+            <li><b>Picking</b> uses a ray from the pointer against the model, so keys hidden behind other parts are not hit. The cursor becomes a pointer over keys and the screen, and a grab hand over the computer.</li>
+            <li><b>Key travel:</b> a pressed key moves down 0.0035 model units and its emissive glow (orange, 0xff7a30, up to 0.9) eases in and out (45% per frame).</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>The physical keyboard</h2>
+        <table><tr><th>Key</th><th>What happens</th></tr>
+            <tr><td>Letters, digits, punctuation, <span class="k">Space</span></td><td>Moves the matching 3D key (if there is one) and types the real character into the terminal.</td></tr>
+            <tr><td><span class="k">Enter</span>, <span class="k">Backspace</span>, <span class="k">Esc</span></td><td>Run the line, delete one character, clear the line (Esc).</td></tr>
+            <tr><td><span class="k">Shift</span></td><td>Moves the 3D SHIFT key only (the real Shift just changes the case of what you type). Ctrl alone does nothing.</td></tr>
+            <tr><td><span class="k">Alt</span></td><td>Toggles the number layer and presses the 3D CTRL key. The Numbers button does the same.</td></tr>
+            <tr><td><span class="k">Up</span> / <span class="k">Down</span></td><td>Command history (the last 30 commands).</td></tr>
+            <tr><td><span class="k">Left</span> / <span class="k">Right</span></td><td>Spin the model 15 degrees.</td></tr>
+            <tr><td>Anything with Ctrl, Cmd or Alt held</td><td>Ignored, so browser shortcuts such as Ctrl+R keep working.</td></tr></table>
+        <ul>
+            <li>Before the screen is powered on the 3D keys still move but nothing is typed. In embed mode the page ignores the keyboard completely (it never grabs keys from the main page).</li>
+            <li>Only keys that exist on the 40-key board (labels in the next section) move a 3D key; other characters still type.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>The 40 keys and the number layer</h2>
+        <p>Rows are found from the key meshes' depth position (rounded to 0.008) and sorted left to right, then named from this layout (back row first):</p>
+        <table><tr><th>Row</th><th>Keys</th></tr>
+            <tr><td>1</td><td>ESC Q W E R T Y U I O P - = BKSP (14)</td></tr>
+            <tr><td>2</td><td>CTRL A S D F G H J K L ; ' ENTER (13)</td></tr>
+            <tr><td>3</td><td>SHIFT Z X C V B N M , . / SHIFT (12)</td></tr>
+            <tr><td>4</td><td>SPACE (1)</td></tr></table>
+        <ul>
+            <li>If a row has a different number of keys than listed, the console warns and extra keys are labelled "?".</li>
+            <li><b>On-screen Shift</b> (3D key tap): the next tapped letter is typed upper case, then Shift resets.</li>
+            <li><b>Number layer</b> (tap CTRL or press Alt) maps 3D key taps: Q-P to 1 2 3 4 5 6 7 8 9 0; A S D F G H J K L to + * / ( ) . % ^ ?; ; to :; ' to ". Z X C V B N M to ! @ # $ &amp; _ =; , . / to &lt; &gt; \. Labels on the keycaps are redrawn orange while the layer is on and the screen footer shows NUM. The real keyboard always types its own characters, regardless of the layer.</li>
+            <li>Key labels are small decals on every key top (they never intercept taps). They turn on when the screen is tapped to power on and have no off button. In the main-page panel the screen stays off, so they stay hidden.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Terminal internals</h2>
+        <ul>
+            <li><b>Screen:</b> a 640 px wide canvas whose height follows the screen mesh's aspect; text is 28 px bold Courier New, 34 px line height, margins 62 / 44. Columns = floor((width - 124) / (28 x 0.6)) (about 33-34); rows = what fits above the footer. Output lines wrap at the column count and the oldest scroll off.</li>
+            <li><b>Look:</b> glowing text (shadow blur 9), scanlines every 3 px at 22% black, a radial vignette, and a footer showing "KEY: last-key" on the left and the colour name (with NUM when the layer is on) on the right. The canvas is used as the emissive map (intensity 1.1) of a dark glass material. The screen mesh gets planar UVs computed from its bounding box.</li>
+            <li><b>Power:</b> before the first tap the screen is dark glass with a faint reflection. The first tap runs a boot sequence (A-83 PERSONAL COMPUTER, BASIC V1.0, 48K BYTES FREE, TYPE HELP), one line per 140 ms; input is blocked during boot. <code>reboot</code> replays it. In the embedded panel the screen never turns on.</li>
+            <li><b>Input line:</b> shown as <code>&gt; text</code> with a blinking block cursor (toggles every 530 ms; stops redrawing after 20 s without touch to save power). Maximum length is columns minus 3. Enter echoes the line, then runs it.</li>
+            <li><b>Parsing:</b> the line is trimmed and split on whitespace; the first word (case-insensitive) is the command and the rest is its argument. Unknown commands print <code>?SYNTAX ERROR</code>. A non-empty line is added to history (30 entries max).</li>
+            <li><b>Command details:</b> <code>help</code> takes a page 1 to 3; <code>color</code> takes green, amber, white or cyan, and with no or an unknown argument cycles to the next colour; <code>rand N</code> gives 1..N (default 100); <code>roll N</code> gives a die with N sides (minimum 2, default 6); <code>banner TEXT</code> draws a star box; <code>history</code> lists the last 8; <code>mem</code> shows a fake free-memory figure that goes down as you type more commands (down to 8K free); <code>uptime</code> counts from page load; <code>cat</code> / <code>type</code> read from a small in-code file table (README.TXT, NUMBERS.TXT, JOKES.TXT, SECRET.TXT) and <code>ls</code> / <code>dir</code> lists it.</li>
+            <li><b>calc</b> accepts only digits and <code>+ - * / ( ) . % ^</code> and spaces (checked with a regular expression), turns <code>^</code> into <code>**</code>, evaluates with a strict-mode <code>Function</code>, and prints the result to 12 significant digits. A bad expression gives <code>?BAD EXPRESSION</code>, a syntax problem <code>?SYNTAX ERROR</code>, a non-finite result <code>?MATH ERROR</code>.</li>
+            <li><b>guess</b> starts a mode: the computer picks 1 to 100; every line is then a guess (HIGHER / LOWER / YES with the try count). Type <code>quit</code> or <code>q</code> to stop; any other command is not available until the game ends.</li>
+            <li><b>Display state</b> (colour, history, NUM layer) lives in memory only; nothing is saved between visits.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>Rendering details</h2>
+        <ul>
+            <li><b>Poster:</b> an 800 x 1200 unit stage scaled to fit the window; the 3D canvas has the same size and its pixel ratio is <code>min(2.5, devicePixelRatio x scale)</code>.</li>
+            <li><b>Lights:</b> hemisphere (white / 0xcfc8b8, 1.5), a sun (2.4) casting a 2048 px soft shadow onto an invisible shadow-only floor (20% opacity), and a cool fill (0.5). The floor is hidden whenever the model is tilted away from upright.</li>
+            <li><b>Model prep:</b> only the <code>HEAD</code> node is used; every mesh gets creased normals (35 degrees), casts and receives shadows, and textured materials are cooled slightly (colour 0.86, 0.9, 0.96). The model is then centred on x and z and sat on y = 0. Keys get their own cloned material so each glows separately.</li>
+            <li><b>Placement solver:</b> at the resting angle the silhouette bounds of sampled vertices (about 400 per mesh) are projected, and the camera distance is multiplied by (current height / target height) six times; a view offset then shifts the centre to <code>cx, cy</code>. It runs again on load.</li>
+            <li><b>Cavity pass:</b> colour goes to a 4x multisampled half-float target; a second pass draws view-space normals (without the floor); a full-screen shader measures how fast the normal changes at radius r (mixed 65% r and 35% 3r). Convex gives a brighter pixel (x ridge), concave a darker one (x valley), clamped to 0.35 to 1.5. The result is composited with premultiplied alpha. <code>cav=0</code> skips it (there is no button for it) and renders directly.</li>
+            <li><b>Grain:</b> a 256 px noise tile jumped to a random offset every 90 ms (static with reduced motion).</li>
+            <li><b>Efficiency:</b> nothing renders unless a <code>dirty</code> flag is set (input, easing, key motion, terminal repaint). The loop stops completely when the tab is hidden or the stage is off screen and resumes on wake. The terminal only repaints on change.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How to customise</h2>
+        <ul>
+            <li><b>Add a command:</b> in the terminal block of <code>index.html</code> add a <code>case 'name': print('TEXT'); break;</code> in <code>run()</code> (output is upper case by convention), and add it to the right <code>HELP</code> page (three strings, about 3 lines each). Add files to the <code>FILES</code> table to make them show up in <code>ls</code> / <code>cat</code>; extend <code>JOKES</code> and <code>FORTUNES</code> arrays the same way.</li>
+            <li><b>Add a colour:</b> add an entry to <code>COLORS</code> (it is then accepted by <code>color</code> and used in the cycle).</li>
+            <li><b>Change the number layer:</b> edit the <code>NUM</code> table.</li>
+            <li><b>Move or retune the computer:</b> use the URL options above to find values, then change the defaults in the <code>num('yaw', -26)</code> style lines at the top of the script.</li>
+            <li><b>Change the keyboard layout:</b> edit <code>LAYOUT</code>; counts must match the model's key rows (40 keys).</li>
+            <li><b>Look and feel:</b> <code>DEG_PER_PX</code>, <code>RETURN_AFTER</code>, <code>STEP</code>, <code>TAP_PX</code>, <code>ZMIN</code> / <code>ZMAX</code>; the <code>CAV</code> defaults; the terminal's <code>FS</code>, <code>LH</code>, <code>PX</code>, <code>PY</code> for text size and margins.</li>
+        </ul>
+    </section>
+    <section class="panel">
+        <h2>How it differs from the other projects</h2>
+        <p>Opposite of the Fuji Poster (10): the poster is flat art and the 3D model is the main thing, with its own tiny operating system in the terminal.</p>
+    </section>
+    <section class="panel hl">
+        <h2>Main quality</h2>
+        <p>A tactile 3D computer: physical keys you can press, a live terminal and a Blender-style cavity shader, all on a poster.</p>
+    </section>
+    <p class="foot">Author notes for this project. Written from the code as it is today; if you change the code, update this page too.</p>
+</div>
+<script src="../../pixel-transition.js"></script>
+<script>document.querySelectorAll('.nav a').forEach(function (a) { a.addEventListener('click', function (e) { if (window.PixelTransition && !e.ctrlKey && !e.metaKey && !e.shiftKey) { e.preventDefault(); PixelTransition.go(a.href); } }); });</script>
+</body>
+</html>
